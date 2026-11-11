@@ -139,6 +139,120 @@ static func torus(r: float, tube: float) -> TorusMesh:
 	_meshes[key] = t
 	return t
 
+# Chunky stone block: a unit cube with bevelled edges and flat facets.
+# Scale it per instance to get bricks, slabs and barrier stones.
+static func chamfer_box(c: float = 0.14) -> ArrayMesh:
+	var key := "chamfer_%s" % c
+	if _meshes.has(key):
+		return _meshes[key]
+	var h := 0.5
+	var signs := [-1.0, 1.0]
+	var polys: Array = []
+	# Main faces
+	for ax in range(3):
+		var a1 := (ax + 1) % 3
+		var a2 := (ax + 2) % 3
+		for sa in signs:
+			var face: Array = []
+			for k in [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]:
+				var sv := Vector3.ZERO
+				sv[ax] = sa
+				sv[a1] = k[0]
+				sv[a2] = k[1]
+				face.append(_cv(sv, ax, h, c))
+			polys.append(face)
+	# Bevelled edges
+	for ax in range(3):
+		var bx := (ax + 1) % 3
+		var cx := (ax + 2) % 3
+		for sa in signs:
+			for sb in signs:
+				var s1 := Vector3.ZERO
+				s1[ax] = sa
+				s1[bx] = sb
+				s1[cx] = -1.0
+				var s2 := s1
+				s2[cx] = 1.0
+				polys.append([_cv(s1, ax, h, c), _cv(s2, ax, h, c), _cv(s2, bx, h, c), _cv(s1, bx, h, c)])
+	# Corner facets
+	for sx in signs:
+		for sy in signs:
+			for sz in signs:
+				var sc := Vector3(sx, sy, sz)
+				polys.append([_cv(sc, 0, h, c), _cv(sc, 1, h, c), _cv(sc, 2, h, c)])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for poly in polys:
+		var p0: Vector3 = poly[0]
+		var p1: Vector3 = poly[1]
+		var p2: Vector3 = poly[2]
+		var n: Vector3 = (p1 - p0).cross(p2 - p0).normalized()
+		var centroid := Vector3.ZERO
+		for q in poly:
+			centroid += q
+		centroid /= float(poly.size())
+		if n.dot(centroid) < 0.0:
+			poly.reverse()
+			n = -n
+		# Godot treats clockwise triangles as front-facing.
+		for i in range(1, poly.size() - 1):
+			for v in [poly[0], poly[i + 1], poly[i]]:
+				st.set_normal(n)
+				st.add_vertex(v)
+	var mesh := st.commit()
+	_meshes[key] = mesh
+	return mesh
+
+# Vertex of a chamfered cube: corner signs `sv`, lying on the face of axis `ax`.
+static func _cv(sv: Vector3, ax: int, h: float, c: float) -> Vector3:
+	var v := sv * (h - c)
+	v[ax] = sv[ax] * h
+	return v
+
+# Many instances of one mesh in a single draw call. items: [[Transform3D, Color], ...]
+static func batch(mesh: Mesh, items: Array, outline: bool = false, shadows: bool = true) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.instance_count = items.size()
+	mm.mesh = mesh
+	for i in range(items.size()):
+		mm.set_instance_transform(i, items[i][0])
+		mm.set_instance_color(i, items[i][1])
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = mm
+	var mat := make_toon(Color.WHITE, outline)
+	mat.vertex_color_use_as_albedo = true
+	inst.material_override = mat
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return inst
+
+# Collision helpers for props.
+static func collide_box(parent: Node3D, size: Vector3, pos: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	var cs := CollisionShape3D.new()
+	var b := BoxShape3D.new()
+	b.size = size
+	cs.shape = b
+	cs.position = pos
+	body.add_child(cs)
+	parent.add_child(body)
+	return body
+
+static func collide_cyl(parent: Node3D, radius: float, height: float, pos: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "Collision"
+	var cs := CollisionShape3D.new()
+	var c := CylinderShape3D.new()
+	c.radius = radius
+	c.height = height
+	cs.shape = c
+	cs.position = pos
+	body.add_child(cs)
+	parent.add_child(body)
+	return body
+
 static func mi(mesh: Mesh, mat: Material, pos: Vector3 = Vector3.ZERO, rot: Vector3 = Vector3.ZERO, scl: Vector3 = Vector3.ONE) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	m.mesh = mesh
@@ -378,25 +492,25 @@ static func shrine() -> Node3D:
 
 static func sakura(s: float, rng: RandomNumberGenerator) -> Node3D:
 	var g := Node3D.new()
-	add(g, cyl(0.22 * s, 0.35 * s, 2.2 * s, 8), toon(0x7a4b36), Vector3(0, 1.1 * s, 0))
+	add(g, cyl(0.63, 1.0, 1.0, 8), toon(0x7a4b36), Vector3(0, 1.1 * s, 0), Vector3.ZERO, Vector3(0.35 * s, 2.2 * s, 0.35 * s))
 	var cols := [0xffb7d5, 0xffc9e0, 0xff9fc7]
 	for i in range(4):
 		var r := (1.1 + rng.randf() * 0.4) * s
-		add(g, sphere(r, 8), toon(cols[i % 3]), Vector3(cos(i * 2.1) * 0.8 * s, (2.5 + rng.randf() * 0.6) * s, sin(i * 2.1) * 0.8 * s))
+		add(g, sphere(1.0, 8), toon(cols[i % 3]), Vector3(cos(i * 2.1) * 0.8 * s, (2.5 + rng.randf() * 0.6) * s, sin(i * 2.1) * 0.8 * s), Vector3.ZERO, Vector3.ONE * r)
 	g.set_meta("r", 1.6 * s)
 	return g
 
 # Big round leafy tree: a cluster of overlapping canopy balls.
 static func round_tree(s: float, rng: RandomNumberGenerator) -> Node3D:
 	var g := Node3D.new()
-	add(g, cyl(0.25 * s, 0.38 * s, 1.6 * s, 8), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0))
+	add(g, cyl(0.66, 1.0, 1.0, 8), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0), Vector3.ZERO, Vector3(0.38 * s, 1.6 * s, 0.38 * s))
 	var greens := [0x2f9a36, 0x3fae3a, 0x52c043]
 	for i in range(6):
 		var a := i * 1.05 + rng.randf() * 0.4
 		var r := (0.95 + rng.randf() * 0.35) * s
 		var rad := 0.0 if i == 0 else 0.95 * s
-		add(g, sphere(r, 10), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad))
-	add(g, sphere(0.75 * s, 10), toon(0x6fd456), Vector3(0.2 * s, 3.0 * s, 0.25 * s))
+		add(g, sphere(1.0, 10), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad), Vector3.ZERO, Vector3.ONE * r)
+	add(g, sphere(1.0, 10), toon(0x6fd456), Vector3(0.2 * s, 3.0 * s, 0.25 * s), Vector3.ZERO, Vector3.ONE * 0.75 * s)
 	g.set_meta("r", 1.9 * s)
 	return g
 
@@ -407,7 +521,7 @@ static func bush(s: float, rng: RandomNumberGenerator) -> Node3D:
 	for i in range(4):
 		var a := i * 1.6 + rng.randf()
 		var r := (0.55 + rng.randf() * 0.3) * s
-		add(g, sphere(r, 10), toon(greens[i % 3]), Vector3(cos(a) * 0.55 * s, r * 0.75, sin(a) * 0.55 * s))
+		add(g, sphere(1.0, 10), toon(greens[i % 3]), Vector3(cos(a) * 0.55 * s, r * 0.75, sin(a) * 0.55 * s), Vector3.ZERO, Vector3.ONE * r)
 	g.set_meta("r", 1.2 * s)
 	return g
 
@@ -418,7 +532,7 @@ static func palm(s: float, rng: RandomNumberGenerator) -> Node3D:
 	var p := Vector3.ZERO
 	for i in range(6):
 		var seg_h := 0.75 * s
-		var c := add(g, cyl(0.2 * s, 0.26 * s, seg_h, 8), toon(0xa8773f if i % 2 == 0 else 0x93652f), p + Vector3(0, seg_h / 2.0, 0), Vector3(0, 0, -lean * i * 0.5))
+		var c := add(g, cyl(0.77, 1.0, 1.0, 8), toon(0xa8773f if i % 2 == 0 else 0x93652f), p + Vector3(0, seg_h / 2.0, 0), Vector3(0, 0, -lean * i * 0.5), Vector3(0.26 * s, seg_h, 0.26 * s))
 		c.position.x += i * lean * 0.45 * s
 		p.y += seg_h * 0.95
 	var top := Vector3(6 * lean * 0.45 * s, p.y, 0)
@@ -428,9 +542,9 @@ static func palm(s: float, rng: RandomNumberGenerator) -> Node3D:
 		frond.position = top
 		frond.rotation = Vector3(0, a, 0)
 		g.add_child(frond)
-		add(frond, capsule(0.22 * s, 1.5 * s), toon(0x3fae3a if i % 2 == 0 else 0x2f9a36), Vector3(0, -0.25 * s, 0.85 * s), Vector3(PI / 2 + 0.45, 0, 0), Vector3(1, 1, 0.3))
+		add(frond, capsule(0.22, 1.5), toon(0x3fae3a if i % 2 == 0 else 0x2f9a36), Vector3(0, -0.25 * s, 0.85 * s), Vector3(PI / 2 + 0.45, 0, 0), Vector3(s, s, 0.3 * s))
 	for i in range(3):
-		add(g, sphere(0.16 * s, 8), toon(0x6b4a2a), top + Vector3(cos(i * 2.1) * 0.22 * s, -0.25 * s, sin(i * 2.1) * 0.22 * s))
+		add(g, sphere(0.16, 8), toon(0x6b4a2a), top + Vector3(cos(i * 2.1) * 0.22 * s, -0.25 * s, sin(i * 2.1) * 0.22 * s), Vector3.ZERO, Vector3.ONE * s)
 	g.set_meta("r", 1.0 * s)
 	return g
 
@@ -453,8 +567,8 @@ static func pine(s: float) -> Node3D:
 
 static func rock(s: float) -> Node3D:
 	var g := Node3D.new()
-	add(g, sphere(s, 6), toon(0xa9a3b5), Vector3(0, s * 0.5, 0), Vector3.ZERO, Vector3(1, 0.7, 1))
-	add(g, sphere(s * 0.55, 5), toon(0xbdb7c8), Vector3(s * 0.8, s * 0.3, s * 0.3))
+	add(g, sphere(1.0, 6), toon(0xa9a3b5), Vector3(0, s * 0.5, 0), Vector3.ZERO, Vector3(s, 0.7 * s, s))
+	add(g, sphere(1.0, 5), toon(0xbdb7c8), Vector3(s * 0.8, s * 0.3, s * 0.3), Vector3.ZERO, Vector3.ONE * 0.55 * s)
 	g.set_meta("r", s * 1.3)
 	return g
 

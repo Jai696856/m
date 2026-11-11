@@ -31,11 +31,29 @@ It uses the **Compatibility** renderer, so it can also be exported to Web, Andro
 | Cancel | **Esc** or right-click | |
 | Camera | Left-drag rotates, right-drag pans, wheel zooms | Drag rotates |
 
+## Level and track
+
+The level is a grid-based stone track on a grassy coast. `scenes/level/level.tscn` builds the terrain,
+with sea and a curved beach along the top-left and left edges. It also places the windmill, four wooden
+cottages, trees and decorations.
+
+| Scene | Contents |
+|---|---|
+| `scenes/track/track.tscn` | Main Track: lays tiles on a 4×4-unit grid from the waypoint list in `scripts/track/track.gd`, validates the route, and batches every stone into two draw calls |
+| `scenes/track/track_straight.tscn` / `track_corner.tscn` | Reusable track tiles: chunky bevelled stones over dark grout, a floor collider, and barriers on the closed sides. Corners also get a post at the inner corner |
+| `scenes/track/stone_barrier.tscn` | Low stone wall segment with its own collider |
+| `scenes/props/*.tscn` | House (4 variants), windmill (turning sails), tree, palm, bush, rock, decoration (lantern / crates / hay / fence), each with a collider |
+
+To change the route, edit `ROUTE` in `scripts/track/track.gd`. Consecutive waypoints must share a row or a
+column, and the first and last points are the entry and exit just outside the tiled area.
+`validate()` reports any route that leaves a gap, reuses a cell, or runs two separate stretches side by side.
+Spirits follow the centre line with slightly rounded 90° corners.
+
 ## Code layout
 
 | File | What it does |
 |---|---|
-| `main.tscn` | One node running `scripts/main.gd` |
+| `main.tscn` | One node running `scripts/main.gd` (instances the Level) |
 | `scripts/main.gd` | Game loop: path, map, spirits, heroes, projectiles, rounds, camera, input |
 | `scripts/defs.gd` | All game data: spirit types, 7 heroes and their 3×4 upgrade trees, balance numbers |
 | `scripts/models.gd` | Builds every 3D model from primitive meshes, with toon shading and ink outlines |
