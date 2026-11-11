@@ -1,5 +1,6 @@
 # Renders screenshots of the real game (needs a display, e.g. xvfb-run):
 #   xvfb-run -s "-screen 0 1280x720x24" godot --path . -s tests/screenshot.gd -- <out_dir>
+# Saves the map menu, one map of every theme mid-game, and the pause menu.
 extends SceneTree
 
 func _initialize() -> void:
@@ -8,39 +9,46 @@ func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
 	var main: Node3D = load("res://main.tscn").instantiate()
 	root.add_child(main)
-	for i in range(90):
-		await process_frame
-	_save(out + "/godot_start.png")
-
-	main.ui.start_screen.visible = false
-	main.new_game("normal")
+	main.save = ConfigFile.new()
 	main.sfx.muted = true
-	main.cash = 100000.0
-	var spots := [
-		["ninja", -14.0, -8.0], ["miko", 0.0, -4.5], ["mage", -6.0, 8.0], ["ice", 14.0, -4.5],
-		["samurai", 22.0, 0.0], ["mecha", -16.0, 9.0], ["idol", 8.0, 8.0], ["ninja", 24.0, 12.0],
-	]
-	for s in spots:
-		if main.valid_spot(s[1], s[2]):
-			var h = main.place_hero(s[0], s[1], s[2])
-			main.buy_upgrade(h, 0)
-			main.buy_upgrade(h, 0)
-		else:
-			print("spot not valid: ", s)
-	main.round_num = 24
-	main.start_round()
-	for i in range(100):
+	for i in range(60):
 		await process_frame
-	_save(out + "/godot_play.png")
-	main.select_hero(main.heroes[1])
-	for i in range(20):
+	_save(out + "/menu.png")
+
+	var maps: Array = main.Maps.MAPS
+	var done := {}
+	for i in range(maps.size()):
+		var theme: String = maps[i]["theme"]
+		if done.has(theme):
+			continue
+		done[theme] = true
+		main.ui.start_screen.visible = false
+		main.new_game("normal", i, "standard")
+		main.cash = 1.0e6
+		var picks := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol"]
+		var n := 0
+		for x in range(-30, 26, 3):
+			for z in range(-17, 18, 3):
+				if n < picks.size() and main.valid_spot(float(x), float(z)) and main.dist_to_path(float(x), float(z)) < 4.5:
+					var h = main.place_hero(picks[n], float(x), float(z))
+					for t in range(3):
+						main.buy_upgrade(h, 0)
+					n += 1
+		main.round_num = 21
+		main.start_round()
+		for f in range(70):
+			await process_frame
+		_save("%s/theme_%s.png" % [out, theme])
+		print("theme ", theme, " map ", maps[i]["name"], " heroes ", n)
+	main.toggle_pause()
+	for f in range(10):
 		await process_frame
-	_save(out + "/godot_panel.png")
+	_save(out + "/pause.png")
 	main.queue_free()
 	await process_frame
 	quit(0)
 
 func _save(path: String) -> void:
 	var img := root.get_texture().get_image()
-	var err := img.save_png(path)
-	print("saved ", path, " err=", err, " size=", img.get_size())
+	img.save_png(path)
+	print("saved ", path)

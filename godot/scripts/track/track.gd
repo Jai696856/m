@@ -13,12 +13,18 @@ const ORIGIN := Vector2(-30.0, -16.0)
 
 ## Route as grid waypoints. Consecutive waypoints share a row or a column.
 ## The first and last waypoints lie just outside the tiled area (entry and exit).
+## Default route (the original "Sakura Shore" map). The Level overrides `route`
+## before the Track enters the scene tree; every map in scripts/maps.gd has one.
 const ROUTE := [
 	Vector2i(3, -2), Vector2i(3, 1), Vector2i(10, 1), Vector2i(10, 3), Vector2i(6, 3),
 	Vector2i(6, 5), Vector2i(2, 5), Vector2i(2, 7), Vector2i(8, 7), Vector2i(8, 5),
 	Vector2i(12, 5), Vector2i(12, 3), Vector2i(14, 3), Vector2i(14, 7), Vector2i(11, 7),
 	Vector2i(11, 8),
 ]
+
+var route: Array = ROUTE
+## Colour multiplier for the stones (warm sandstone in the desert, cool blue-grey in snow...).
+var stone_tint := Color.WHITE
 
 const DIRS := {"N": Vector2i(0, -1), "S": Vector2i(0, 1), "E": Vector2i(1, 0), "W": Vector2i(-1, 0)}
 
@@ -37,10 +43,10 @@ static func cell_to_world(c: Vector2i) -> Vector3:
 
 func _expand_route() -> void:
 	cells.clear()
-	cells.append(ROUTE[0])
-	for i in range(1, ROUTE.size()):
-		var a: Vector2i = ROUTE[i - 1]
-		var b: Vector2i = ROUTE[i]
+	cells.append(route[0])
+	for i in range(1, route.size()):
+		var a: Vector2i = route[i - 1]
+		var b: Vector2i = route[i]
 		var step := Vector2i(signi(b.x - a.x), signi(b.y - a.y))
 		var c := a
 		while c != b:
@@ -51,9 +57,9 @@ func _expand_route() -> void:
 # used twice, and no two non-consecutive cells touch (so the corridor never merges).
 func validate() -> bool:
 	var ok := true
-	for i in range(1, ROUTE.size()):
-		var a: Vector2i = ROUTE[i - 1]
-		var b: Vector2i = ROUTE[i]
+	for i in range(1, route.size()):
+		var a: Vector2i = route[i - 1]
+		var b: Vector2i = route[i]
 		if a.x != b.x and a.y != b.y:
 			push_error("Track: waypoints %s -> %s are not in one row or column" % [a, b])
 			ok = false
@@ -114,7 +120,7 @@ func _build_tiles() -> void:
 		tiles.append(tile)
 		var xf: Transform3D = tile.transform
 		for s in tile.stones:
-			stone_items.append([xf * (s[0] as Transform3D), s[1]])
+			stone_items.append([xf * (s[0] as Transform3D), (s[1] as Color) * stone_tint])
 		for g in tile.grout:
 			grout_items.append([xf * (g[0] as Transform3D), g[1]])
 	var stones_mm := Models.batch(Models.chamfer_box(0.12), stone_items)
@@ -127,7 +133,7 @@ func _build_tiles() -> void:
 ## Centre line for spirits: entry, every corner, exit (world space, y = 0).
 func get_path_points() -> Array:
 	var pts: Array = []
-	for w in ROUTE:
+	for w in route:
 		pts.append(cell_to_world(w))
 	return pts
 

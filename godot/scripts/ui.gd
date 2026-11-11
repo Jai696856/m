@@ -4,6 +4,9 @@ extends CanvasLayer
 
 const Defs = preload("res://scripts/defs.gd")
 const Models = preload("res://scripts/models.gd")
+const Maps = preload("res://scripts/maps.gd")
+const LevelScript = preload("res://scripts/level/level.gd")
+const GameModes := ["standard", "half_cash", "fortified", "deflation", "rush", "sandbox"]
 
 const INK := Color(0.12, 0.08, 0.16)
 const NAVY := Color(0.1, 0.17, 0.29, 0.9)
@@ -64,6 +67,58 @@ class HudIcon extends Control:
 					t2.append(t2[0])
 					draw_polyline(t2, ink, 3.0, true)
 
+# Minimap preview of a map's track, drawn from its route.
+class MapThumb extends Control:
+	var map: Dictionary
+	var theme_cols: Dictionary
+
+	func _init(m: Dictionary, t: Dictionary) -> void:
+		map = m
+		theme_cols = t
+		custom_minimum_size = Vector2(190, 92)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _c(hex: int) -> Color:
+		return Color.hex((hex << 8) | 0xff)
+
+	func _draw() -> void:
+		var s := size
+		var ink := Color(0.12, 0.08, 0.16)
+		draw_rect(Rect2(Vector2.ZERO, s), _c(theme_cols["grass"]))
+		var cw := s.x / 17.0
+		var ch := s.y / 11.0
+		var sea := _c(theme_cols["sea"])
+		var sand := _c(theme_cols["sand"])
+		match map.get("shore", "none"):
+			"left":
+				draw_rect(Rect2(0, 0, cw * 0.9, s.y), sea)
+				draw_rect(Rect2(cw * 0.9, 0, cw * 0.35, s.y), sand)
+			"top":
+				draw_rect(Rect2(0, 0, s.x, ch * 0.7), sea)
+				draw_rect(Rect2(0, ch * 0.7, s.x, ch * 0.3), sand)
+			"bottom":
+				draw_rect(Rect2(0, s.y - ch * 0.7, s.x, ch * 0.7), sea)
+				draw_rect(Rect2(0, s.y - ch, s.x, ch * 0.3), sand)
+		var tint: Array = theme_cols["stone"]
+		var stone := Color(0.75 * tint[0], 0.74 * tint[1], 0.71 * tint[2])
+		var route: Array = map["route"]
+		var cells: Array = [route[0]]
+		for i in range(1, route.size()):
+			var a: Vector2i = route[i - 1]
+			var b: Vector2i = route[i]
+			var step := Vector2i(signi(b.x - a.x), signi(b.y - a.y))
+			var c := a
+			while c != b:
+				c += step
+				cells.append(c)
+		for c in cells:
+			draw_rect(Rect2((c.x + 1) * cw - 0.5, (c.y + 1) * ch - 0.5, cw + 1.0, ch + 1.0), stone)
+		var first: Vector2i = cells[1]
+		var last: Vector2i = cells[cells.size() - 2]
+		draw_circle(Vector2((first.x + 1.5) * cw, (first.y + 1.5) * ch), minf(cw, ch) * 0.45, Color(0.6, 0.35, 1.0))
+		draw_rect(Rect2((last.x + 1.2) * cw, (last.y + 1.2) * ch, cw * 0.6, ch * 0.6), Color(0.9, 0.25, 0.25))
+		draw_rect(Rect2(Vector2.ZERO, s), ink, false, 2.0)
+
 var game
 var cash_dirty := true
 var font: Font
@@ -100,6 +155,21 @@ var end_title: Label
 var end_text: Label
 var freeplay_btn: Button
 var diff := "normal"
+var sel_mode := "standard"
+var sel_map := 0
+var sel_tier := "beginner"
+var menu_card: PanelContainer
+var map_grid: GridContainer
+var map_cards := {}
+var tier_buttons := {}
+var mode_buttons := {}
+var sel_lbl: Label
+var mode_lbl: Label
+var medal_lbl: Label
+var pause_screen: Control
+var ability_bar: HBoxContainer
+var ability_buttons: Array = []
+var map_info_lbl: Label
 var diff_buttons := {}
 var portraits := {}
 var portrait_vps: Array = []
@@ -126,8 +196,10 @@ func _ready() -> void:
 	_build_panel()
 	_build_boss()
 	_build_banner()
+	_build_abilities()
 	_build_start()
 	_build_end()
+	_build_pause()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	update_hud()
@@ -286,6 +358,9 @@ func _build_hud() -> void:
 	round_lbl = lbl("0/40", 36, Color.WHITE, 12)
 	round_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	round_box.add_child(round_lbl)
+	map_info_lbl = lbl("", 13, Color.WHITE, 6)
+	map_info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	round_box.add_child(map_info_lbl)
 
 func _build_shop() -> void:
 	shop = panel_of(NAVY)
@@ -449,7 +524,7 @@ func _overlay() -> Dictionary:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
 	card.add_child(v)
-	return {"shade": shade, "box": v}
+	return {"shade": shade, "box": v, "card": card}
 
 func _title(v: VBoxContainer, a: String, b: String) -> Label:
 	var t1 := lbl(a, 76, Color.WHITE, 22)
@@ -466,34 +541,167 @@ func _title(v: VBoxContainer, a: String, b: String) -> Label:
 func _build_start() -> void:
 	var o := _overlay()
 	start_screen = o["shade"]
+	menu_card = o["card"]
 	var v: VBoxContainer = o["box"]
-	_title(v, "SAKURA", "SPIRIT DEFENSE")
-	var tag := lbl("Restless spirits are marching on the old shrine.\nRecruit heroes, upgrade them, and hold the gate for 40 rounds!", 17, Color.WHITE, 6)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(tag)
+	v.add_theme_constant_override("separation", 8)
+	var t1 := lbl("SAKURA SPIRIT DEFENSE", 46, Color.WHITE, 16)
+	t1.add_theme_color_override("font_shadow_color", PINK)
+	t1.add_theme_constant_override("shadow_offset_y", 5)
+	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t1)
+	# Tier tabs + medal count
+	var tabs := HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("separation", 8)
+	v.add_child(tabs)
+	for t in Maps.TIERS:
+		var key: String = t
+		var b := btn(key.to_upper(), Color(0.35, 0.5, 0.75), 18)
+		b.custom_minimum_size = Vector2(150, 40)
+		b.pressed.connect(func() -> void: _pick_tier(key))
+		tabs.add_child(b)
+		tier_buttons[key] = b
+	medal_lbl = lbl("", 16, GOLD, 6)
+	tabs.add_child(medal_lbl)
+	# Map grid
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 300)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	map_grid = GridContainer.new()
+	map_grid.columns = 5
+	map_grid.add_theme_constant_override("h_separation", 8)
+	map_grid.add_theme_constant_override("v_separation", 8)
+	map_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(map_grid)
+	# Selected map, difficulty, mode
+	sel_lbl = lbl("", 26, Color.WHITE, 10)
+	sel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(sel_lbl)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 6)
 	v.add_child(row)
-	for d in [["easy", "EASY\n200 lives"], ["normal", "NORMAL\n150 lives"], ["hard", "HARD\n100 lives"]]:
+	for d in [["easy", "EASY"], ["normal", "NORMAL"], ["hard", "HARD"]]:
 		var key: String = d[0]
-		var b := btn(d[1], TILE, 18)
-		b.custom_minimum_size = Vector2(150, 64)
+		var b := btn(d[1], TILE, 16)
+		b.custom_minimum_size = Vector2(100, 40)
 		b.pressed.connect(func() -> void: _pick_diff(key))
 		row.add_child(b)
 		diff_buttons[key] = b
-	_pick_diff("normal")
-	var start := btn("START!", GREEN, 40, 18)
-	start.custom_minimum_size = Vector2(240, 74)
+	var sep := Control.new()
+	sep.custom_minimum_size = Vector2(16, 0)
+	row.add_child(sep)
+	for m in GameModes:
+		var key2: String = m
+		var b2 := btn(String(game.MODES[key2]["name"]).to_upper(), TILE, 14)
+		b2.custom_minimum_size = Vector2(0, 40)
+		b2.tooltip_text = game.MODES[key2]["desc"]
+		b2.pressed.connect(func() -> void: _pick_mode(key2))
+		row.add_child(b2)
+		mode_buttons[key2] = b2
+	mode_lbl = lbl("", 14, Color(0.8, 0.9, 1.0), 0)
+	mode_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(mode_lbl)
+	var start := btn("START!", GREEN, 34, 18)
+	start.custom_minimum_size = Vector2(220, 58)
 	start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	start.pressed.connect(_on_start)
 	v.add_child(start)
+	sel_map = game.map_index
+	_pick_diff("normal")
+	_pick_mode("standard")
+	_pick_tier(String(Maps.MAPS[sel_map]["tier"]))
+
+func _pick_tier(t: String) -> void:
+	sel_tier = t
+	for key in tier_buttons:
+		_set_btn_bg(tier_buttons[key], PINK if key == t else Color(0.35, 0.5, 0.75))
+	for c in map_grid.get_children():
+		c.queue_free()
+	map_cards.clear()
+	for i in range(Maps.MAPS.size()):
+		var m: Dictionary = Maps.MAPS[i]
+		if m["tier"] != t:
+			continue
+		var card := btn("", TILE, 14, 10)
+		card.custom_minimum_size = Vector2(206, 150)
+		var idx: int = i
+		card.pressed.connect(func() -> void: _pick_map(idx))
+		var cv := VBoxContainer.new()
+		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cv.offset_left = 6
+		cv.offset_right = -6
+		cv.offset_top = 5
+		cv.offset_bottom = -4
+		cv.add_theme_constant_override("separation", 2)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(cv)
+		var thumb := MapThumb.new(m, LevelScript.THEMES[m["theme"]])
+		thumb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cv.add_child(thumb)
+		var nm := lbl(m["name"], 15, Color.WHITE, 6)
+		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cv.add_child(nm)
+		var medals := HBoxContainer.new()
+		medals.alignment = BoxContainer.ALIGNMENT_CENTER
+		medals.add_theme_constant_override("separation", 4)
+		medals.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(medals)
+		var medal_cols := {"easy": Color(0.8, 0.5, 0.25), "normal": Color(0.8, 0.82, 0.86), "hard": Color(1.0, 0.8, 0.2)}
+		for d in ["easy", "normal", "hard"]:
+			var won := false
+			for mode in GameModes:
+				if game.has_medal(i, d, mode):
+					won = true
+			var dot := Panel.new()
+			dot.custom_minimum_size = Vector2(16, 16)
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot.add_theme_stylebox_override("panel", sb(medal_cols[d] if won else Color(0.25, 0.3, 0.4), 8, 2, false, 0))
+			medals.add_child(dot)
+		map_grid.add_child(card)
+		map_cards[i] = card
+	_refresh_menu()
+
+func _pick_map(i: int) -> void:
+	sel_map = i
+	_refresh_menu()
 
 func _pick_diff(k: String) -> void:
 	diff = k
 	for key in diff_buttons:
 		_set_btn_bg(diff_buttons[key], PINK if key == k else Color(0.35, 0.5, 0.75))
+	_refresh_menu()
+
+func _pick_mode(k: String) -> void:
+	sel_mode = k
+	for key in mode_buttons:
+		_set_btn_bg(mode_buttons[key], PINK if key == k else Color(0.35, 0.5, 0.75))
+	_refresh_menu()
+
+func _refresh_menu() -> void:
+	if sel_lbl == null:
+		return
+	for i in map_cards:
+		_set_btn_bg(map_cards[i], GOLD if i == sel_map else TILE, 10)
+	var m: Dictionary = Maps.MAPS[sel_map]
+	var best: int = game.best_round(sel_map, diff, sel_mode)
+	sel_lbl.text = "%s  -  %s  -  %s%s" % [String(m["name"]).to_upper(), String(m["tier"]).to_upper(), String(m["theme"]).to_upper(), ("  -  BEST ROUND %d" % best) if best > 0 else ""]
+	if mode_lbl and game.MODES.has(sel_mode):
+		mode_lbl.text = game.MODES[sel_mode]["desc"]
+	var total := 0
+	for i in range(Maps.MAPS.size()):
+		for d in ["easy", "normal", "hard"]:
+			if game.has_medal(i, d, "standard"):
+				total += 1
+	if medal_lbl:
+		medal_lbl.text = "  MEDALS %d/%d" % [total, Maps.MAPS.size() * 3]
+
+func show_menu() -> void:
+	end_screen.visible = false
+	pause_screen.visible = false
+	_pick_tier(sel_tier)
+	start_screen.visible = true
 
 func _build_end() -> void:
 	var o := _overlay()
@@ -509,24 +717,103 @@ func _build_end() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
-	freeplay_btn = btn("FREEPLAY", GOLD, 30, 16)
+	freeplay_btn = btn("FREEPLAY", GOLD, 28, 16)
 	freeplay_btn.pressed.connect(_on_freeplay)
 	row.add_child(freeplay_btn)
-	var again := btn("PLAY AGAIN", GREEN, 30, 16)
-	again.pressed.connect(_on_again)
+	var again := btn("RETRY", GREEN, 28, 16)
+	again.pressed.connect(_on_retry)
 	row.add_child(again)
+	var maps_btn := btn("MAPS", Color(0.35, 0.5, 0.75), 28, 16)
+	maps_btn.pressed.connect(_on_maps)
+	row.add_child(maps_btn)
+
+func _build_pause() -> void:
+	var o := _overlay()
+	pause_screen = o["shade"]
+	pause_screen.visible = false
+	var v: VBoxContainer = o["box"]
+	_title(v, "PAUSED", "")
+	for item in [["RESUME", GREEN, "_on_resume"], ["RESTART", GOLD, "_on_retry"], ["MAPS", Color(0.35, 0.5, 0.75), "_on_maps"], ["SOUND ON / OFF", Color(0.35, 0.5, 0.75), "_on_sound"]]:
+		var b := btn(item[0], item[1], 26, 16)
+		b.custom_minimum_size = Vector2(300, 54)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.pressed.connect(Callable(self, item[2]))
+		v.add_child(b)
+
+func show_pause(on: bool) -> void:
+	pause_screen.visible = on
 
 func _on_start() -> void:
 	start_screen.visible = false
-	game.new_game(diff)
+	game.new_game(diff, sel_map, sel_mode)
 
 func _on_freeplay() -> void:
 	end_screen.visible = false
 	game.continue_freeplay()
 
-func _on_again() -> void:
+func _on_retry() -> void:
 	end_screen.visible = false
-	start_screen.visible = true
+	game.restart()
+
+func _on_maps() -> void:
+	game.to_menu()
+
+func _on_resume() -> void:
+	game.toggle_pause()
+
+func _on_sound() -> void:
+	game.toggle_mute()
+
+# ---------------------------------------------------------------------
+# Ability bar: one round button per hero with an unlocked ability
+# ---------------------------------------------------------------------
+func _build_abilities() -> void:
+	ability_bar = HBoxContainer.new()
+	ability_bar.add_theme_constant_override("separation", 8)
+	ability_bar.anchor_left = 0.5
+	ability_bar.anchor_right = 0.5
+	ability_bar.anchor_top = 1.0
+	ability_bar.anchor_bottom = 1.0
+	ability_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	ability_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ability_bar.offset_bottom = -14
+	root.add_child(ability_bar)
+
+func refresh_abilities() -> void:
+	for c in ability_bar.get_children():
+		c.queue_free()
+	ability_buttons.clear()
+	var keys := ["Q", "W", "E", "R", "T", "Y", "U", "I"]
+	var list: Array = game.ability_heroes()
+	for i in range(list.size()):
+		var h = list[i]
+		var b := round_btn(Color(0.95, 0.75, 0.2), 66)
+		var ab: Dictionary = game.ABILITIES[h.key]
+		b.tooltip_text = "%s [%s]\n%s" % [ab["name"], keys[i], ab["desc"]]
+		var pic := _portrait_rect(h.key, 54)
+		centered(b, pic)
+		var cd := lbl("", 22, Color.WHITE, 8)
+		cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cd.set_anchors_preset(Control.PRESET_FULL_RECT)
+		b.add_child(cd)
+		var key_lbl := lbl(keys[i], 13, Color.WHITE, 6)
+		key_lbl.position = Vector2(4, 0)
+		b.add_child(key_lbl)
+		b.pressed.connect(func() -> void: game.use_ability(h))
+		ability_bar.add_child(b)
+		ability_buttons.append([b, cd, h])
+	_update_ability_cooldowns()
+
+func _update_ability_cooldowns() -> void:
+	for item in ability_buttons:
+		var b: Button = item[0]
+		var cd: Label = item[1]
+		var h = item[2]
+		var ready: bool = h.ability_cd == 0.0
+		b.disabled = not ready
+		cd.text = "" if ready else str(int(ceil(h.ability_cd)))
+		b.modulate = Color.WHITE if ready else Color(0.6, 0.6, 0.7)
 
 # ---------------------------------------------------------------------
 # Layout: shop on the right in landscape, along the bottom in portrait
@@ -540,6 +827,9 @@ func _layout() -> void:
 	if win.content_scale_size != want:
 		win.content_scale_size = want
 	var hint: Control = shop.find_child("Hint", true, false)
+	if menu_card:
+		menu_card.custom_minimum_size = Vector2(690, 0) if portrait else Vector2(1180, 0)
+		map_grid.columns = 3 if portrait else 5
 	if portrait:
 		shop.anchor_left = 0.0
 		shop.anchor_right = 1.0
@@ -589,10 +879,16 @@ func _process(delta: float) -> void:
 		var h = game.selected
 		if h != null and pops_lbl != null and is_instance_valid(pops_lbl) and h.stats["kind"] != "support":
 			pops_lbl.text = "%s - Pops: %d" % [h.def["role"], h.pops]
+		_update_ability_cooldowns()
 
 func update_hud() -> void:
-	lives_lbl.text = str(maxi(0, int(ceil(game.lives))))
-	cash_lbl.text = str(int(floor(game.cash)))
+	if game.mode == "sandbox":
+		lives_lbl.text = "INF"
+		cash_lbl.text = "INF"
+	else:
+		lives_lbl.text = str(maxi(0, int(ceil(game.lives))))
+		cash_lbl.text = str(int(floor(game.cash)))
+	map_info_lbl.text = "%s - %s - %s" % [game.current_map()["name"], String(game.difficulty).capitalize(), game.MODES[game.mode]["name"]]
 	round_lbl.text = "%d%s" % [game.round_num, "" if game.freeplay else "/%d" % game.max_round]
 	if not game.running:
 		play_icon.set_kind("play")
@@ -642,6 +938,10 @@ func build_panel(h) -> void:
 	var info := "Income $%d / round" % int(h.stats["income"]) if support else "Pops: %d" % h.pops
 	pops_lbl = lbl("%s - %s" % [def["role"], info], 14, Color(0.8, 0.9, 1.0), 0)
 	names.add_child(pops_lbl)
+	names.add_child(lbl(_stat_line(h), 13, GOLD, 0))
+	if h.ability_cd >= 0.0:
+		var ab: Dictionary = game.ABILITIES[h.key]
+		names.add_child(lbl("Ability: %s - %s" % [ab["name"], ab["desc"]], 12, Color(1, 0.85, 0.5), 0))
 	if not support or float(h.stats.get("pulse_dmg", 0.0)) > 0.0:
 		var pr := btn(String(h.priority).to_upper(), Color(0.35, 0.5, 0.75), 16)
 		pr.tooltip_text = "Targeting (Tab)"
@@ -707,6 +1007,18 @@ func build_panel(h) -> void:
 			buy.pressed.connect(func() -> void: game.buy_upgrade(h, path_index))
 			v.add_child(buy)
 			buy_buttons.append(buy)
+
+func _stat_line(h) -> String:
+	var s: Dictionary = game.eff(h)
+	if s["kind"] == "support":
+		var line := "Range %.1f  -  Income $%d / round" % [float(s["range"]), int(s["income"])]
+		if float(s.get("pulse_dmg", 0.0)) > 0.0:
+			line += "  -  Wave dmg %d" % int(s["pulse_dmg"])
+		return line
+	var dmg := float(s.get("dmg", 0.0))
+	if s["kind"] == "pulse":
+		return "Freeze %.1fs  -  Dmg %d  -  Range %.1f  -  %.2f/s" % [float(s["freeze"]), int(dmg), float(s["range"]), 1.0 / float(s["rate"])]
+	return "Dmg %d  -  Pierce %d  -  Range %.1f  -  %.2f/s%s" % [int(dmg), int(s["pierce"]), minf(float(s["range"]), 99.0), 1.0 / float(s["rate"]), "  -  sees veiled" if s.get("camo", false) else ""]
 
 func banner(text: String, sub: String = "") -> void:
 	banner_lbl.text = text

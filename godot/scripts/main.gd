@@ -7,6 +7,35 @@ const Models = preload("res://scripts/models.gd")
 const GameUI = preload("res://scripts/ui.gd")
 const Sfx = preload("res://scripts/sfx.gd")
 const LevelScene = preload("res://scenes/level/level.tscn")
+const Maps = preload("res://scripts/maps.gd")
+const SAVE_PATH := "user://save.cfg"
+
+## Game modes. Medals are earned per map, difficulty and mode (never in sandbox).
+const MODE_ORDER := ["standard", "half_cash", "fortified", "deflation", "rush", "sandbox"]
+const MODES := {
+	"standard": {"name": "Standard", "desc": "The classic game: survive 40 rounds."},
+	"half_cash": {"name": "Half Cash", "desc": "All money earned is halved."},
+	"fortified": {"name": "Fortified", "desc": "Every spirit is fortified with double health."},
+	"deflation": {"name": "Deflation", "desc": "Start with $20,000. No more money is ever earned."},
+	"rush": {"name": "Rush", "desc": "Rounds start back to back and spirits move 25% faster."},
+	"sandbox": {"name": "Sandbox", "desc": "Unlimited money and lives. Experiment freely (no medals)."},
+}
+
+## Hero abilities unlock when any upgrade path reaches tier 3.
+const ABILITIES := {
+	"ninja": {"name": "Shadow Storm", "cd": 40.0, "desc": "Hurls 40 shuriken in every direction."},
+	"miko": {"name": "Divine Seal", "cd": 50.0, "desc": "Stuns every spirit on the map (bosses briefly)."},
+	"mage": {"name": "Meteor Shower", "cd": 45.0, "desc": "Drops 8 meteors on the strongest spirits."},
+	"ice": {"name": "Blizzard", "cd": 55.0, "desc": "Freezes every spirit, even bosses and Frost Wisps."},
+	"samurai": {"name": "Thousand Cuts", "cd": 40.0, "desc": "Slashes the 6 strongest spirits for heavy damage."},
+	"mecha": {"name": "Orbital Strike", "cd": 60.0, "desc": "A huge laser blasts the strongest spirit."},
+	"idol": {"name": "Encore!", "cd": 60.0, "desc": "Every hero attacks twice as fast for 10 seconds."},
+}
+const ABILITY_TIER := 3
+
+## Regrowing spirits heal back up this chain when left alone.
+const REGROW_PARENT := {"pink": "blue", "blue": "green", "green": "gold", "gold": "violet"}
+const REGROW_DELAY := 2.5
 
 const PATH_W := 4.0  # stone track width including its low barriers
 const SPEED_UNIT := 3.4
@@ -38,6 +67,10 @@ class Enemy:
 	var dd := 0.0
 	var rank := 0
 	var boss := false
+	var fortified := false
+	var regrow := false
+	var regrow_top := ""
+	var regrow_t := 0.0
 
 class Hero:
 	var key := ""
@@ -57,6 +90,7 @@ class Hero:
 	var buff := {"rate": 1.0, "dmg": 0.0, "pierce": 0, "camo": false}
 	var aura: MeshInstance3D = null
 	var halo: MeshInstance3D = null
+	var ability_cd := -1.0  # < 0 while locked
 
 class Proj:
 	var node: Node3D
@@ -94,6 +128,16 @@ var auto_timer := -1.0
 var time := 0.0
 var shake := 0.0
 var difficulty := "normal"
+var mode := "standard"
+var map_index := 0
+var paused := false
+var encore_t := 0.0
+var game_pops := 0
+var cash_earned := 0.0
+var save := ConfigFile.new()
+var env: Environment
+var sun: DirectionalLight3D
+var sky_mat: ProceduralSkyMaterial
 
 var enemies: Array = []
 var heroes: Array = []
@@ -154,11 +198,9 @@ func _ready() -> void:
 	ice_mat = Models.make_toon(Defs.col(0xbff4ff, 0.55), false)
 	seg_mats = [Models.toon(0x26a69a), Models.toon(0x4dd0b8)]
 	_setup_env()
-	level = LevelScene.instantiate()
-	level.name = "Level"
-	add_child(level)
-	blockers = level.blockers
-	_build_path()
+	save.load(SAVE_PATH)
+	sfx.muted = bool(save.get_value("settings", "muted", false))
+	load_map(int(save.get_value("settings", "last_map", 0)))
 	_setup_particles()
 	_setup_range()
 	ui = GameUI.new()
@@ -169,10 +211,11 @@ func _ready() -> void:
 
 func _setup_env() -> void:
 	var we := WorldEnvironment.new()
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
+	sky_mat = sm
 	sm.sky_top_color = Defs.col(0x3d9df2)
 	sm.sky_horizon_color = Defs.col(0xbfe8ff)
 	sm.ground_horizon_color = Defs.col(0xbfe8ff)
@@ -186,7 +229,7 @@ func _setup_env() -> void:
 	we.environment = env
 	add_child(we)
 
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	sun.light_color = Defs.col(0xfff1dc)
 	sun.light_energy = 0.8
 	sun.shadow_blur = 1.5
@@ -200,6 +243,35 @@ func _setup_env() -> void:
 	camera.far = 900.0
 	add_child(camera)
 	camera.make_current()
+
+## Builds the level for map `i` (see scripts/maps.gd), replacing the current one.
+func load_map(i: int) -> void:
+	map_index = clampi(i, 0, Maps.MAPS.size() - 1)
+	if level:
+		remove_child(level)
+		level.queue_free()
+	level = LevelScene.instantiate()
+	level.name = "Level"
+	level.map = Maps.MAPS[map_index]
+	add_child(level)
+	blockers = level.blockers
+	path_pts = PackedVector3Array()
+	path_samples = PackedVector3Array()
+	_build_path()
+	_apply_theme(level.theme)
+
+func _apply_theme(t: Dictionary) -> void:
+	sun.light_color = Defs.col(t["sun"])
+	sun.light_energy = t["sun_energy"]
+	env.ambient_light_color = Defs.col(t["ambient"])
+	env.ambient_light_energy = t["ambient_energy"]
+	sky_mat.sky_top_color = Defs.col(t["sky_top"])
+	sky_mat.sky_horizon_color = Defs.col(t["sky_horizon"])
+	sky_mat.ground_horizon_color = Defs.col(t["sky_horizon"])
+	sky_mat.ground_bottom_color = Defs.col(t["sea"])
+
+func current_map() -> Dictionary:
+	return Maps.MAPS[map_index]
 
 # Spirits walk the track's centre line: straight runs joined by small rounded
 # corners, resampled every 0.25 units so pos_at() is a cheap lookup.
@@ -367,8 +439,18 @@ func _on_key(k: InputEventKey) -> void:
 	if code >= KEY_1 and code <= KEY_7:
 		begin_placing(Defs.HERO_ORDER[code - KEY_1])
 	elif code == KEY_ESCAPE:
-		cancel_placing()
-		select_hero(null)
+		if placing != "" or selected != null:
+			cancel_placing()
+			select_hero(null)
+		else:
+			toggle_pause()
+	elif code == KEY_P:
+		toggle_pause()
+	elif code in ABILITY_KEYS:
+		var slot := ABILITY_KEYS.find(code)
+		var list := ability_heroes()
+		if slot < list.size():
+			use_ability(list[slot])
 	elif code == KEY_SPACE:
 		on_play()
 	elif selected and code in [KEY_COMMA, KEY_PERIOD, KEY_SLASH]:
@@ -531,6 +613,7 @@ func sell_hero(h: Hero) -> void:
 	burst(Vector3(h.x, 1, h.z), Defs.col(0xffd34d), 16, 5.0)
 	sfx.play("sell")
 	select_hero(null)
+	ui.refresh_abilities()
 
 func can_upgrade(h: Hero, p: int) -> String:
 	var nxt: int = h.tiers[p] + 1
@@ -562,11 +645,89 @@ func buy_upgrade(h: Hero, p: int) -> void:
 	h.spent += cost
 	_refresh_hero_look(h)
 	recalc_buffs()
+	if h.ability_cd < 0.0 and h.tiers.max() >= ABILITY_TIER:
+		h.ability_cd = 0.0
+		float_text(String(ABILITIES[h.key]["name"]).to_upper() + "!", Vector3(h.x, 4.0, h.z), false)
+		ui.refresh_abilities()
 	burst(Vector3(h.x, 2, h.z), Defs.col(RING_COLORS[h.tiers[p]]), 24, 6.0)
 	sfx.play("upgrade")
 	if selected == h:
 		show_range(h.x, h.z, h.stats["range"], true)
 		ui.build_panel(h)
+
+# ---------------------------------------------------------------------
+# Abilities
+# ---------------------------------------------------------------------
+const ABILITY_KEYS := [KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T, KEY_Y, KEY_U, KEY_I]
+
+## Heroes whose ability is unlocked, in placement order (max 8 slots).
+func ability_heroes() -> Array:
+	var out: Array = []
+	for h in heroes:
+		if h.ability_cd >= 0.0 and out.size() < ABILITY_KEYS.size():
+			out.append(h)
+	return out
+
+func _strongest(n: int) -> Array:
+	var list: Array = []
+	for e in enemies:
+		if e.alive:
+			list.append(e)
+	list.sort_custom(func(a, b): return a.rank > b.rank or (a.rank == b.rank and a.d > b.d))
+	return list.slice(0, n)
+
+func use_ability(h: Hero) -> void:
+	if over or paused or h.ability_cd != 0.0:
+		return
+	h.ability_cd = float(ABILITIES[h.key]["cd"])
+	var s := eff(h)
+	var hpos := Vector2(h.x, h.z)
+	h.anim = 0.4
+	match h.key:
+		"ninja":
+			var o := opt_from(s, h, {"dmg": float(s["dmg"]) + 2.0, "type": "magic"})
+			for i in range(40):
+				fire(hpos, i / 40.0 * TAU, "shuriken", o, 30.0, 6, {"life": 1.3})
+		"miko":
+			for e in enemies:
+				if e.alive:
+					e.stun = maxf(e.stun, 0.8 if e.boss else 2.5)
+					e.frozen = false
+			_ring_fx(Vector3(h.x, 0.5, h.z), 70.0, 0xffd34d, 0.9)
+		"mage":
+			var o2 := opt_from(s, h, {"dmg": 25.0, "type": "magic", "boss_mul": 3.0})
+			for e in _strongest(8):
+				explode(e.pos.x, e.pos.z, {"r": 4.0, "pierce": 40}, o2, false)
+		"ice":
+			for e in enemies:
+				if e.alive:
+					e.stun = maxf(e.stun, 2.0 if e.boss else 3.0)
+					e.frozen = true
+					apply_slow(e, 0.5, 6.0)
+			_ring_fx(Vector3(h.x, 0.5, h.z), 70.0, 0x9ff3ff, 0.9)
+		"samurai":
+			var o3 := opt_from(s, h, {"dmg": 150.0, "type": "magic"})
+			for e in _strongest(6):
+				var arc := Models.mi(Models.torus(1.0, 0.09), Models.fx_mat(Defs.col(0xe8f4ff)))
+				add_effect(arc, Vector3(e.pos.x, 1.3, e.pos.z), 0.3, "slash", 3.0, null, randf() * TAU)
+				hit_enemy(e, o3)
+		"mecha":
+			var top := _strongest(1)
+			if not top.is_empty():
+				var t: Enemy = top[0]
+				var bm := Models.fx_mat(Defs.col(0x66f6ff, 0.95), true)
+				var beam := Models.mi(Models.cyl(1.0, 1.0, 1.0, 12), bm, Vector3.ZERO, Vector3.ZERO, Vector3(1.6, 60.0, 1.6))
+				add_effect(beam, Vector3(t.pos.x, 30.0, t.pos.z), 0.5, "beam", 1.0, bm)
+				hit_enemy(t, opt_from(s, h, {"dmg": 2000.0, "type": "magic", "boss_mul": 1.0}))
+				explode(t.pos.x, t.pos.z, {"r": 3.5, "pierce": 30}, opt_from(s, h, {"dmg": 10.0, "type": "magic"}), false)
+				shake = 0.6
+		"idol":
+			encore_t = 10.0
+			for o in heroes:
+				burst(Vector3(o.x, 2.5, o.z), Defs.col(0xffd34d), 10, 4.0)
+	float_text(String(ABILITIES[h.key]["name"]).to_upper(), Vector3(h.x, 4.0, h.z), false)
+	sfx.play("upgrade")
+	ui.refresh_abilities()
 
 func cycle_priority(h: Hero) -> void:
 	h.priority = PRIORITIES[(PRIORITIES.find(h.priority) + 1) % PRIORITIES.size()]
@@ -605,7 +766,7 @@ func recalc_buffs() -> void:
 
 func eff(h: Hero) -> Dictionary:
 	var s: Dictionary = h.stats.duplicate()
-	s["rate"] = float(s["rate"]) * float(h.buff["rate"])
+	s["rate"] = float(s["rate"]) * float(h.buff["rate"]) * (0.5 if encore_t > 0.0 else 1.0)
 	if float(s.get("dmg", 0.0)) > 0.0:
 		s["dmg"] = float(s["dmg"]) + float(h.buff["dmg"])
 	s["pierce"] = int(s.get("pierce", 0)) + int(h.buff["pierce"])
@@ -621,7 +782,7 @@ func _template(k: String, camo: bool) -> Node3D:
 		templates[key] = Models.build_enemy(k, camo, rainbow_mat, rainbow_camo)
 	return templates[key]
 
-func spawn_enemy(k: String, d: float = 0.0, camo: bool = false) -> Enemy:
+func spawn_enemy(k: String, d: float = 0.0, camo: bool = false, fort: bool = false, regrow: bool = false, regrow_top: String = "") -> Enemy:
 	var def: Dictionary = Defs.ENEMIES[k]
 	var e := Enemy.new()
 	e.type = k
@@ -630,13 +791,20 @@ func spawn_enemy(k: String, d: float = 0.0, camo: bool = false) -> Enemy:
 	e.camo = camo
 	e.boss = def.get("boss", false)
 	var hp_mul := 1.0 + (round_num - 40) * 0.12 if e.boss and round_num > 40 else 1.0
-	e.hp = float(def["hp"]) * hp_mul
+	e.fortified = fort or mode == "fortified"
+	e.hp = float(def["hp"]) * hp_mul * (2.0 if e.fortified else 1.0)
 	e.max_hp = e.hp
+	e.regrow = regrow and (REGROW_PARENT.has(k) or REGROW_PARENT.values().has(k))
+	e.regrow_top = regrow_top if regrow_top != "" else k
+	e.regrow_t = REGROW_DELAY
 	e.r = float(def["size"]) * (1.05 if e.boss else 1.0)
 	e.rank = Defs.rank(k)
 	e.bob = randf() * TAU
 	e.speed_mul = 1.0 + minf(0.6, (round_num - 40) * 0.02) if round_num > 40 else 1.0
+	if mode == "rush":
+		e.speed_mul *= 1.25
 	e.node = _template(k, camo).duplicate() as Node3D
+	_decorate_enemy(e)
 	add_child(e.node)
 	if def.has("segments"):
 		for i in range(int(def["segments"])):
@@ -648,6 +816,35 @@ func spawn_enemy(k: String, d: float = 0.0, camo: bool = false) -> Enemy:
 	_place_enemy_node(e)
 	enemies.append(e)
 	return e
+
+# Visual markers: a steel band for fortified spirits, a pink halo for regrowing ones.
+func _decorate_enemy(e: Enemy) -> void:
+	var size: float = e.def["size"]
+	if e.fortified:
+		Models.add(e.node, Models.torus(size * 1.02, 0.09), Models.toon(0x9aa7b4), Vector3(0, -size * 0.1, 0))
+		Models.add(e.node, Models.torus(size * 0.8, 0.07), Models.toon(0x9aa7b4), Vector3(0, size * 0.45, 0))
+	if e.regrow:
+		Models.add(e.node, Models.torus(size * 0.55, 0.06), Models.flat(0xff6fae), Vector3(0, size * 1.35, 0))
+
+# Regrowing spirits that go untouched for REGROW_DELAY seconds grow back a layer.
+func _regrow(e: Enemy) -> void:
+	var up: String = REGROW_PARENT.get(e.type, "")
+	if up == "" or Defs.rank(up) > Defs.rank(e.regrow_top):
+		return
+	var def: Dictionary = Defs.ENEMIES[up]
+	var old_node := e.node
+	e.type = up
+	e.def = def
+	e.rank = Defs.rank(up)
+	e.hp = float(def["hp"]) * (2.0 if e.fortified else 1.0)
+	e.max_hp = e.hp
+	e.r = float(def["size"])
+	e.node = _template(up, e.camo).duplicate() as Node3D
+	_decorate_enemy(e)
+	add_child(e.node)
+	old_node.queue_free()
+	_place_enemy_node(e)
+	burst(e.node.position, Defs.col(0xff6fae), 6, 3.0)
 
 func _place_enemy_node(e: Enemy) -> void:
 	var size: float = e.def["size"]
@@ -702,6 +899,7 @@ func hit_enemy(e: Enemy, o: Dictionary) -> bool:
 	return true
 
 func damage_enemy(e: Enemy, dmg: float, o: Dictionary) -> void:
+	e.regrow_t = REGROW_DELAY
 	if e.hp > dmg + 0.000001:
 		e.hp -= dmg
 		if e.boss or e.def.get("mask", false):
@@ -717,7 +915,8 @@ func damage_enemy(e: Enemy, dmg: float, o: Dictionary) -> void:
 func pop_enemy(e: Enemy, hero) -> Array:
 	var where := e.node.position
 	_remove_enemy(e)
-	add_cash(0.5 if round_num > 30 else 1.0)
+	earn(0.5 if round_num > 30 else 1.0)
+	game_pops += 1
 	if hero != null:
 		hero.pops += 1
 	var col := Color.from_hsv(randf(), 0.7, 1.0) if e.def.get("rainbow", false) else Defs.col(e.def["color"])
@@ -730,7 +929,8 @@ func pop_enemy(e: Enemy, hero) -> Array:
 	var kids: Array = []
 	var i := 0
 	for c in e.def["children"]:
-		var k := spawn_enemy(c, e.d - i * 0.55, e.camo)
+		var child_fort: bool = e.fortified and float(Defs.ENEMIES[c]["hp"]) > 1.0
+		var k := spawn_enemy(c, e.d - i * 0.55, e.camo, child_fort, e.regrow, e.regrow_top)
 		kids.append(k)
 		i += 1
 	return kids
@@ -1166,7 +1366,9 @@ func build_round(r: int) -> Array:
 				var type: String = pool[clampi(idx, 0, pool.size() - 1)]
 				var cost := Defs.rbe(type)
 				var count := clampi(int(round(budget * (0.25 + rng.randf() * 0.3) / cost)), 1, 70)
-				grp(type, count, gap_base * (2.2 if cost > 30.0 else 1.0), rng.randf() < camo_chance, 0.6 if groups == 0 else 0.3)
+				var regrow := r >= 16 and REGROW_PARENT.values().has(type) and rng.randf() < 0.25
+				var fort := r >= 28 and type == "mask" and rng.randf() < 0.35
+				grp(type, count, gap_base * (2.2 if cost > 30.0 else 1.0), rng.randf() < camo_chance, 0.6 if groups == 0 else 0.3, fort, regrow)
 				budget -= count * cost
 				groups += 1
 			var bosses := {25: ["oni"], 30: ["oni", "oni"], 33: ["oni"], 35: ["oni", "oni", "oni"], 37: ["oni", "oni"], 38: ["oni", "oni", "oni", "oni"], 40: ["dragon"]}
@@ -1175,9 +1377,9 @@ func build_round(r: int) -> Array:
 				grp(b[0], b.size(), 3.5, false, 1.0)
 			if r > 40:
 				if r % 5 == 0:
-					grp("dragon", maxi(1, int((r - 35) / 10)), 6.0, false, 1.0)
+					grp("dragon", maxi(1, int((r - 35) / 10)), 6.0, false, 1.0, r >= 50)
 				elif (r - 38) / 3 > 0:
-					grp("oni", int((r - 38) / 3), 2.5, false, 1.0)
+					grp("oni", int((r - 38) / 3), 2.5, false, 1.0, r >= 45)
 	var q: Array = _rq
 	q.sort_custom(func(a, b): return a["t"] < b["t"])
 	return q
@@ -1185,10 +1387,10 @@ func build_round(r: int) -> Array:
 var _rq: Array = []
 var _rt := 0.0
 
-func grp(type: String, count: int, gap: float, camo: bool = false, delay: float = 0.6) -> void:
+func grp(type: String, count: int, gap: float, camo: bool = false, delay: float = 0.6, fort: bool = false, regrow: bool = false) -> void:
 	_rt += delay
 	for i in range(count):
-		_rq.append({"t": _rt, "type": type, "camo": camo})
+		_rq.append({"t": _rt, "type": type, "camo": camo, "fort": fort, "regrow": regrow})
 		_rt += gap
 
 func start_round() -> void:
@@ -1224,13 +1426,26 @@ func _end_round() -> void:
 		h.anim = 0.5
 		if h.stats.get("interest", false):
 			interest = mini(800, int(cash * 0.05))
-	add_cash(bonus + income + interest)
+	earn(bonus + income + interest)
+	_record_best()
 	if round_num >= max_round and not freeplay:
 		victory()
 		return
-	if auto_start:
+	if mode == "rush":
+		auto_timer = 0.05
+	elif auto_start:
 		auto_timer = 1.0
 	ui.update_hud()
+
+## Money earned from pops and rounds goes through the game mode's rules.
+func earn(n: float) -> void:
+	match mode:
+		"half_cash":
+			n *= 0.5
+		"deflation":
+			n = 0.0
+	cash_earned += n
+	add_cash(n)
 
 func add_cash(n: float) -> void:
 	cash += n
@@ -1257,10 +1472,22 @@ func toggle_auto() -> void:
 
 func toggle_mute() -> void:
 	sfx.muted = not sfx.muted
+	save.set_value("settings", "muted", sfx.muted)
+	save.save(SAVE_PATH)
 	ui.update_hud()
 
-func new_game(diff: String) -> void:
+func new_game(diff: String, map_i: int = -1, game_mode: String = "") -> void:
 	difficulty = diff
+	if game_mode != "":
+		mode = game_mode
+	paused = false
+	encore_t = 0.0
+	game_pops = 0
+	cash_earned = 0.0
+	if map_i >= 0 and map_i != map_index:
+		load_map(map_i)
+	save.set_value("settings", "last_map", map_index)
+	save.save(SAVE_PATH)
 	for e in enemies:
 		_remove_enemy(e)
 	enemies.clear()
@@ -1275,6 +1502,12 @@ func new_game(diff: String) -> void:
 	var d: Dictionary = DIFFS[diff]
 	cash = 650.0
 	lives = d["lives"]
+	match mode:
+		"deflation":
+			cash = 20000.0
+		"sandbox":
+			cash = 1.0e9
+			lives = 1.0e9
 	cost_mul = d["cost"]
 	round_num = 0
 	speed = 1
@@ -1285,7 +1518,24 @@ func new_game(diff: String) -> void:
 	auto_timer = -1.0
 	ui.rebuild_shop()
 	ui.update_hud()
-	ui.banner("READY?", "Place heroes, then press START")
+	ui.show_pause(false)
+	ui.banner(String(current_map()["name"]).to_upper(), "%s - %s" % [diff.capitalize(), MODES[mode]["name"]])
+
+func restart() -> void:
+	new_game(difficulty, map_index, mode)
+
+func to_menu() -> void:
+	over = true
+	running = false
+	paused = false
+	ui.show_pause(false)
+	ui.show_menu()
+
+func toggle_pause() -> void:
+	if over:
+		return
+	paused = not paused
+	ui.show_pause(paused)
 
 func continue_freeplay() -> void:
 	over = false
@@ -1299,12 +1549,40 @@ func game_over() -> void:
 	over = true
 	running = false
 	sfx.play("lose")
-	ui.show_end(false, "The spirits reached the shrine on round %d.\nTry new hero combos and upgrade paths!" % round_num)
+	_record_best()
+	ui.show_end(false, "The spirits reached the shrine on round %d.\n%s" % [round_num, _stats_text()])
 
 func victory() -> void:
 	over = true
 	sfx.play("win")
-	ui.show_end(true, "You held the gate for all %d rounds with %d lives left.\nKeep going in freeplay?" % [max_round, int(ceil(lives))])
+	var medal := mode != "sandbox"
+	if medal:
+		save.set_value("medals", _save_key(), true)
+	_record_best()
+	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), "\nMedal earned!" if medal else ""])
+
+func _save_key(map_i: int = -1, diff: String = "", m: String = "") -> String:
+	var mi := map_index if map_i < 0 else map_i
+	return "%s|%s|%s" % [Maps.MAPS[mi]["id"], difficulty if diff == "" else diff, mode if m == "" else m]
+
+func _record_best() -> void:
+	if mode == "sandbox":
+		return
+	var key := _save_key()
+	if round_num > int(save.get_value("best", key, 0)):
+		save.set_value("best", key, round_num)
+	save.set_value("stats", "total_pops", int(save.get_value("stats", "total_pops", 0)) + game_pops)
+	game_pops = 0
+	save.save(SAVE_PATH)
+
+func best_round(map_i: int, diff: String, m: String) -> int:
+	return int(save.get_value("best", _save_key(map_i, diff, m), 0))
+
+func has_medal(map_i: int, diff: String, m: String) -> bool:
+	return bool(save.get_value("medals", _save_key(map_i, diff, m), false))
+
+func _stats_text() -> String:
+	return "Spirits popped: %d   Money earned: $%d   Heroes: %d" % [game_pops, int(cash_earned), heroes.size()]
 
 # =====================================================================
 # Main loop
@@ -1314,17 +1592,27 @@ func _step(dt: float) -> void:
 		round_time += dt
 		while not queue.is_empty() and queue[0]["t"] <= round_time:
 			var s: Dictionary = queue.pop_front()
-			spawn_enemy(s["type"], 0.0, s["camo"])
+			spawn_enemy(s["type"], 0.0, s["camo"], s.get("fort", false), s.get("regrow", false), s["type"])
 	elif auto_timer > 0.0:
 		auto_timer -= dt
 		if auto_timer <= 0.0:
 			auto_timer = -1.0
-			if auto_start:
+			if auto_start or mode == "rush":
 				start_round()
 
+	if encore_t > 0.0:
+		encore_t -= dt
+	for h in heroes:
+		if h.ability_cd > 0.0:
+			h.ability_cd = maxf(0.0, h.ability_cd - dt)
 	for e in enemies.duplicate():
 		if not e.alive:
 			continue
+		if e.regrow:
+			e.regrow_t -= dt
+			if e.regrow_t <= 0.0:
+				e.regrow_t = REGROW_DELAY
+				_regrow(e)
 		if e.stun > 0.0:
 			e.stun -= dt
 		else:
@@ -1353,7 +1641,9 @@ func _step(dt: float) -> void:
 func _process(delta: float) -> void:
 	var dt := minf(delta, 0.05)
 	time += dt
-	if not over:
+	if paused:
+		dt = 0.0
+	if not over and not paused:
 		var n := speed if running else 1
 		for i in range(n):
 			_step(dt)

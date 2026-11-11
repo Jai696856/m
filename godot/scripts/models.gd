@@ -501,16 +501,15 @@ static func sakura(s: float, rng: RandomNumberGenerator) -> Node3D:
 	return g
 
 # Big round leafy tree: a cluster of overlapping canopy balls.
-static func round_tree(s: float, rng: RandomNumberGenerator) -> Node3D:
+static func round_tree(s: float, rng: RandomNumberGenerator, greens: Array = [0x2f9a36, 0x3fae3a, 0x52c043], top: int = 0x6fd456) -> Node3D:
 	var g := Node3D.new()
 	add(g, cyl(0.66, 1.0, 1.0, 8), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0), Vector3.ZERO, Vector3(0.38 * s, 1.6 * s, 0.38 * s))
-	var greens := [0x2f9a36, 0x3fae3a, 0x52c043]
 	for i in range(6):
 		var a := i * 1.05 + rng.randf() * 0.4
 		var r := (0.95 + rng.randf() * 0.35) * s
 		var rad := 0.0 if i == 0 else 0.95 * s
 		add(g, sphere(1.0, 10), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad), Vector3.ZERO, Vector3.ONE * r)
-	add(g, sphere(1.0, 10), toon(0x6fd456), Vector3(0.2 * s, 3.0 * s, 0.25 * s), Vector3.ZERO, Vector3.ONE * 0.75 * s)
+	add(g, sphere(1.0, 10), toon(top), Vector3(0.2 * s, 3.0 * s, 0.25 * s), Vector3.ZERO, Vector3.ONE * 0.75 * s)
 	g.set_meta("r", 1.9 * s)
 	return g
 
@@ -555,6 +554,30 @@ static func crate() -> Node3D:
 		add(g, box(1.16, 0.14, 1.16), toon(0x8a5427, 1.0, false), Vector3(0, y, 0))
 	add(g, box(1.12, 0.14, 1.12), toon(0x8a5427, 1.0, false), Vector3(0, 0.55, 0), Vector3(0, 0, PI / 4), Vector3(1.25, 1, 1))
 	g.set_meta("r", 1.0)
+	return g
+
+# Pine with snow on every layer.
+static func snowy_pine(s: float) -> Node3D:
+	var g := Node3D.new()
+	add(g, cyl(0.66, 1.0, 1.0, 8), toon(0x6b4430), Vector3(0, 0.5 * s, 0), Vector3.ZERO, Vector3(0.3 * s, 1.0 * s, 0.3 * s))
+	for i in range(3):
+		var r := (1.5 - i * 0.35) * s
+		add(g, cone(1.0, 1.0, 8), toon(0x2f7d55), Vector3(0, (1.3 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r, 1.6 * s, r))
+		add(g, cone(1.0, 1.0, 8), toon(0xf4f8ff), Vector3(0, (1.62 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r * 0.62, 0.95 * s, r * 0.62))
+	g.set_meta("r", 1.4 * s)
+	return g
+
+# Saguaro-style cactus with one or two arms.
+static func cactus(s: float, rng: RandomNumberGenerator) -> Node3D:
+	var g := Node3D.new()
+	var green := toon(0x4f9d3a)
+	add(g, capsule(0.32, 1.0), green, Vector3(0, 1.0 * s, 0), Vector3.ZERO, Vector3(s, 1.6 * s, s))
+	for side in ([-1.0, 1.0] if rng.randf() < 0.6 else [1.0]):
+		var h := rng.randf_range(0.9, 1.5) * s
+		add(g, capsule(0.2, 0.4), green, Vector3(side * 0.42 * s, h, 0), Vector3(0, 0, side * PI / 2.0), Vector3.ONE * s)
+		add(g, capsule(0.2, 0.5), green, Vector3(side * 0.68 * s, h + 0.42 * s, 0), Vector3.ZERO, Vector3.ONE * s)
+	add(g, sphere(0.08, 6), toon(0xff7eb6), Vector3(0, 2.15 * s, 0), Vector3.ZERO, Vector3.ONE * s)
+	g.set_meta("r", 0.8 * s)
 	return g
 
 static func pine(s: float) -> Node3D:
