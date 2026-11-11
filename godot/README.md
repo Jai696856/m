@@ -10,6 +10,10 @@ project has no imported art or audio assets.
 2. In the Project Manager, click **Import** and select `godot/project.godot`.
 3. Press **F5** (Run Project).
 
+The look is a bright, top-down cartoon style: an island in the sea with a beach, palms and round leafy
+trees, a cobblestone path, chunky outlined HUD numbers, and round play / fast-forward buttons.
+The UI font is [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) (Apache 2.0, see `fonts/`).
+
 It uses the **Compatibility** renderer, so it can also be exported to Web, Android and iOS from
 **Project → Export**.
 

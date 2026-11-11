@@ -14,7 +14,7 @@ static var _meshes := {}
 # ---------------------------------------------------------------------
 # Materials
 # ---------------------------------------------------------------------
-static func outline_mat(alpha: float = 1.0, grow: float = 0.035) -> StandardMaterial3D:
+static func outline_mat(alpha: float = 1.0, grow: float = 0.03) -> StandardMaterial3D:
 	var key := "outline_%s_%s" % [alpha, grow]
 	if _mats.has(key):
 		return _mats[key]
@@ -384,6 +384,63 @@ static func sakura(s: float, rng: RandomNumberGenerator) -> Node3D:
 		var r := (1.1 + rng.randf() * 0.4) * s
 		add(g, sphere(r, 8), toon(cols[i % 3]), Vector3(cos(i * 2.1) * 0.8 * s, (2.5 + rng.randf() * 0.6) * s, sin(i * 2.1) * 0.8 * s))
 	g.set_meta("r", 1.6 * s)
+	return g
+
+# Big round leafy tree: a cluster of overlapping canopy balls.
+static func round_tree(s: float, rng: RandomNumberGenerator) -> Node3D:
+	var g := Node3D.new()
+	add(g, cyl(0.25 * s, 0.38 * s, 1.6 * s, 8), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0))
+	var greens := [0x2f9a36, 0x3fae3a, 0x52c043]
+	for i in range(6):
+		var a := i * 1.05 + rng.randf() * 0.4
+		var r := (0.95 + rng.randf() * 0.35) * s
+		var rad := 0.0 if i == 0 else 0.95 * s
+		add(g, sphere(r, 10), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad))
+	add(g, sphere(0.75 * s, 10), toon(0x6fd456), Vector3(0.2 * s, 3.0 * s, 0.25 * s))
+	g.set_meta("r", 1.9 * s)
+	return g
+
+# Low bush made of a few soft green blobs.
+static func bush(s: float, rng: RandomNumberGenerator) -> Node3D:
+	var g := Node3D.new()
+	var greens := [0x3aa83a, 0x4cbb40, 0x5ccb48]
+	for i in range(4):
+		var a := i * 1.6 + rng.randf()
+		var r := (0.55 + rng.randf() * 0.3) * s
+		add(g, sphere(r, 10), toon(greens[i % 3]), Vector3(cos(a) * 0.55 * s, r * 0.75, sin(a) * 0.55 * s))
+	g.set_meta("r", 1.2 * s)
+	return g
+
+# Curved palm tree with drooping fronds.
+static func palm(s: float, rng: RandomNumberGenerator) -> Node3D:
+	var g := Node3D.new()
+	var lean := 0.12 + rng.randf() * 0.1
+	var p := Vector3.ZERO
+	for i in range(6):
+		var seg_h := 0.75 * s
+		var c := add(g, cyl(0.2 * s, 0.26 * s, seg_h, 8), toon(0xa8773f if i % 2 == 0 else 0x93652f), p + Vector3(0, seg_h / 2.0, 0), Vector3(0, 0, -lean * i * 0.5))
+		c.position.x += i * lean * 0.45 * s
+		p.y += seg_h * 0.95
+	var top := Vector3(6 * lean * 0.45 * s, p.y, 0)
+	for i in range(7):
+		var a := i * TAU / 7.0 + rng.randf() * 0.2
+		var frond := Node3D.new()
+		frond.position = top
+		frond.rotation = Vector3(0, a, 0)
+		g.add_child(frond)
+		add(frond, capsule(0.22 * s, 1.5 * s), toon(0x3fae3a if i % 2 == 0 else 0x2f9a36), Vector3(0, -0.25 * s, 0.85 * s), Vector3(PI / 2 + 0.45, 0, 0), Vector3(1, 1, 0.3))
+	for i in range(3):
+		add(g, sphere(0.16 * s, 8), toon(0x6b4a2a), top + Vector3(cos(i * 2.1) * 0.22 * s, -0.25 * s, sin(i * 2.1) * 0.22 * s))
+	g.set_meta("r", 1.0 * s)
+	return g
+
+static func crate() -> Node3D:
+	var g := Node3D.new()
+	add(g, box(1.1, 1.1, 1.1), toon(0xb9773d), Vector3(0, 0.55, 0))
+	for y in [0.12, 0.98]:
+		add(g, box(1.16, 0.14, 1.16), toon(0x8a5427, 1.0, false), Vector3(0, y, 0))
+	add(g, box(1.12, 0.14, 1.12), toon(0x8a5427, 1.0, false), Vector3(0, 0.55, 0), Vector3(0, 0, PI / 4), Vector3(1.25, 1, 1))
+	g.set_meta("r", 1.0)
 	return g
 
 static func pine(s: float) -> Node3D:

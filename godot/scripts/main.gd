@@ -10,12 +10,14 @@ const Sfx = preload("res://scripts/sfx.gd")
 const PATH_W := 3.0
 const SPEED_UNIT := 3.4
 const HERO_SCALE := 1.25
-const BOUNDS := Vector2(33.0, 21.0)
+const ISLAND_C := Vector2(2.0, 0.0)
+const ISLAND_R := Vector2(45.0, 24.0)
+const PLAY_LIMIT := 0.8
 const PATH_CTRL := [
 	Vector2(-36, -6), Vector2(-24, -6), Vector2(-18, -12), Vector2(-10, -14), Vector2(-4, -9), Vector2(-6, -2),
 	Vector2(-14, 2), Vector2(-18, 9), Vector2(-12, 14), Vector2(-2, 13), Vector2(4, 7), Vector2(4, -2),
 	Vector2(8, -10), Vector2(16, -13), Vector2(23, -9), Vector2(22, -1), Vector2(14, 3), Vector2(13, 10),
-	Vector2(18, 14), Vector2(25, 12), Vector2(27, 5),
+	Vector2(18, 14), Vector2(24, 11), Vector2(25, 5),
 ]
 const RING_COLORS := [0xffffff, 0x9be15d, 0x4fc3f7, 0xb388ff, 0xffd54f]
 const PRIORITIES := ["first", "last", "strong", "close"]
@@ -174,29 +176,30 @@ func _setup_env() -> void:
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = Defs.col(0x4aa8ff)
-	sm.sky_horizon_color = Defs.col(0xffd9ec)
-	sm.ground_horizon_color = Defs.col(0xffd9ec)
-	sm.ground_bottom_color = Defs.col(0xd9b3e6)
+	sm.sky_top_color = Defs.col(0x3d9df2)
+	sm.sky_horizon_color = Defs.col(0xbfe8ff)
+	sm.ground_horizon_color = Defs.col(0xbfe8ff)
+	sm.ground_bottom_color = Defs.col(0x1f9ad6)
 	sky.sky_material = sm
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(1, 0.97, 1)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_color = Color(1, 0.98, 0.92)
+	env.ambient_light_energy = 0.75
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Defs.col(0xfff1dc)
-	sun.light_energy = 1.15
+	sun.light_energy = 1.25
+	sun.shadow_blur = 1.5
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
-	sun.rotation_degrees = Vector3(-58, -35, 0)
+	sun.rotation_degrees = Vector3(-62, -28, 0)
 	add_child(sun)
 
 	camera = Camera3D.new()
-	camera.fov = 45.0
+	camera.fov = 40.0
 	camera.far = 900.0
 	add_child(camera)
 	camera.make_current()
@@ -291,36 +294,136 @@ func _ribbon(width: float, y: float, hex: int) -> MeshInstance3D:
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return m
 
+# Island shape: a wobbly ellipse. Returns < 1.0 inside, 1.0 on the shoreline.
+func island_value(x: float, z: float) -> float:
+	var dx := (x - ISLAND_C.x) / ISLAND_R.x
+	var dz := (z - ISLAND_C.y) / ISLAND_R.y
+	var a := atan2(dz, dx)
+	var w := _wobble(a)
+	return (dx * dx + dz * dz) / (w * w)
+
+func _wobble(a: float) -> float:
+	return 1.0 + 0.035 * sin(a * 5.0 + 0.7) + 0.025 * sin(a * 11.0 + 2.0)
+
+func _island_mesh(scale_f: float, y: float, mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 120
+	var ring: Array = []
+	for i in range(n):
+		var a := TAU * i / n
+		var w := _wobble(a) * scale_f
+		ring.append(Vector3(ISLAND_C.x + cos(a) * ISLAND_R.x * w, y, ISLAND_C.y + sin(a) * ISLAND_R.y * w))
+	var c := Vector3(ISLAND_C.x, y, ISLAND_C.y)
+	for i in range(n):
+		for v in [c, ring[i], ring[(i + 1) % n]]:
+			st.set_normal(Vector3.UP)
+			st.add_vertex(v)
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = mat
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return m
+
+func _flat_mat(hex: int, alpha: float = 1.0) -> StandardMaterial3D:
+	var m := Models.make_toon(Defs.col(hex, alpha), false)
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
+
+# Scatter many small instances (flowers, tufts, cobblestones) in one draw call.
+func _multimesh(mesh: Mesh, xforms: Array, colors: Array, outline: bool, shadows: bool = false) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.instance_count = xforms.size()
+	mm.mesh = mesh
+	for i in range(xforms.size()):
+		mm.set_instance_transform(i, xforms[i])
+		mm.set_instance_color(i, colors[i])
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = mm
+	var mat := Models.make_toon(Color.WHITE, outline)
+	mat.vertex_color_use_as_albedo = true
+	inst.material_override = mat
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return inst
+
 func _build_map() -> void:
-	var ground := PlaneMesh.new()
-	ground.size = Vector2(84, 56)
-	var gm := Models.mi(ground, Models.toon(0x8fd16a, 1.0, false))
-	add_child(gm)
-	add_child(Models.mi(Models.box(84, 4, 56), Models.toon(0x8a5a3b, 1.0, false), Vector3(0, -2.02, 0)))
-	add_child(Models.mi(Models.box(84.4, 0.6, 56.4), Models.toon(0x6fbf4c, 1.0, false), Vector3(0, -0.31, 0)))
-	add_child(_ribbon(PATH_W + 0.7, 0.02, 0xc79c68))
-	add_child(_ribbon(PATH_W, 0.04, 0xf1dcae))
+	# Sea, shallows, foam, beach, grass (stacked flat layers, viewed from above)
+	var sea := PlaneMesh.new()
+	sea.size = Vector2(700, 700)
+	add_child(Models.mi(sea, _flat_mat(0x1f9ad6), Vector3(0, -0.4, 0)))
+	var shallows := _island_mesh(1.22, -0.34, _flat_mat(0x5fd0ef))
+	add_child(shallows)
+	var foam := _island_mesh(1.11, -0.3, _flat_mat(0xeafcff))
+	add_child(foam)
+	add_child(_island_mesh(1.08, -0.2, _flat_mat(0xf5df9e)))
+	add_child(_island_mesh(1.0, 0.0, _flat_mat(0x86d040)))
+	var wave_fx := func(t: float, _dt: float) -> void:
+		foam.scale = Vector3.ONE * (1.0 + sin(t * 1.3) * 0.006)
+		shallows.scale = Vector3.ONE * (1.0 + sin(t * 0.9 + 1.0) * 0.008)
+	animated.append(wave_fx)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	var stone_mesh := Models.cyl(0.28, 0.32, 0.06, 7)
-	var stone_mat := Models.toon(0xd9c08e, 1.0, false)
-	var d := 1.0
+
+	# Grass patches in lighter and darker greens
+	for i in range(55):
+		var x := ISLAND_C.x + (rng.randf() - 0.5) * ISLAND_R.x * 1.8
+		var z := ISLAND_C.y + (rng.randf() - 0.5) * ISLAND_R.y * 1.8
+		if island_value(x, z) > 0.85:
+			continue
+		var hex: int = [0x74c234, 0x97da4f, 0x7cc83a, 0xa3e05a][i % 4]
+		var r := 2.0 + rng.randf() * 4.0
+		add_child(Models.mi(Models.cyl(r, r, 0.02, 20), _flat_mat(hex), Vector3(x, 0.01, z), Vector3(0, rng.randf() * TAU, 0), Vector3(1, 1, 0.5 + rng.randf() * 0.5)))
+
+	# Cobblestone path: dark grout ribbon with stones on top
+	add_child(_ribbon(PATH_W + 0.7, 0.03, 0x7a736b))
+	add_child(_ribbon(PATH_W, 0.05, 0x9c958b))
+	var stone_x: Array = []
+	var stone_c: Array = []
+	var stone_cols := [Defs.col(0xd9d5ce), Defs.col(0xcac5bd), Defs.col(0xe4e1db), Defs.col(0xbdb7ae)]
+	var d := 0.45
+	var row := 0
 	while d < path_len:
 		var p := pos_at(d)
-		var s := Models.mi(stone_mesh, stone_mat, Vector3(p.x + (rng.randf() - 0.5) * 2.2, 0.06, p.z + (rng.randf() - 0.5) * 2.2), Vector3(0, rng.randf() * TAU, 0))
-		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(s)
-		d += 1.3
+		var ang := dir_at(d)
+		var side := Vector3(cos(ang), 0, -sin(ang))
+		var offs := [-0.95, 0.0, 0.95] if row % 2 == 0 else [-0.5, 0.5]
+		for o in offs:
+			var lat: float = o + (rng.randf() - 0.5) * 0.12
+			var sc := 0.9 + rng.randf() * 0.2
+			var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc * (1.15 if offs.size() == 2 else 1.0), 1, sc))
+			stone_x.append(Transform3D(b, p + side * lat + Vector3(0, 0.08, 0)))
+			stone_c.append(stone_cols[rng.randi() % stone_cols.size()])
+		d += 0.82
+		row += 1
+	add_child(_multimesh(Models.cyl(0.42, 0.44, 0.1, 7), stone_x, stone_c, true))
 
-	# Pond
-	add_child(Models.mi(Models.cyl(4.8, 4.8, 0.1, 40), Models.toon(0xa59a8c, 1.0, false), Vector3(-25, 0.0, 14)))
-	add_child(Models.mi(Models.cyl(4.2, 4.2, 0.12, 40), Models.toon(0x5ec8f2, 1.0, false), Vector3(-25, 0.02, 14)))
-	for i in range(4):
-		add_child(Models.mi(Models.cyl(0.6, 0.6, 0.04, 12), Models.toon(0x3fae5a, 1.0, false), Vector3(-25 + cos(i * 1.7) * 2.4, 0.1, 14 + sin(i * 1.7) * 2.2)))
-	blockers.append(Vector3(-25, 14, 4.8))
+	# Flowers and grass tufts
+	var fl_x: Array = []
+	var fl_c: Array = []
+	var tf_x: Array = []
+	var tf_c: Array = []
+	var flower_cols := [Defs.col(0xffffff), Defs.col(0xfff3a0), Defs.col(0xffb3d1), Defs.col(0xffffff)]
+	var tuft_cols := [Defs.col(0x4fa82a), Defs.col(0x5fbb33), Defs.col(0x3f9a24)]
+	for i in range(1400):
+		var x := ISLAND_C.x + (rng.randf() - 0.5) * ISLAND_R.x * 2.0
+		var z := ISLAND_C.y + (rng.randf() - 0.5) * ISLAND_R.y * 2.0
+		if island_value(x, z) > 0.93 or dist_to_path(x, z) < PATH_W / 2.0 + 0.5:
+			continue
+		if i % 2 == 0:
+			var s := 0.7 + rng.randf() * 0.6
+			fl_x.append(Transform3D(Basis().scaled(Vector3(s, 0.5 * s, s)), Vector3(x, 0.06, z)))
+			fl_c.append(flower_cols[i % flower_cols.size()])
+		else:
+			var s2 := 0.8 + rng.randf() * 0.7
+			tf_x.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s2), Vector3(x, 0.15 * s2, z)))
+			tf_c.append(tuft_cols[i % tuft_cols.size()])
+	add_child(_multimesh(Models.sphere(0.13, 6), fl_x, fl_c, false))
+	add_child(_multimesh(Models.cone(0.13, 0.32, 4), tf_x, tf_c, false))
 
-	# Shrine + torii at the end, portal at the start
+	# Shrine + torii at the end of the path, spirit portal at the start
 	var ep := pos_at(path_len - 0.1)
 	var e_ang := dir_at(path_len - 1.0)
 	var shrine := Models.shrine()
@@ -339,60 +442,78 @@ func _build_map() -> void:
 	var ring := Models.add(portal, Models.torus(2.4, 0.35), Models.toon(0x5a2d82), Vector3(0, 2.4, 0), Vector3(PI / 2, 0, 0))
 	var swirl_mat := Models.fx_mat(Defs.col(0x9d5cff, 0.55))
 	Models.add(portal, Models.cyl(2.3, 2.3, 0.05, 36), swirl_mat, Vector3(0, 2.4, 0), Vector3(PI / 2, 0, 0))
-	portal.position = pos_at(5.0)
-	portal.rotation.y = dir_at(5.0)
+	portal.position = pos_at(4.0)
+	portal.rotation.y = dir_at(4.0)
 	add_child(portal)
 	var portal_fx := func(t: float, _dt: float) -> void:
 		swirl_mat.albedo_color.a = 0.45 + sin(t * 3.0) * 0.15
 		ring.scale = Vector3.ONE * (1.0 + sin(t * 2.0) * 0.04)
 	animated.append(portal_fx)
 
-	# Scenery
+	# Pond inside the island
+	add_child(Models.mi(Models.cyl(4.6, 4.6, 0.06, 40), _flat_mat(0xa59a8c), Vector3(-22, 0.02, 14)))
+	add_child(Models.mi(Models.cyl(4.0, 4.0, 0.08, 40), _flat_mat(0x4fc3ee), Vector3(-22, 0.04, 14)))
+	for i in range(4):
+		add_child(Models.mi(Models.cyl(0.6, 0.6, 0.04, 12), _flat_mat(0x3fae5a), Vector3(-22 + cos(i * 1.7) * 2.3, 0.1, 14 + sin(i * 1.7) * 2.0)))
+	blockers.append(Vector3(-22, 14, 4.6))
+
+	# Lush scenery: a dense ring of trees and palms around the shore, a few props inside
 	var drng := RandomNumberGenerator.new()
 	drng.seed = 1337
 	var placed := 0
 	var tries := 0
-	while tries < 900 and placed < 46:
+	while tries < 2500 and placed < 95:
 		tries += 1
-		var x := (drng.randf() - 0.5) * 80.0
-		var z := (drng.randf() - 0.5) * 52.0
-		var inner := absf(x) < BOUNDS.x and absf(z) < BOUNDS.y
-		if dist_to_path(x, z) < PATH_W / 2.0 + 1.4 + 2.2:
+		var x := ISLAND_C.x + (drng.randf() - 0.5) * ISLAND_R.x * 2.2
+		var z := ISLAND_C.y + (drng.randf() - 0.5) * ISLAND_R.y * 2.2
+		var iv := island_value(x, z)
+		if iv > 1.02:
+			continue
+		var inner := iv < PLAY_LIMIT
+		if dist_to_path(x, z) < PATH_W / 2.0 + 2.6:
 			continue
 		var blocked := false
 		for b in blockers:
-			if Vector2(b.x, b.y).distance_to(Vector2(x, z)) < b.z + 2.2:
+			if Vector2(b.x, b.y).distance_to(Vector2(x, z)) < b.z + 2.0:
 				blocked = true
 				break
 		if blocked:
 			continue
-		if inner and drng.randf() < 0.62:
+		if inner and drng.randf() < 0.88:
 			continue
 		var kind := drng.randf()
 		var obj: Node3D
-		if kind < 0.45:
-			obj = Models.sakura(0.8 + drng.randf() * 0.5, drng)
-		elif kind < 0.7:
-			obj = Models.pine(0.8 + drng.randf() * 0.5)
-		elif kind < 0.88:
-			obj = Models.rock(0.6 + drng.randf() * 0.7)
+		if iv > 0.92:
+			obj = Models.palm(0.9 + drng.randf() * 0.4, drng)
+		elif inner:
+			if kind < 0.35:
+				obj = Models.bush(0.8 + drng.randf() * 0.5, drng)
+			elif kind < 0.55:
+				obj = Models.round_tree(0.8 + drng.randf() * 0.3, drng)
+			elif kind < 0.7:
+				obj = Models.sakura(0.8 + drng.randf() * 0.3, drng)
+			elif kind < 0.8:
+				obj = Models.rock(0.6 + drng.randf() * 0.5)
+			elif kind < 0.9:
+				obj = Models.crate()
+			else:
+				obj = Models.lantern()
 		else:
-			obj = Models.lantern()
+			if kind < 0.55:
+				obj = Models.round_tree(1.0 + drng.randf() * 0.5, drng)
+			elif kind < 0.8:
+				obj = Models.bush(1.0 + drng.randf() * 0.6, drng)
+			elif kind < 0.9:
+				obj = Models.palm(0.9 + drng.randf() * 0.4, drng)
+			else:
+				obj = Models.sakura(1.0 + drng.randf() * 0.4, drng)
 		obj.position = Vector3(x, 0, z)
 		obj.rotation.y = drng.randf() * TAU
 		add_child(obj)
-		if inner:
-			blockers.append(Vector3(x, z, float(obj.get_meta("r", 1.2))))
+		blockers.append(Vector3(x, z, float(obj.get_meta("r", 1.2))))
 		placed += 1
 
-	# Distant mountains
-	for m in [[-70.0, -120.0, 60.0, 50.0], [10.0, -150.0, 85.0, 62.0], [80.0, -115.0, 52.0, 46.0], [-130.0, -60.0, 40.0, 40.0], [140.0, -50.0, 44.0, 40.0]]:
-		var h: float = m[2]
-		var r: float = m[3]
-		add_child(Models.mi(Models.cone(r, h, 7), Models.toon(0x7f8fd6, 1.0, false), Vector3(m[0], h / 2.0 - 8.0, m[1])))
-		add_child(Models.mi(Models.cone(r * 0.32, h * 0.32, 7), Models.toon(0xffffff, 1.0, false), Vector3(m[0], h - 8.0 - h * 0.16 + 0.1, m[1])))
-
-	# Falling sakura petals
+	# A few sakura petals drifting by
 	var petals := CPUParticles3D.new()
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.35, 0.22)
@@ -403,12 +524,12 @@ func _build_map() -> void:
 	pmat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	quad.material = pmat
 	petals.mesh = quad
-	petals.amount = 220
+	petals.amount = 70
 	petals.lifetime = 14.0
 	petals.preprocess = 14.0
 	petals.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	petals.emission_box_extents = Vector3(48, 1, 32)
-	petals.position = Vector3(-6, 26, 0)
+	petals.emission_box_extents = Vector3(48, 1, 28)
+	petals.position = Vector3(-6, 22, 0)
 	petals.direction = Vector3(1, -0.4, 0.2)
 	petals.spread = 25.0
 	petals.gravity = Vector3(0, -0.6, 0)
@@ -459,17 +580,17 @@ func _fit_camera() -> void:
 	var a := vs.x / maxf(vs.y, 1.0)
 	var portrait := a < 0.9
 	var tanv := tan(deg_to_rad(camera.fov / 2.0))
-	var half_w := 26.0 if portrait else 34.0
-	cam_dist = clampf(half_w / (tanv * a), 56.0, 118.0)
+	var half_w := 26.0 if portrait else 40.0
+	cam_dist = clampf(half_w / (tanv * a), 52.0, 125.0)
 	cam_max = maxf(95.0, cam_dist + 20.0)
-	cam_target = Vector3(9, 0, 1) if portrait else Vector3(5, 0, 2)
+	cam_target = Vector3(6, 0, 0) if portrait else Vector3(4, 0, 1.5)
 	cam_yaw = PI / 2 if portrait else 0.0
-	cam_pitch = 0.93 if portrait else 0.91
+	cam_pitch = 1.2 if portrait else 1.12
 	_update_camera()
 
 func _update_camera() -> void:
 	cam_target.x = clampf(cam_target.x, -30, 30)
-	cam_target.z = clampf(cam_target.z, -20, 20)
+	cam_target.z = clampf(cam_target.z, -18, 18)
 	cam_pitch = clampf(cam_pitch, 0.35, 1.37)
 	cam_dist = clampf(cam_dist, 16.0, cam_max)
 	var off := Vector3(sin(cam_yaw) * cos(cam_pitch), sin(cam_pitch), cos(cam_yaw) * cos(cam_pitch)) * cam_dist
@@ -586,7 +707,7 @@ func price(c) -> int:
 	return int(round(float(c) * cost_mul / 5.0) * 5.0)
 
 func valid_spot(x: float, z: float) -> bool:
-	if absf(x) > BOUNDS.x or absf(z) > BOUNDS.y:
+	if island_value(x, z) > PLAY_LIMIT:
 		return false
 	if dist_to_path(x, z) < PATH_W / 2.0 + 1.15:
 		return false
@@ -904,7 +1025,7 @@ func _leak(e: Enemy) -> void:
 	_remove_enemy(e)
 	var lost := int(ceil(Defs.rbe(e.type) - (float(e.def["hp"]) - e.hp)))
 	lives -= lost
-	float_text("-%d ♥" % lost, e.pos + Vector3(0, 2, 0), true)
+	float_text("-%d" % lost, e.pos + Vector3(0, 2, 0), true)
 	sfx.play("leak")
 	shake = minf(0.6, 0.15 + lost * 0.01)
 	if lives <= 0:
@@ -1262,6 +1383,8 @@ func _update_particles(dt: float) -> void:
 func float_text(text: String, pos: Vector3, bad: bool) -> void:
 	var l := Label3D.new()
 	l.text = text
+	if ui and ui.font:
+		l.font = ui.font
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
 	l.font_size = 72
