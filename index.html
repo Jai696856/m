@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sakura Spirit Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three.module.min.js",
+  "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="stat lives"><span class="ico">❤</span><span id="lives">150</span></div>
+    <div class="stat cash"><span class="ico">✦</span><span id="cash">650</span></div>
+    <div class="stat round">Round <span id="round">0</span><span id="roundMax">/40</span></div>
+  </div>
+
+  <div id="bossbar" class="hidden">
+    <div id="bossName">ONI LORD</div>
+    <div class="bar"><div id="bossFill"></div></div>
+  </div>
+
+  <aside id="shop">
+    <h2>Heroes</h2>
+    <div id="shopList"></div>
+    <p class="hint">Drag to rotate · Wheel / pinch to zoom<br>Keys 1-7 heroes · Space play · , . / upgrade</p>
+  </aside>
+
+  <div id="controls">
+    <button id="muteBtn" title="Sound">🔊</button>
+    <button id="autoBtn" title="Auto-start rounds">AUTO</button>
+    <button id="playBtn">▶ START</button>
+  </div>
+
+  <div id="panel" class="hidden"></div>
+  <div id="banner"></div>
+  <div id="floaters"></div>
+  <div id="tooltip" class="hidden"></div>
+
+  <div id="startScreen" class="overlay">
+    <div class="card">
+      <div class="logo"><span>SAKURA</span><span>SPIRIT DEFENSE</span></div>
+      <p class="tagline">Restless spirits are marching on the old shrine.<br>Recruit a squad of heroes, upgrade them, and hold the gate for 40 rounds!</p>
+      <div class="diffs">
+        <button data-diff="easy">EASY<small>200 ❤ · cheaper heroes</small></button>
+        <button data-diff="normal" class="sel">NORMAL<small>150 ❤</small></button>
+        <button data-diff="hard">HARD<small>100 ❤ · pricier heroes</small></button>
+      </div>
+      <button id="startBtn" class="big">START!</button>
+    </div>
+  </div>
+
+  <div id="endScreen" class="overlay hidden">
+    <div class="card">
+      <div id="endTitle" class="logo"><span>GAME OVER</span></div>
+      <p id="endText"></p>
+      <div class="row">
+        <button id="freeplayBtn" class="big hidden">FREEPLAY</button>
+        <button id="restartBtn" class="big">PLAY AGAIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
