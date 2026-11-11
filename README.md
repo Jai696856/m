@@ -4,7 +4,13 @@ A 3D anime-style tower defense game for the browser, built with [Three.js](https
 Restless spirits are marching on an old mountain shrine. Recruit a squad of chibi heroes, upgrade them along
 branching paths, and hold the gate for 40 rounds (then keep going in freeplay).
 
-## Running it
+## Two versions
+
+- **`godot/`**: a Godot 4.3+ project (GDScript). Open `godot/project.godot` in Godot and press F5.
+  See [`godot/README.md`](godot/README.md).
+- **Repository root**: the original browser version (Three.js), described below.
+
+## Running the browser version
 
 There's no build step. Three.js is vendored in `vendor/`, so the game works offline. Serve the folder with any
 static file server and open it in a browser:
