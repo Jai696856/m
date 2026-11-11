@@ -36,12 +36,12 @@ const THEMES := {
 		"sun": 0xfff1dc, "sun_energy": 0.8, "ambient": 0xfffaeb, "ambient_energy": 0.3, "sky_top": 0x3d9df2, "sky_horizon": 0xbfe8ff,
 	},
 	"autumn": {
-		"grass": 0xa9c24a, "lip": 0xb8c95c, "patches": [0xc4b24a, 0x9fb840, 0xd1a845, 0xb5c25a],
+		"grass": 0x8aac42, "lip": 0x98b44c, "patches": [0xa39a44, 0x7f9f3a, 0xb0963e, 0x94ab48],
 		"sand": 0xf0d9a0, "sea": 0x2a8fc9, "shallow": 0x6cc8e6, "foam": 0xf2fbff, "stone": [1.04, 0.98, 0.92],
 		"flowers": [0xffd34d, 0xff9a3d, 0xffffff, 0xe8603c], "tufts": [0x8f9a3a, 0xa38f3a, 0x7d8f33],
 		"trees": ["autumn", "autumn", "autumn", "autumn", "round", "bush"], "inner": ["hay", "rock", "crates", "bush"],
 		"palms": false, "particles": [0xe8792f, 80],
-		"sun": 0xffe2b8, "sun_energy": 0.8, "ambient": 0xfff0dc, "ambient_energy": 0.3, "sky_top": 0x4f9fe0, "sky_horizon": 0xffe0b0,
+		"sun": 0xffe2b8, "sun_energy": 0.72, "ambient": 0xfff0dc, "ambient_energy": 0.28, "sky_top": 0x4f9fe0, "sky_horizon": 0xffe0b0,
 	},
 	"snow": {
 		"grass": 0xeef3fa, "lip": 0xdde7f2, "patches": [0xe3ebf5, 0xf8fbff, 0xd8e3ef, 0xe9f0f8],
@@ -69,11 +69,11 @@ const THEMES := {
 	},
 	"dusk": {
 		"grass": 0x5f9e48, "lip": 0x6fae55, "patches": [0x548f3f, 0x6aa852, 0x4f8a3c, 0x73b05a],
-		"sand": 0xd9c08e, "sea": 0x1d4f8e, "shallow": 0x3e7fb8, "foam": 0xc8dcff, "stone": [0.86, 0.84, 0.98],
+		"sand": 0xd9c08e, "sea": 0x1d4f8e, "shallow": 0x3e7fb8, "foam": 0xc8dcff, "stone": [0.97, 0.95, 1.0],
 		"flowers": [0xc9a6ff, 0xfff59d, 0xffffff], "tufts": [0x3f7d2a, 0x4a8a33, 0x356b24],
 		"trees": ["round", "round", "pine", "sakura", "bush"], "inner": ["lantern", "lantern", "rock", "bush"],
 		"palms": true, "particles": [0xfff59d, 90],
-		"sun": 0xffa97a, "sun_energy": 0.6, "ambient": 0x9d8cff, "ambient_energy": 0.42, "sky_top": 0x2e2363, "sky_horizon": 0xff9f6b,
+		"sun": 0xffa97a, "sun_energy": 0.6, "ambient": 0xb8b0e8, "ambient_energy": 0.36, "sky_top": 0x2e2363, "sky_horizon": 0xff9f6b,
 	},
 }
 

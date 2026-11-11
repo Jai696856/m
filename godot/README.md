@@ -31,6 +31,32 @@ It uses the **Compatibility** renderer, so it can also be exported to Web, Andro
 | Cancel | **Esc** or right-click | |
 | Camera | Left-drag rotates, right-drag pans, wheel zooms | Drag rotates |
 
+## Maps, modes and features
+
+- **46 maps** (the original and 45 new ones) in four tiers. Track length sets the difficulty: Beginner maps
+  average about 200 units of track and Expert maps about 120, so spirits reach the shrine much sooner.
+  There are six themes (meadow, autumn, snow, desert, sakura, dusk). Each map has its own sea side, its own
+  village layout and its own lighting. Routes are generated and validated by `tools/mapgen.py` into
+  `scripts/maps.gd`.
+- **Map select** with minimap previews, a medal for each difficulty, best-round tracking, and a medal counter.
+- **Game modes:** Standard, Half Cash, Fortified (every spirit has double health), Deflation (start with
+  $20,000 and earn nothing more), Rush (rounds back to back, spirits 25% faster) and Sandbox (unlimited money
+  and lives, no medals).
+- **Spirit modifiers:** *fortified* spirits have double health and a steel band; *regrowing* spirits have
+  a pink halo and grow back a layer if left alone for 2.5 seconds. Both appear in later rounds.
+- **Hero abilities:** every hero unlocks a special ability when any of its upgrade paths reaches tier 3.
+  Use it from the ability bar or with **Q W E R T Y U I**.
+- **Pause menu** (**Esc** or **P**) with Resume, Restart, Maps and Sound.
+- The **save file** (`user://save.cfg`) stores best rounds, medals and settings.
+- The **upgrade panel** shows the hero's live stats. The end screen shows spirits popped and money earned.
+
+## Tests
+
+```bash
+godot --headless --path godot -s tests/smoke_test.gd   # all maps, modes, modifiers, abilities, a full game
+xvfb-run godot --path godot -s tests/screenshot.gd -- /tmp/shots   # real screenshots of menu and themes
+```
+
 ## Level and track
 
 The level is a grid-based stone track on a grassy coast. `scenes/level/level.tscn` builds the terrain,
@@ -44,7 +70,7 @@ cottages, trees and decorations.
 | `scenes/track/stone_barrier.tscn` | Low stone wall segment with its own collider |
 | `scenes/props/*.tscn` | House (4 variants), windmill (turning sails), tree, palm, bush, rock, decoration (lantern / crates / hay / fence), each with a collider |
 
-To change the route, edit `ROUTE` in `scripts/track/track.gd`. Consecutive waypoints must share a row or a
+Each map's route lives in `scripts/maps.gd` (the Track default is `ROUTE` in `scripts/track/track.gd`). Consecutive waypoints must share a row or a
 column, and the first and last points are the entry and exit just outside the tiled area.
 `validate()` reports any route that leaves a gap, reuses a cell, or runs two separate stretches side by side.
 Spirits follow the centre line with slightly rounded 90° corners.

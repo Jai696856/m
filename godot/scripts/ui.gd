@@ -776,7 +776,7 @@ func _build_abilities() -> void:
 	ability_bar.anchor_bottom = 1.0
 	ability_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	ability_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	ability_bar.offset_bottom = -14
+	ability_bar.offset_bottom = -8
 	root.add_child(ability_bar)
 
 func refresh_abilities() -> void:
@@ -787,10 +787,10 @@ func refresh_abilities() -> void:
 	var list: Array = game.ability_heroes()
 	for i in range(list.size()):
 		var h = list[i]
-		var b := round_btn(Color(0.95, 0.75, 0.2), 66)
+		var b := round_btn(Color(0.95, 0.75, 0.2), 56)
 		var ab: Dictionary = game.ABILITIES[h.key]
 		b.tooltip_text = "%s [%s]\n%s" % [ab["name"], keys[i], ab["desc"]]
-		var pic := _portrait_rect(h.key, 54)
+		var pic := _portrait_rect(h.key, 46)
 		centered(b, pic)
 		var cd := lbl("", 22, Color.WHITE, 8)
 		cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
