@@ -9,8 +9,11 @@ func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
 	var main: Node3D = load("res://main.tscn").instantiate()
 	root.add_child(main)
+	for i in range(2):
+		await process_frame
 	main.save = ConfigFile.new()
 	main.sfx.muted = true
+	main.ui.show_menu()
 	for i in range(60):
 		await process_frame
 	_save(out + "/menu.png")
