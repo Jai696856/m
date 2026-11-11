@@ -305,8 +305,9 @@ func _build_shop() -> void:
 	shop_grid.add_theme_constant_override("h_separation", 6)
 	shop_grid.add_theme_constant_override("v_separation", 6)
 	shop_scroll.add_child(shop_grid)
-	var hint := lbl("Drag rotate - Right-drag pan - Wheel zoom\nKeys 1-7 heroes - Space play - , . / upgrade", 11, Color(0.8, 0.88, 1.0), 0)
+	var hint := lbl("Drag: rotate  Wheel: zoom\n1-7: heroes  Space: play", 11, Color(0.8, 0.88, 1.0), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.name = "Hint"
 	v.add_child(hint)
 	rebuild_shop()
