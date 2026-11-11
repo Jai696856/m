@@ -29,7 +29,7 @@ func _initialize() -> void:
 			print("spot not valid: ", s)
 	main.round_num = 24
 	main.start_round()
-	for i in range(240):
+	for i in range(100):
 		await process_frame
 	_save(out + "/godot_play.png")
 	main.select_hero(main.heroes[1])

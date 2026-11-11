@@ -486,7 +486,7 @@ static func shrine() -> Node3D:
 	for p in [Vector2(-2, -1.6), Vector2(2, -1.6), Vector2(-2, 1.6), Vector2(2, 1.6)]:
 		add(g, cyl(0.18, 0.18, 2.4, 10), toon(0xe23b3b), Vector3(p.x, 1.8, p.y))
 	add(g, box(3.6, 2.2, 2.8), toon(0xfff5e6), Vector3(0, 1.7, 0))
-	add(g, cone(4.3, 1.9, 4), toon(0x3a3d5c), Vector3(0, 3.9, 0), Vector3(0, PI / 4, 0), Vector3(1, 1, 0.85))
+	add(g, cone(4.3, 1.9, 4), toon(0xb5482f), Vector3(0, 3.9, 0), Vector3(0, PI / 4, 0), Vector3(1, 1, 0.85))
 	add(g, sphere(0.35, 14), toon(0xffd34d), Vector3(0, 5.0, 0))
 	return g
 

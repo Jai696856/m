@@ -181,14 +181,14 @@ func _setup_env() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(1, 0.98, 0.92)
-	env.ambient_light_energy = 0.75
+	env.ambient_light_energy = 0.3
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Defs.col(0xfff1dc)
-	sun.light_energy = 1.25
+	sun.light_energy = 0.8
 	sun.shadow_blur = 1.5
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
