@@ -16,13 +16,15 @@ const HUB_POS := Vector3(4000, 0, 0)
 const SAVE_PATH := "user://save.cfg"
 
 ## Game modes. Medals are earned per map, difficulty and mode (never in sandbox).
-const MODE_ORDER := ["standard", "half_cash", "fortified", "deflation", "rush", "sandbox"]
+const MODE_ORDER := ["standard", "half_cash", "fortified", "deflation", "rush", "one_class", "boss_rush", "sandbox"]
 const MODES := {
 	"standard": {"name": "Standard", "desc": "The classic game: survive 40 rounds."},
 	"half_cash": {"name": "Half Cash", "desc": "All money earned is halved."},
 	"fortified": {"name": "Fortified", "desc": "Every spirit is fortified with double health."},
 	"deflation": {"name": "Deflation", "desc": "Start with $20,000. No more money is ever earned."},
 	"rush": {"name": "Rush", "desc": "Rounds start back to back and spirits move 25% faster."},
+	"one_class": {"name": "One Class", "desc": "The first hero you place picks your class. Only heroes of that class can join."},
+	"boss_rush": {"name": "Boss Rush", "desc": "A boss joins every 5th round from round 10, and bosses have 25% more health."},
 	"sandbox": {"name": "Sandbox", "desc": "Unlimited money and lives. Experiment freely (no medals)."},
 }
 
@@ -62,7 +64,8 @@ const HERO_SCALE := 1.25
 const CORNER_RADIUS := 1.3  # spirits round the 90-degree corners slightly
 const RING_COLORS := [0xffffff, 0x9be15d, 0x4fc3f7, 0xb388ff, 0xffd54f]
 const PRIORITIES := ["first", "last", "strong", "close"]
-const DIFFS := {"easy": {"lives": 200, "cost": 0.85}, "normal": {"lives": 150, "cost": 1.0}, "hard": {"lives": 100, "cost": 1.08}}
+const DIFFS := {"easy": {"lives": 200, "cost": 0.85}, "normal": {"lives": 150, "cost": 1.0}, "hard": {"lives": 100, "cost": 1.08}, "nightmare": {"lives": 1, "cost": 1.2}}
+const DIFF_ORDER := ["easy", "normal", "hard", "nightmare"]
 
 class Enemy:
 	var type := ""
@@ -681,7 +684,15 @@ func select_hero(h: Hero) -> void:
 # =====================================================================
 ## Heroes unlock with player level (sandbox ignores this).
 func hero_available(k: String) -> bool:
+	if class_blocked(k):
+		return false
 	return not _upgrades_need_xp() or progress.level() >= int(Defs.UNLOCK_LEVEL.get(k, 1))
+
+## One Class mode: once a hero is placed, other classes are closed.
+var locked_class := ""
+
+func class_blocked(k: String) -> bool:
+	return mode == "one_class" and locked_class != "" and String(Defs.hero_class(k)["id"]) != locked_class
 
 func place_hero(k: String, x: float, z: float) -> Hero:
 	if not hero_available(k):
@@ -719,6 +730,10 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 		Models.add(root, Models.torus(1.12, 0.07), Models.flat(0xffcc33), Vector3(0, 0.42, 0))
 		Models.add(root, Models.sphere(0.12, 4), Models.flat(0xffcc33), Vector3(0, 3.3, 0))
 	heroes.append(h)
+	if mode == "one_class" and locked_class == "":
+		locked_class = String(Defs.hero_class(k)["id"])
+		ui.banner(String(Defs.hero_class(k)["name"]), "Only this class can join now")
+		ui.rebuild_shop()
 	if _tracking():
 		progress.add("heroes_placed")
 		squad[k] = true
@@ -1148,6 +1163,8 @@ func spawn_enemy(k: String, d: float = 0.0, camo: bool = false, fort: bool = fal
 	e.camo = camo
 	e.boss = def.get("boss", false)
 	var hp_mul := 1.0 + (round_num - 40) * 0.12 if e.boss and round_num > 40 else 1.0
+	if e.boss and mode == "boss_rush":
+		hp_mul *= 1.25
 	e.fortified = fort or mode == "fortified"
 	e.hp = float(def["hp"]) * hp_mul * (2.0 if e.fortified else 1.0)
 	e.max_hp = e.hp
@@ -1279,6 +1296,7 @@ func pop_enemy(e: Enemy, hero) -> Array:
 		progress.add_xp(0.25)
 		if e.boss:
 			progress.add(e.type + "_pops")
+		progress.add_to_set("spirits_seen", e.type)
 		if hero != null:
 			progress.add_hero_xp(hero.key, 1.0)
 	if hero != null:
@@ -1797,7 +1815,10 @@ func build_round(r: int) -> Array:
 			if r >= 13: pool.append("violet")
 			if r >= 15: pool.append_array(["shadow", "frost"])
 			if r >= 19: pool.append("prism")
+			if r >= 17: pool.append("kitsune")
+			if r >= 21: pool.append("crane")
 			if r >= 22: pool.append("mask")
+			if r >= 24: pool.append("lantern")
 			var budget := (30.0 + r * r * (3.4 if r > 20 else 2.1)) * (1.0 + (r - 40) * 0.1 if r > 40 else 1.0)
 			var camo_chance := minf(0.35, 0.12 + (r - 14) * 0.01) if r >= 14 else 0.0
 			var gap_base := clampf(0.8 - r * 0.014, 0.1, 0.8)
@@ -1812,15 +1833,19 @@ func build_round(r: int) -> Array:
 				grp(type, count, gap_base * (2.2 if cost > 30.0 else 1.0), rng.randf() < camo_chance, 0.6 if groups == 0 else 0.3, fort, regrow)
 				budget -= count * cost
 				groups += 1
-			var bosses := {25: ["oni"], 30: ["oni", "oni"], 33: ["oni"], 35: ["oni", "oni", "oni"], 37: ["oni", "oni"], 38: ["oni", "oni", "oni", "oni"], 40: ["dragon"]}
+			var bosses := {25: ["oni"], 30: ["oni", "oni"], 32: ["shogun"], 33: ["oni"], 35: ["oni", "oni", "oni"], 36: ["shogun"], 37: ["oni", "oni"], 38: ["oni", "oni", "oni", "oni"], 40: ["dragon"]}
 			if bosses.has(r):
 				var b: Array = bosses[r]
 				grp(b[0], b.size(), 3.5, false, 1.0)
 			if r > 40:
+				if r % 7 == 3:
+					grp("shogun", maxi(1, int((r - 38) / 12)), 4.0, false, 2.0, r >= 60)
 				if r % 5 == 0:
 					grp("dragon", maxi(1, int((r - 35) / 10)), 6.0, false, 1.0, r >= 50)
 				elif (r - 38) / 3 > 0:
 					grp("oni", int((r - 38) / 3), 2.5, false, 1.0, r >= 45)
+	if mode == "boss_rush" and r >= 10 and r <= 40 and r % 5 == 0 and not r in [25, 30, 35, 40]:
+		grp("shogun" if r >= 30 else "oni", 1, 3.5, false, 1.0)
 	var q: Array = _rq
 	q.sort_custom(func(a, b): return a["t"] < b["t"])
 	return q
@@ -1947,6 +1972,7 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 	encore_t = 0.0
 	golden_t = 0.0
 	powers_used_game = 0
+	locked_class = ""
 	game_pops = 0
 	cash_earned = 0.0
 	if map_i >= 0 and map_i != map_index:
@@ -2171,8 +2197,10 @@ func victory() -> void:
 		progress.add("won_tier_" + String(m["tier"]), 1.0, false)
 		progress.add_to_set("modes_won", mode)
 		progress.add_to_set("maps_won", String(m["id"]))
-		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0}[difficulty])
-		win_gems = int({"easy": 15, "normal": 25, "hard": 40}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0))
+		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0, "nightmare": 1500.0}[difficulty])
+		if difficulty == "nightmare":
+			progress.add("nightmare_wins", 1.0, false)
+		win_gems = int({"easy": 15, "normal": 25, "hard": 40, "nightmare": 80}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0))
 		progress.add_gems(win_gems)
 		for k in squad:
 			progress.add_hero_xp(k, 200.0)

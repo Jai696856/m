@@ -7,7 +7,7 @@ const Models = preload("res://scripts/models.gd")
 const Maps = preload("res://scripts/maps.gd")
 const Icons = preload("res://scripts/icons.gd")
 const LevelScript = preload("res://scripts/level/level.gd")
-const GameModes := ["standard", "half_cash", "fortified", "deflation", "rush", "sandbox"]
+const GameModes := ["standard", "half_cash", "fortified", "deflation", "rush", "one_class", "boss_rush", "sandbox"]
 
 const INK := Color(0.12, 0.08, 0.16)
 const NAVY := Color(0.1, 0.17, 0.29, 0.9)
@@ -129,6 +129,19 @@ class HudIcon extends Control:
 				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), col)
 				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), ink, false, 2.5)
 				draw_line(c + Vector2(-0.18, -0.24) * s.x, c + Vector2(0.18, -0.24) * s.x, ink, 3.0, true)
+			"ghost":
+				var gp := PackedVector2Array()
+				for i in range(13):
+					var a := PI + PI * i / 12.0
+					gp.append(c + Vector2(cos(a), sin(a)) * s.x * 0.32 + Vector2(0, -0.02) * s.x)
+				for i in range(7):
+					var xx := 0.32 - 0.64 * i / 6.0
+					gp.append(c + Vector2(xx, 0.36 if i % 2 == 0 else 0.24) * s.x)
+				draw_colored_polygon(gp, col)
+				gp.append(gp[0])
+				draw_polyline(gp, ink, 3.0, true)
+				for x in [-0.11, 0.11]:
+					draw_circle(c + Vector2(x, -0.04) * s.x, s.x * 0.05, ink)
 			"scroll":
 				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), col)
 				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), ink, false, 3.0)
@@ -401,6 +414,44 @@ func _make_portrait(k: String) -> Texture2D:
 	portrait_vps.append(vp)
 	return vp.get_texture()
 
+## A spirit rendered once into a small texture (used by the Almanac).
+var spirit_portraits := {}
+
+func spirit_portrait(k: String) -> Texture2D:
+	if spirit_portraits.has(k):
+		return spirit_portraits[k]
+	var vp := SubViewport.new()
+	vp.size = Vector2i(128, 128)
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	vp.msaa_3d = Viewport.MSAA_4X
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(vp)
+	var we := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(1, 0.97, 0.95)
+	env.ambient_light_energy = 0.8
+	we.environment = env
+	vp.add_child(we)
+	var light := DirectionalLight3D.new()
+	light.rotation_degrees = Vector3(-35, 25, 0)
+	light.light_energy = 1.1
+	vp.add_child(light)
+	var node: Node3D = Models.build_enemy(k, false, game.rainbow_mat, game.rainbow_camo)
+	node.rotation.y = 0.5
+	vp.add_child(node)
+	var s: float = float(Defs.ENEMIES[k]["size"])
+	var cam := Camera3D.new()
+	cam.fov = 30.0
+	vp.add_child(cam)
+	cam.position = Vector3(0.0, s * 0.6, s * 6.2)
+	cam.look_at(Vector3(0, s * 0.1, 0), Vector3.UP)
+	cam.make_current()
+	spirit_portraits[k] = vp.get_texture()
+	return spirit_portraits[k]
+
 func _freeze_portraits() -> void:
 	# Portraits never change, so stop re-rendering them every frame.
 	for vp in portrait_vps:
@@ -547,7 +598,12 @@ func rebuild_shop() -> void:
 		var num := lbl(["Z", "X", "C", "V", "B"][i], 13, Color.WHITE, 6)
 		num.position = Vector2(6, 2)
 		b.add_child(num)
-		if not game.hero_available(k):
+		if game.class_blocked(k):
+			cost.text = "CLOSED"
+			cost.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
+			pic.modulate = Color(0.25, 0.25, 0.35)
+			b.tooltip_text = "One Class mode: only %s heroes can join" % Defs.hero_class(game.heroes[0].key)["name"]
+		elif not game.hero_available(k):
 			# Locked until the player reaches the hero's level
 			cost.text = "LV %d" % int(Defs.UNLOCK_LEVEL[k])
 			cost.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
@@ -758,23 +814,28 @@ func _build_start() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 6)
 	v.add_child(row)
-	for d in [["easy", "EASY"], ["normal", "NORMAL"], ["hard", "HARD"]]:
+	for d in [["easy", "EASY"], ["normal", "NORMAL"], ["hard", "HARD"], ["nightmare", "NIGHTMARE"]]:
 		var key: String = d[0]
 		var b := btn(d[1], TILE, 16)
 		b.custom_minimum_size = Vector2(100, 40)
+		if key == "nightmare":
+			b.tooltip_text = "One life and 20% higher prices. For true guardians."
 		b.pressed.connect(func() -> void: _pick_diff(key))
 		row.add_child(b)
 		diff_buttons[key] = b
-	var sep := Control.new()
-	sep.custom_minimum_size = Vector2(16, 0)
-	row.add_child(sep)
+	var mode_row := HBoxContainer.new()
+	mode_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mode_row.add_theme_constant_override("separation", 5)
+	v.add_child(mode_row)
 	for m in GameModes:
 		var key2: String = m
 		var b2 := btn(String(game.MODES[key2]["name"]).to_upper(), TILE, 14)
 		b2.custom_minimum_size = Vector2(0, 40)
 		b2.tooltip_text = game.MODES[key2]["desc"]
+		b2.icon = Icons.tex(Icons.MODE_ICONS.get(key2, "star"), Color.WHITE, 40)
+		b2.add_theme_constant_override("icon_max_width", 18)
 		b2.pressed.connect(func() -> void: _pick_mode(key2))
-		row.add_child(b2)
+		mode_row.add_child(b2)
 		mode_buttons[key2] = b2
 	mode_lbl = lbl("", 14, Color(0.8, 0.9, 1.0), 0)
 	mode_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -831,8 +892,8 @@ func _pick_tier(t: String) -> void:
 		medals.add_theme_constant_override("separation", 4)
 		medals.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cv.add_child(medals)
-		var medal_cols := {"easy": Color(0.8, 0.5, 0.25), "normal": Color(0.8, 0.82, 0.86), "hard": Color(1.0, 0.8, 0.2)}
-		for d in ["easy", "normal", "hard"]:
+		var medal_cols := {"easy": Color(0.8, 0.5, 0.25), "normal": Color(0.8, 0.82, 0.86), "hard": Color(1.0, 0.8, 0.2), "nightmare": Color(0.75, 0.35, 1.0)}
+		for d in ["easy", "normal", "hard", "nightmare"]:
 			var won := false
 			for mode in GameModes:
 				if game.has_medal(i, d, mode):
@@ -874,11 +935,11 @@ func _refresh_menu() -> void:
 		mode_lbl.text = game.MODES[sel_mode]["desc"]
 	var total := 0
 	for i in range(Maps.MAPS.size()):
-		for d in ["easy", "normal", "hard"]:
+		for d in ["easy", "normal", "hard", "nightmare"]:
 			if game.has_medal(i, d, "standard"):
 				total += 1
 	if medal_lbl:
-		medal_lbl.text = "  MEDALS %d/%d" % [total, Maps.MAPS.size() * 3]
+		medal_lbl.text = "  MEDALS %d/%d" % [total, Maps.MAPS.size() * 4]
 
 func show_menu() -> void:
 	end_screen.visible = false
@@ -1015,7 +1076,7 @@ func _build_sandbox() -> void:
 		var key: String = k
 		var d: Dictionary = Defs.ENEMIES[key]
 		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
-		var b := btn(String(d["name"]).split(" ")[0].to_upper(), col.darkened(0.15), 12, 8)
+		var b := btn({"crane": "CRANE", "shogun": "SHOGUN"}.get(key, String(d["name"]).split(" ")[0].to_upper()), col.darkened(0.15), 12, 8)
 		b.custom_minimum_size = Vector2(70, 30)
 		b.tooltip_text = "Spawn a %s" % d["name"]
 		b.pressed.connect(func() -> void: game.sandbox_spawn(key, sb_camo, sb_fort, sb_regrow))

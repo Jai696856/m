@@ -57,6 +57,7 @@ func _ready() -> void:
 	screens["settings"] = _build_settings()
 	screens["howto"] = _build_howto()
 	screens["store"] = _screen("STORE")
+	screens["almanac"] = _screen("SPIRIT ALMANAC")
 	var t := Timer.new()
 	t.wait_time = 6.0
 	t.autostart = true
@@ -135,6 +136,7 @@ func _build_home() -> void:
 	var left := _icon_column(true)
 	_icon_button(left, "gear", "SETTINGS", Color(0.35, 0.5, 0.75), func() -> void: _open("settings"))
 	_icon_button(left, "book", "HOW TO PLAY", Color(0.35, 0.5, 0.75), func() -> void: _open("howto"))
+	_icon_button(left, "ghost", "ALMANAC", Color(0.55, 0.4, 0.85), func() -> void: _open("almanac"))
 	if OS.has_feature("pc") and not OS.has_feature("web"):
 		_icon_button(left, "door", "QUIT", Color(0.92, 0.3, 0.3), func() -> void: get_tree().quit())
 
@@ -265,7 +267,7 @@ func refresh() -> void:
 	trophy_pill.text = "%d/%d" % [p.unlocked_count(), Progress.ACHIEVEMENTS.size()]
 	var medals := 0
 	for i in range(Maps.MAPS.size()):
-		for dd in ["easy", "normal", "hard"]:
+		for dd in ["easy", "normal", "hard", "nightmare"]:
 			if game.has_medal(i, dd, "standard"):
 				medals += 1
 	medal_pill.text = str(medals)
@@ -319,6 +321,75 @@ func _fill_quests() -> void:
 			bot.add_child(b)
 		else:
 			bot.add_child(ui.lbl("%s/%s" % [_num(q["have"]), _num(q["need"])], 13, Color(0.8, 0.88, 1.0), 5))
+
+const SPIRIT_NOTES := {
+	"pink": "The weakest spirit. Every bigger spirit hides one inside.",
+	"blue": "A little faster than Pink.",
+	"green": "Quicker still.",
+	"gold": "Very fast. Place heroes where the path enters.",
+	"violet": "The fastest of the plain wisps.",
+	"shadow": "Shrugs off explosions. Splits into two Violets.",
+	"frost": "Cannot be frozen. Splits into two Violets.",
+	"kitsune": "A nimble fox with three tails. Takes 2 hits, then splits into two Violets.",
+	"crane": "Folded paper that glides by at top speed, carrying a Fox Spirit.",
+	"prism": "Shimmers in every colour. Holds a Shadow and a Frost wisp.",
+	"lantern": "A paper lantern that sharp attacks cannot pierce. Use magic, blasts or cold.",
+	"mask": "A tough clay mask that takes many hits. Heroes with mask bonus damage shine here.",
+	"oni": "Boss: a huge red demon with 320 health that releases four masks.",
+	"shogun": "Boss: an armoured warlord with 650 health. Releases two Oni Lords and two Lanterns.",
+	"dragon": "Final boss: a long storm dragon with 1,100 health that releases four Oni Lords.",
+}
+
+func _fill_almanac() -> void:
+	var body := _body("almanac")
+	_clear(body)
+	var p = game.progress
+	var info: Label = ui.lbl("Pop a spirit once to add it to the almanac (%d / %d found)." % [int(p.get_stat("#spirits_seen")), Defs.ORDER.size()], 15, Color(0.85, 0.8, 1.0), 0)
+	body.add_child(info)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	body.add_child(grid)
+	var seen: Array = p.save.get_value("sets", "spirits_seen", [])
+	for k in Defs.ORDER:
+		var key: String = k
+		var d: Dictionary = Defs.ENEMIES[key]
+		var known: bool = seen.has(key)
+		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34), col if known else Color(0.3, 0.3, 0.4)))
+		card.custom_minimum_size = Vector2(305, 130)
+		grid.add_child(card)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		card.add_child(h)
+		var pic := TextureRect.new()
+		pic.texture = ui.spirit_portrait(key)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.custom_minimum_size = Vector2(96, 96)
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if not known:
+			pic.modulate = Color(0, 0, 0, 0.85)
+		h.add_child(pic)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 1)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(v)
+		v.add_child(ui.lbl(String(d["name"]).to_upper() if known else "???", 18, Color.WHITE, 6))
+		var traits: Array = []
+		if d.has("immune"):
+			traits.append("immune to %s" % d["immune"])
+		if d.get("boss", false):
+			traits.append("BOSS")
+		v.add_child(ui.lbl("Speed %.1f  -  Health %s  -  Layers %s" % [float(d["speed"]), _num(d["hp"]), _num(Defs.rbe(key))], 12, ui.GOLD, 4))
+		var note: Label = ui.lbl(SPIRIT_NOTES.get(key, "") if known else "Not met yet.", 12, Color(0.88, 0.85, 1.0), 0)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(185, 0)
+		v.add_child(note)
+		if known and d.get("boss", false):
+			v.add_child(ui.lbl("Defeated: %s" % _num(p.get_stat(key + "_pops")), 12, ui.GREEN, 4))
 
 func _fill_store() -> void:
 	var body := _body("store")
@@ -445,6 +516,8 @@ func _open(which: String) -> void:
 			_fill_settings()
 		"store":
 			_fill_store()
+		"almanac":
+			_fill_almanac()
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():
@@ -499,7 +572,7 @@ func _fill_stats() -> void:
 		rows.append([s[1], ("$" if s[0] == "cash_earned" else "") + _num(v)])
 	var medals := 0
 	for i in range(Maps.MAPS.size()):
-		for d in ["easy", "normal", "hard"]:
+		for d in game.DIFF_ORDER:
 			for m in game.MODE_ORDER:
 				if game.has_medal(i, d, m):
 					medals += 1

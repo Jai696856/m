@@ -33,6 +33,7 @@ func _initialize() -> void:
 	await _test_farm(main)
 	await _test_gems_powers_quests(main)
 	await _test_tutorial_and_music(main)
+	await _test_new_spirits(main)
 	await _test_touch(main)
 	await _test_pause(main)
 	await _test_full_game(main)
@@ -332,7 +333,19 @@ func _test_modes(main) -> void:
 			for i in range(10):
 				main._step(1.0 / 60.0)
 			check(main.running and main.round_num == r0 + 1, "rush starts the next round by itself (%d -> %d)" % [r0, main.round_num])
+		if m == "one_class":
+			check(main.locked_class == "ranged", "first hero picks the class (%s)" % main.locked_class)
+			check(not main.hero_available("ninja") and main.hero_available("kenta"), "One Class closes other classes")
+			check(main.place_hero("ninja", 0.0, 0.0) == null, "a closed-class hero cannot be placed")
+		if m == "boss_rush":
+			var q: Array = main.build_round(10)
+			check(q.any(func(x): return x["type"] == "oni"), "Boss Rush adds a boss on round 10")
+			var b = main.spawn_enemy("oni", 1.0)
+			check(b.hp == 320.0 * 1.25, "Boss Rush bosses have 25% more health")
+			main._remove_enemy(b)
 		print("mode %s ok (round %d, cash %d)" % [m, main.round_num, main.cash])
+	main.new_game("nightmare", 0, "standard")
+	check(main.lives == 1.0 and main.cost_mul == 1.2, "Nightmare: 1 life, 20% higher prices")
 
 func _test_modifiers(main) -> void:
 	main.new_game("normal", 0, "standard")
@@ -528,6 +541,31 @@ func _test_tutorial_and_music(main) -> void:
 	check(not main.music.playing, "music can be switched off")
 	main.set_setting("music", true)
 	print("tutorial and music ok")
+
+func _test_new_spirits(main) -> void:
+	main.new_game("normal", 0, "sandbox")
+	for k in ["kitsune", "crane", "lantern", "shogun"]:
+		var e = main.spawn_enemy(k, 5.0)
+		check(e != null and e.alive, "%s spawns" % k)
+		main.damage_enemy(e, 1.0e5, {"type": "magic", "hero": null})
+		check(not e.alive, "%s pops" % k)
+	var l = main.spawn_enemy("lantern", 5.0)
+	check(not main.hit_enemy(l, {"type": "sharp", "dmg": 5.0}), "Lantern Ghost ignores sharp attacks")
+	check(main.hit_enemy(l, {"type": "magic", "dmg": 1.0}), "Lantern Ghost takes magic damage")
+	for e in main.enemies.duplicate():
+		main._remove_enemy(e)
+	main.enemies.clear()
+	var pool := {}
+	for r in range(13, 41):
+		for x in main.build_round(r):
+			pool[x["type"]] = true
+	for k in ["kitsune", "crane", "lantern", "shogun"]:
+		check(pool.has(k), "%s appears in rounds 13-40" % k)
+	main.to_home()
+	main.progress.add_to_set("spirits_seen", "kitsune")
+	main.menu._open("almanac")
+	check(main.menu.screens["almanac"].visible, "almanac opens")
+	print("new spirits ok")
 
 # Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.
 func _test_touch(main) -> void:

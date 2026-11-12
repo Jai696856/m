@@ -679,6 +679,18 @@ static func build_enemy(k: String, camo: bool, rainbow: StandardMaterial3D, rain
 			add(g, cone(0.13, 0.5, 8), toon(0xffffff), Vector3(0.4 * x, -0.65, s * 0.85))
 		add(g, box(1.2, 0.22, 0.2), flat(0x3b0b16), Vector3(0, -0.45, s * 0.93))
 		add(g, torus(s * 0.95, 0.16), toon(0xf5e0a0), Vector3(0, -0.35, 0))
+	elif k == "shogun":
+		add(g, sphere(s, 26), body_mat, Vector3.ZERO, Vector3.ZERO, Vector3(1.05, 1.0, 1))
+		# Kabuto helmet with a golden crest
+		add(g, sphere(s * 1.04, 24, true), toon(0x1c1530), Vector3(0, s * 0.15, 0))
+		add(g, cyl(s * 1.3, s * 1.35, 0.14, 24), toon(0x1c1530), Vector3(0, s * 0.18, 0), Vector3(-0.15, 0, 0))
+		for x in [-1.0, 1.0]:
+			add(g, cone(0.12, 1.5, 6), toon(0xffc93c), Vector3(0.45 * x, s * 1.15, s * 0.35), Vector3(-0.3, 0, -0.55 * x))
+			add(g, sphere(0.2, 10), flat(0xff3d6e), Vector3(0.5 * x, 0.15, s * 0.95), Vector3.ZERO, Vector3(1.4, 0.6, 0.4))
+			add(g, box(0.9, 0.5, 0.9), toon(0x5a1f2e), Vector3(1.6 * x, -0.2, 0), Vector3(0, 0, 0.3 * x))
+		add(g, sphere(0.3, 10), toon(0xffc93c), Vector3(0, s * 0.85, s * 0.6))
+		add(g, box(1.3, 0.5, 0.2), toon(0x9e9e9e), Vector3(0, -0.45, s * 0.92))
+		add(g, torus(s * 0.98, 0.14), toon(0xffc93c), Vector3(0, -0.3, 0))
 	elif k == "dragon":
 		add(g, sphere(s, 24), body_mat, Vector3.ZERO, Vector3.ZERO, Vector3(0.9, 0.85, 1.25))
 		add(g, box(1.5, 0.9, 1.4), toon(color), Vector3(0, -0.3, s * 1.1))
@@ -696,6 +708,25 @@ static func build_enemy(k: String, camo: bool, rainbow: StandardMaterial3D, rain
 				add(g, cone(0.13, 0.42, 8), toon(0xfff4d6, alpha), Vector3(0.38 * x, s * 0.82, 0), Vector3(0, 0, -0.35 * x))
 			add(g, box(0.05, 0.5, 0.05), flat(0x6d4c41), Vector3(0.2, 0.15, s * 0.98), Vector3(0, 0, 0.5))
 			add(g, sphere(0.12, 4), flat(0xff3d6e), Vector3(0, 0.42, s * 0.92))
+		if d.get("fox", false):
+			for x in [-1.0, 1.0]:
+				add(g, cone(s * 0.28, s * 0.7, 8), body_mat, Vector3(s * 0.5 * x, s * 0.8, 0), Vector3(0, 0, -0.35 * x))
+				add(g, cone(s * 0.14, s * 0.4, 8), toon(0xffffff, alpha), Vector3(s * 0.52 * x, s * 0.82, s * 0.08), Vector3(0, 0, -0.35 * x))
+			for i in range(3):
+				var tail := add(g, capsule(s * 0.22, s * 0.9), body_mat, Vector3((i - 1) * s * 0.4, s * 0.1, -s * 1.0), Vector3(-0.9, (i - 1) * 0.5, 0))
+				tail.scale = Vector3.ONE
+				add(g, sphere(s * 0.2, 8), toon(0xffffff, alpha), Vector3((i - 1) * s * 0.55, s * 0.6, -s * 1.45))
+		if d.get("crane", false):
+			for x in [-1.0, 1.0]:
+				add(g, box(s * 1.6, 0.05, s * 0.8), toon(0xf4f1ea, alpha), Vector3(s * 1.1 * x, s * 0.3, 0), Vector3(0, 0, 0.35 * x))
+			add(g, cone(s * 0.2, s * 0.9, 4), toon(0xe63946, alpha), Vector3(0, s * 0.4, s * 0.95), Vector3(PI / 2, 0, 0))
+		if d.get("lantern", false):
+			add(g, cyl(s * 0.5, s * 0.5, 0.12, 14), toon(0x3b2a1a), Vector3(0, s * 0.98, 0))
+			add(g, cyl(s * 0.5, s * 0.5, 0.12, 14), toon(0x3b2a1a), Vector3(0, -s * 0.9, 0))
+			for i in range(3):
+				add(g, torus(s * 0.98, 0.03), toon(0xc0392b, alpha), Vector3(0, (i - 1) * s * 0.42, 0))
+			var glow := add(g, sphere(s * 1.25, 12), fx_mat(Color(1.0, 0.7, 0.3, 0.18), true))
+			glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var eye_col := 0xff4d6d if k == "shadow" else 0x1b0f24
 		for x in [-1.0, 1.0]:
 			add(g, sphere(s * 0.17, 10), flat(eye_col, 0.6 if camo else 1.0), Vector3(s * 0.34 * x, s * 0.08, s * 0.92), Vector3(0, 0.35 * x, 0), Vector3(0.8, 1.3, 0.5))

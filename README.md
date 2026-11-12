@@ -67,9 +67,16 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
   village layout and its own lighting. Routes are generated and validated by `tools/mapgen.py` into
   `scripts/maps.gd`.
 - **Map select** with minimap previews, a medal for each difficulty, best-round tracking, and a medal counter.
+- **Difficulties:** Easy, Normal, Hard and **Nightmare** (one life, prices 20% higher, its own purple medal).
 - **Game modes:** Standard, Half Cash, Fortified (every spirit has double health), Deflation (start with
-  $20,000 and earn nothing more), Rush (rounds back to back, spirits 25% faster) and Sandbox (unlimited money
-  and lives, no medals).
+  $20,000 and earn nothing more), Rush (rounds back to back, spirits 25% faster), **One Class** (your first
+  hero picks the class; the others close), **Boss Rush** (a boss every 5th round from round 10, bosses have 25%
+  more health) and Sandbox (unlimited money and lives, no medals).
+- **15 spirit types**, including the **Fox Spirit** (two hits, three tails), the **Paper Crane** (very fast,
+  carries a fox), the **Lantern Ghost** (sharp attacks can't pierce it) and the boss **Shadow Shogun**
+  (rounds 32 and 36, and in freeplay).
+- **Spirit Almanac** (ghost button on the home screen): a 3D portrait, stats and tips for every spirit,
+  filled in as you pop each kind.
 - **Spirit modifiers:** *fortified* spirits have double health and a steel band; *regrowing* spirits have
   a pink halo and grow back a layer if left alone for 2.5 seconds. Both appear in later rounds.
 - **Hero abilities:** every hero unlocks a special ability when any of its upgrade paths reaches tier 3.

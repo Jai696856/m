@@ -9,7 +9,7 @@ static func col(hex: int, alpha: float = 1.0) -> Color:
 # ---------------------------------------------------------------------
 # Spirits. Popping one releases its "children".
 # ---------------------------------------------------------------------
-const ORDER := ["pink", "blue", "green", "gold", "violet", "shadow", "frost", "prism", "mask", "oni", "dragon"]
+const ORDER := ["pink", "blue", "green", "gold", "violet", "shadow", "frost", "kitsune", "crane", "prism", "lantern", "mask", "oni", "shogun", "dragon"]
 
 const ENEMIES := {
 	"pink":   {"name": "Pink Wisp",    "color": 0xff7eb6, "speed": 1.0, "hp": 1.0,    "children": [],                                 "size": 0.7},
@@ -19,9 +19,13 @@ const ENEMIES := {
 	"violet": {"name": "Violet Wisp",  "color": 0xc779ff, "speed": 3.4, "hp": 1.0,    "children": ["gold"],                           "size": 0.74},
 	"shadow": {"name": "Shadow Wisp",  "color": 0x2e2547, "speed": 1.8, "hp": 1.0,    "children": ["violet", "violet"],               "size": 0.61, "immune": "blast"},
 	"frost":  {"name": "Frost Wisp",   "color": 0xeaf7ff, "speed": 2.0, "hp": 1.0,    "children": ["violet", "violet"],               "size": 0.61, "immune": "cold"},
+	"kitsune": {"name": "Fox Spirit",  "color": 0xff9d3a, "speed": 3.0, "hp": 2.0,    "children": ["violet", "violet"],               "size": 0.8, "fox": true},
+	"crane":  {"name": "Paper Crane",  "color": 0xf4f1ea, "speed": 3.8, "hp": 1.0,    "children": ["kitsune"],                        "size": 0.7, "crane": true},
 	"prism":  {"name": "Prism Wisp",   "color": 0xffffff, "speed": 2.2, "hp": 1.0,    "children": ["shadow", "frost"],                "size": 0.84, "rainbow": true},
+	"lantern": {"name": "Lantern Ghost", "color": 0xffb347, "speed": 1.1, "hp": 6.0,  "children": ["kitsune", "kitsune"],             "size": 0.95, "lantern": true, "immune": "sharp"},
 	"mask":   {"name": "Clay Mask",    "color": 0xd9a46a, "speed": 2.5, "hp": 10.0,   "children": ["prism", "prism"],                 "size": 1.05, "mask": true},
 	"oni":    {"name": "ONI LORD",     "color": 0xe53935, "speed": 1.2, "hp": 320.0,  "children": ["mask", "mask", "mask", "mask"],   "size": 1.9, "boss": true},
+	"shogun": {"name": "SHADOW SHOGUN", "color": 0x3a2d5c, "speed": 0.9, "hp": 650.0, "children": ["oni", "oni", "lantern", "lantern"], "size": 2.0, "boss": true},
 	"dragon": {"name": "STORM DRAGON", "color": 0x26a69a, "speed": 0.6, "hp": 1100.0, "children": ["oni", "oni", "oni", "oni"],       "size": 2.2, "boss": true, "segments": 7},
 }
 

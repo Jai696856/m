@@ -56,7 +56,7 @@ static func tex(name: String, color: Color = Color.WHITE, px: int = 64) -> Textu
 ## Icon for each hero class tab.
 const CLASS_ICONS := {"primary": "fist", "ranged": "target", "magic": "wand", "tech": "gear", "support": "heart"}
 ## Icon for each game mode.
-const MODE_ICONS := {"standard": "shield", "half_cash": "coin", "fortified": "shield", "deflation": "hourglass", "rush": "bolt", "sandbox": "star"}
+const MODE_ICONS := {"standard": "play", "half_cash": "coin", "fortified": "shield", "deflation": "hourglass", "rush": "bolt", "one_class": "fist", "boss_rush": "skull", "sandbox": "star"}
 
 ## Pick an icon that describes an upgrade from its effect dictionary.
 static func for_upgrade(fx: Dictionary) -> String:
