@@ -198,6 +198,11 @@ var range_root: Node3D
 var range_ring_mat: StandardMaterial3D
 var range_disk_mat: StandardMaterial3D
 
+## Active touch points (index -> position) for pinch-zoom and two-finger pan on iPad/iPhone.
+var touches := {}
+var multi_touch := false
+var pinch_dist := 0.0
+var pinch_mid := Vector2.ZERO
 var press_pos := Vector2.ZERO
 var press_button := 0
 var pressing := false
@@ -427,7 +432,43 @@ func _update_camera() -> void:
 # =====================================================================
 # Input
 # =====================================================================
+func _pan_camera(screen_delta: Vector2) -> void:
+	var right := camera.global_transform.basis.x
+	var fwd := Vector3(-sin(cam_yaw), 0, -cos(cam_yaw))
+	cam_target += (-right * screen_delta.x + fwd * screen_delta.y) * cam_dist * 0.0015
+
+# Two fingers: pinch to zoom, move together to pan. One finger still rotates and taps
+# through the emulated mouse events below.
+func _handle_touch(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var st := event as InputEventScreenTouch
+		if st.pressed:
+			touches[st.index] = st.position
+		else:
+			touches.erase(st.index)
+		if touches.size() >= 2:
+			multi_touch = true
+			dragging = true   # a pinch is never a tap
+			pinch_dist = 0.0
+	elif event is InputEventScreenDrag:
+		var sd := event as InputEventScreenDrag
+		touches[sd.index] = sd.position
+		if touches.size() >= 2:
+			var pts: Array = touches.values()
+			var a: Vector2 = pts[0]
+			var b: Vector2 = pts[1]
+			var dist := a.distance_to(b)
+			var mid := (a + b) * 0.5
+			if pinch_dist > 0.0 and dist > 1.0:
+				cam_dist *= pinch_dist / dist
+				_pan_camera(mid - pinch_mid)
+			pinch_dist = dist
+			pinch_mid = mid
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_handle_touch(event)
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
@@ -436,8 +477,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			cam_dist *= 1.1
 		elif mb.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 			if mb.pressed:
+				if touches.size() <= 1:
+					multi_touch = false
 				pressing = true
-				dragging = false
+				dragging = multi_touch
 				press_pos = mb.position
 				press_button = mb.button_index
 			elif pressing:
@@ -452,14 +495,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			dragging = false
 		if pressing and not dragging and mm.position.distance_to(press_pos) > 8.0:
 			dragging = true
-		if pressing and dragging:
+		if pressing and dragging and not multi_touch:
 			if press_button == MOUSE_BUTTON_LEFT:
 				cam_yaw -= mm.relative.x * 0.006
 				cam_pitch += mm.relative.y * 0.005
 			else:
-				var right := camera.global_transform.basis.x
-				var fwd := Vector3(-sin(cam_yaw), 0, -cos(cam_yaw))
-				cam_target += (-right * mm.relative.x + fwd * mm.relative.y) * cam_dist * 0.0015
+				_pan_camera(mm.relative)
 		_update_ghost(mm.position)
 	elif event is InputEventMagnifyGesture:
 		cam_dist /= (event as InputEventMagnifyGesture).factor

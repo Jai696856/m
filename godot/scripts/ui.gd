@@ -232,6 +232,8 @@ var sb_fort := false
 var sb_regrow := false
 var sb_toggles := {}
 var toast_box: VBoxContainer
+var pause_btn: Button
+var cancel_btn: Button
 var shop_class := 0
 var class_tabs: Array = []
 var class_lbl: Label
@@ -470,7 +472,10 @@ func _build_shop() -> void:
 	shop_grid.add_theme_constant_override("h_separation", 6)
 	shop_grid.add_theme_constant_override("v_separation", 6)
 	shop_scroll.add_child(shop_grid)
-	var hint := lbl("1-5: class  Z X C V: hero\nSpace: play  Drag: rotate", 11, Color(0.8, 0.88, 1.0), 0)
+	var hint_text := "1-5: class  Z X C V: hero\nSpace: play  Drag: rotate"
+	if DisplayServer.is_touchscreen_available():
+		hint_text = "Tap a hero, then tap grass\nDrag: rotate  Pinch: zoom"
+	var hint := lbl(hint_text, 11, Color(0.8, 0.88, 1.0), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.name = "Hint"
@@ -524,6 +529,26 @@ func rebuild_shop() -> void:
 		i += 1
 	refresh()
 
+## Keep the UI clear of notches, rounded corners and the home indicator on iOS/Android.
+func _apply_safe_area() -> void:
+	if not (OS.has_feature("mobile") or OS.get_name() in ["iOS", "Android"]):
+		return
+	var win := get_window()
+	var safe := DisplayServer.get_display_safe_area()
+	var screen := DisplayServer.screen_get_size()
+	if safe.size.x <= 0 or screen.x <= 0:
+		return
+	var view := root.get_viewport_rect().size
+	var k := Vector2(view.x / maxf(1.0, win.size.x), view.y / maxf(1.0, win.size.y))
+	var left := clampf(safe.position.x * k.x, 0.0, 80.0)
+	var top := clampf(safe.position.y * k.y, 0.0, 80.0)
+	var right := clampf((screen.x - safe.end.x) * k.x, 0.0, 80.0)
+	var bottom := clampf((screen.y - safe.end.y) * k.y, 0.0, 80.0)
+	root.offset_left = left
+	root.offset_top = top
+	root.offset_right = -right
+	root.offset_bottom = -bottom
+
 func select_class(i: int) -> void:
 	shop_class = clampi(i, 0, Defs.CLASSES.size() - 1)
 	rebuild_shop()
@@ -534,6 +559,22 @@ func _build_controls() -> void:
 	h.add_theme_constant_override("separation", 10)
 	h.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(h)
+	# Touch-friendly buttons: cancel placement (instead of right-click) and pause (instead of Esc)
+	cancel_btn = round_btn(Color(0.92, 0.3, 0.3), 58)
+	cancel_btn.text = "X"
+	cancel_btn.add_theme_font_size_override("font_size", 26)
+	cancel_btn.tooltip_text = "Cancel placing"
+	cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_END
+	cancel_btn.visible = false
+	cancel_btn.pressed.connect(func() -> void: game.cancel_placing())
+	h.add_child(cancel_btn)
+	pause_btn = round_btn(Color(0.35, 0.5, 0.75), 58)
+	pause_btn.text = "II"
+	pause_btn.add_theme_font_size_override("font_size", 22)
+	pause_btn.tooltip_text = "Pause"
+	pause_btn.size_flags_vertical = Control.SIZE_SHRINK_END
+	pause_btn.pressed.connect(func() -> void: game.toggle_pause())
+	h.add_child(pause_btn)
 	mute_btn = round_btn(Color(0.35, 0.5, 0.75), 58)
 	mute_btn.text = "SFX"
 	mute_btn.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -1091,6 +1132,7 @@ func _layout() -> void:
 	var want := Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
 	if win.content_scale_size != want:
 		win.content_scale_size = want
+	_apply_safe_area()
 	var hint: Control = shop.find_child("Hint", true, false)
 	if game and game.menu:
 		game.menu.layout(portrait)
@@ -1174,6 +1216,8 @@ func refresh() -> void:
 		var poor: bool = game.cash < game.price(Defs.HEROES[k]["cost"]) or not game.hero_available(k)
 		b.modulate = Color(0.6, 0.6, 0.66, 0.8) if poor else Color.WHITE
 		_set_btn_bg(b, GOLD if game.placing == k else TILE, 10)
+	if cancel_btn:
+		cancel_btn.visible = game.placing != ""
 	for b in buy_buttons:
 		if is_instance_valid(b):
 			(b as Button).disabled = game.cash < int(b.get_meta("cost"))

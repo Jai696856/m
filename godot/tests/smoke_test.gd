@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _test_modes(main)
 	await _test_modifiers(main)
 	await _test_abilities(main)
+	await _test_touch(main)
 	await _test_pause(main)
 	await _test_full_game(main)
 	await _traverse(main)
@@ -397,6 +398,41 @@ func _test_abilities(main) -> void:
 		main._remove_enemy(e)
 	main.enemies.clear()
 	print("abilities ok")
+
+# Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.
+func _test_touch(main) -> void:
+	main.new_game("normal", 0, "standard")
+	var d0: float = main.cam_dist
+	var t0: Vector3 = main.cam_target
+	for i in [0, 1]:
+		var t := InputEventScreenTouch.new()
+		t.index = i
+		t.pressed = true
+		t.position = Vector2(500 + i * 200, 360)
+		main._unhandled_input(t)
+	check(main.multi_touch, "two fingers start a pinch")
+	for step in range(1, 6):
+		for i in [0, 1]:
+			var dr := InputEventScreenDrag.new()
+			dr.index = i
+			dr.position = Vector2(500 + i * 200 + (i * 2 - 1) * step * 20, 360 + step * 4)
+			main._unhandled_input(dr)
+	check(main.cam_dist < d0, "spreading two fingers zooms in (%.1f -> %.1f)" % [d0, main.cam_dist])
+	check(main.cam_target != t0, "moving two fingers pans the camera")
+	for i in [0, 1]:
+		var up := InputEventScreenTouch.new()
+		up.index = i
+		up.pressed = false
+		main._unhandled_input(up)
+	check(main.touches.is_empty(), "lifting fingers ends the gesture")
+	main.begin_placing("ninja")
+	main.ui.refresh()
+	check(main.ui.cancel_btn.visible, "cancel button shows while placing")
+	main.ui.cancel_btn.pressed.emit()
+	check(main.placing == "", "cancel button stops placing")
+	main.ui.pause_btn.pressed.emit()
+	check(main.paused, "on-screen pause button pauses")
+	main.toggle_pause()
 
 func _test_pause(main) -> void:
 	main.new_game("normal", 0, "standard")

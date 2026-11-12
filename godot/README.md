@@ -17,6 +17,31 @@ The UI font is [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) (A
 It uses the **Compatibility** renderer, so it can also be exported to Web, Android and iOS from
 **Project → Export**.
 
+## Playing on iPad / iPhone with Xogot
+
+[Xogot](https://apps.apple.com/us/app/xogot-godot-for-ipad-iphone/id6469385251) is Godot 4.4 for iPad and iPhone.
+This project is tested on Godot 4.3 and 4.4.1, and the Godot 4.4 `.uid` files are included, so it opens cleanly.
+
+1. Get the `godot` folder onto the device using one of the routes Xogot supports:
+   - **iCloud Drive / Files:** unzip the project into iCloud Drive, then open that folder from Xogot.
+   - **GitHub:** clone this repository with Working Copy, then open the `godot` folder in Xogot.
+   - **USB drive:** copy the unzipped folder to a USB drive and open it from Xogot.
+2. Open `project.godot` and press Play.
+
+Touch controls:
+
+| Action | Touch |
+|---|---|
+| Pick a hero | Tap a portrait (the class tabs 1-5 are along the top of the shop) |
+| Place it | Tap on grass. The red **X** button cancels |
+| Rotate / zoom / pan | One-finger drag / pinch / two-finger drag |
+| Pause | The **II** button |
+| Abilities, upgrades, selling | Tap the on-screen buttons |
+
+The game locks to landscape on phones and tablets and keeps its UI inside the screen's safe area.
+It uses the **Compatibility** renderer. If your device or Xogot version only offers the Mobile renderer, switch
+it in *Project Settings → Rendering → Renderer*. Nothing in the game depends on a specific renderer.
+
 ## Controls
 
 | Action | Mouse / keys | Touch |
