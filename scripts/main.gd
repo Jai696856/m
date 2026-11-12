@@ -575,6 +575,12 @@ func _on_click(screen: Vector2, button: int, shift: bool) -> void:
 	var p: Vector3 = hit
 	if placing != "":
 		_update_ghost(screen)
+		if placing_charm != "" and valid_spot(p.x, p.z):
+			var ch := place_charm(p.x, p.z)
+			cancel_placing()
+			if ch:
+				select_hero(ch)
+			return
 		if valid_spot(p.x, p.z):
 			var k := placing
 			var h := place_hero(k, p.x, p.z)
@@ -662,7 +668,53 @@ func begin_placing(k: String) -> void:
 	_update_ghost(get_viewport().get_mouse_position())
 	ui.refresh()
 
+## Hero Charms: place a pre-upgraded hero for free.
+var placing_charm := ""
+
+func begin_charm(key: String) -> void:
+	if over or progress.charms().get(key, 0) <= 0:
+		return
+	var c: Dictionary = Progress.parse_charm(key)
+	cancel_placing()
+	select_hero(null)
+	placing = c["hero"]
+	placing_charm = key
+	ghost = Models.build_hero(placing)
+	var root: Node3D = ghost["root"]
+	root.scale = Vector3.ONE * HERO_SCALE
+	root.visible = false
+	add_child(root)
+	_update_ghost(get_viewport().get_mouse_position())
+	ui.toast("HERO CHARM", "Tap the grass to place %s %s" % [Defs.HEROES[placing]["name"], charm_label(key)])
+	ui.refresh()
+
+static func charm_label(key: String) -> String:
+	var t: Array = Progress.parse_charm(key)["tiers"]
+	return "%d-%d-%d" % [t[0], t[1], t[2]]
+
+func place_charm(x: float, z: float) -> Hero:
+	var key := placing_charm
+	if key == "" or not progress.take_charm(key):
+		return null
+	var c: Dictionary = Progress.parse_charm(key)
+	var h := place_hero(c["hero"], x, z, true)
+	if h == null:
+		progress.add_charm(key)
+		return null
+	var tiers: Array = c["tiers"]
+	var order := [0, 1, 2]
+	order.sort_custom(func(a, b): return int(tiers[a]) > int(tiers[b]))
+	for p in order:
+		for i in range(int(tiers[p])):
+			_force_upgrade(h, p)
+	ui.refresh_abilities()
+	ui.refresh_powers()
+	burst(Vector3(x, 1.5, z), Color(1.0, 0.85, 0.3), 30, 6.0)
+	save.save(SAVE_PATH)
+	return h
+
 func cancel_placing() -> void:
+	placing_charm = ""
 	if not ghost.is_empty():
 		(ghost["root"] as Node3D).queue_free()
 	ghost = {}
@@ -708,11 +760,11 @@ var locked_class := ""
 func class_blocked(k: String) -> bool:
 	return mode == "one_class" and locked_class != "" and String(Defs.hero_class(k)["id"]) != locked_class
 
-func place_hero(k: String, x: float, z: float) -> Hero:
-	if not hero_available(k):
+func place_hero(k: String, x: float, z: float, free: bool = false) -> Hero:
+	if class_blocked(k) or (not hero_available(k) and not free):
 		return null
 	var def: Dictionary = Defs.HEROES[k]
-	var cost := hero_price(k)
+	var cost := 0 if free else hero_price(k)
 	if cash < cost:
 		return null
 	add_cash(-cost)
@@ -2290,6 +2342,7 @@ func victory() -> void:
 	over = true
 	clear_run()
 	var win_gems := 0
+	var charm_txt := ""
 	sfx.play("win")
 	var medal := mode != "sandbox"
 	if medal:
@@ -2309,13 +2362,19 @@ func victory() -> void:
 			progress.add("nightmare_wins", 1.0, false)
 		win_gems = int({"easy": 15, "normal": 25, "hard": 40, "nightmare": 80}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0) * (1.2 if blessed("finder") else 1.0))
 		progress.add_gems(win_gems)
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		for i in range(2 if difficulty in ["hard", "nightmare"] else 1):
+			var ck: String = progress.roll_charm(Defs.HERO_ORDER, rng)
+			progress.add_charm(ck)
+			charm_txt += "\nHero Charm: %s %s" % [Defs.HEROES[Progress.parse_charm(ck)["hero"]]["name"], charm_label(ck)]
 		for k in squad:
 			progress.add_hero_xp(k, 200.0)
 		if daily_active:
 			progress.complete_daily()
 		progress.check()
 	_record_best()
-	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), ("\nMedal earned!" if medal else "") + ("  +%d Spirit Gems" % win_gems if win_gems > 0 else "")])
+	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), ("\nMedal earned!" if medal else "") + ("  +%d Spirit Gems" % win_gems if win_gems > 0 else "") + charm_txt])
 
 func _save_key(map_i: int = -1, diff: String = "", m: String = "") -> String:
 	var mi := map_index if map_i < 0 else map_i

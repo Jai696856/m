@@ -3,6 +3,7 @@
 extends RefCounted
 
 const Maps = preload("res://scripts/maps.gd")
+const Defs = preload("res://scripts/defs.gd")
 
 ## [id, name, description, stat, target]. Stats starting with "#" count the
 ## entries of a saved set (e.g. distinct maps won).
@@ -28,6 +29,8 @@ const ACHIEVEMENTS := [
 	["maps_all", "Cartographer", "Win on every map.", "#maps_won", 46],
 	["blessing_1", "Blessed", "Choose a Shrine Blessing.", "blessings", 1],
 	["blessing_all", "Chosen One", "Hold every Shrine Blessing at once.", "blessings_held", 15],
+	["charm_1", "Lucky Find", "Find a Hero Charm.", "charms_found", 1],
+	["charm_25", "Charm Hoarder", "Find 25 Hero Charms.", "charms_found", 25],
 	["almanac", "Spirit Scholar", "Fill the Spirit Almanac: pop every kind of spirit.", "#spirits_seen", 15],
 	["themes_6", "World Traveler", "Play a map of every theme.", "#themes_played", 6],
 	["heroes_50", "Recruiter", "Place 50 heroes.", "heroes_placed", 50],
@@ -488,11 +491,80 @@ func _held() -> int:
 			n += 1
 	return n
 
+# ---------------------------------------------------------------------
+# Hero Charms: a pre-upgraded hero you can place for free once.
+# Stored as "hero|t1|t2|t3" -> count.
+# ---------------------------------------------------------------------
+const CHARM_PRICE := 60
+
+func charms() -> Dictionary:
+	var out := {}
+	if save.has_section("charms"):
+		for key in save.get_section_keys("charms"):
+			var n := int(save.get_value("charms", key, 0))
+			if n > 0:
+				out[key] = n
+	return out
+
+func charm_count() -> int:
+	var n := 0
+	for k in charms():
+		n += int(charms()[k])
+	return n
+
+static func charm_key(hero: String, tiers: Array) -> String:
+	return "%s|%d|%d|%d" % [hero, tiers[0], tiers[1], tiers[2]]
+
+static func parse_charm(key: String) -> Dictionary:
+	var parts := key.split("|")
+	return {"hero": parts[0], "tiers": [int(parts[1]), int(parts[2]), int(parts[3])]}
+
+func add_charm(key: String) -> void:
+	save.set_value("charms", key, int(save.get_value("charms", key, 0)) + 1)
+	add("charms_found")
+
+func take_charm(key: String) -> bool:
+	var n := int(save.get_value("charms", key, 0))
+	if n <= 0:
+		return false
+	if n == 1:
+		save.erase_section_key("charms", key)
+	else:
+		save.set_value("charms", key, n - 1)
+	return true
+
+## A random charm for a hero the player has recruited. Main path tier 1-3 (rarely 4),
+## a second path up to tier 2, following the normal upgrade rules.
+func roll_charm(heroes: Array, rng: RandomNumberGenerator) -> String:
+	var pool: Array = []
+	for k in heroes:
+		if level() >= int(Defs.UNLOCK_LEVEL.get(k, 1)):
+			pool.append(k)
+	if pool.is_empty():
+		pool = ["ninja"]
+	var hero: String = pool[rng.randi() % pool.size()]
+	var tiers := [0, 0, 0]
+	var main := rng.randi() % 3
+	tiers[main] = 4 if rng.randf() < 0.08 else rng.randi_range(1, 3)
+	if rng.randf() < 0.6:
+		var second := (main + 1 + rng.randi() % 2) % 3
+		tiers[second] = rng.randi_range(1, 2)
+	return charm_key(hero, tiers)
+
+func buy_charm(heroes: Array) -> String:
+	if not spend_gems(CHARM_PRICE):
+		return ""
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var key := roll_charm(heroes, rng)
+	add_charm(key)
+	return key
+
 func reset_blessings() -> void:
 	if save.has_section("blessings"):
 		save.erase_section("blessings")
 
 func reset() -> void:
-	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel", "blessings"]:
+	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel", "blessings", "charms", "run"]:
 		if save.has_section(section):
 			save.erase_section(section)

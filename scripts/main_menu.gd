@@ -535,6 +535,46 @@ func _fill_store() -> void:
 			else:
 				game.sfx.play("error"))
 		v.add_child(buy)
+	# Hero Charms
+	var ch_card := PanelContainer.new()
+	ch_card.add_theme_stylebox_override("panel", _glow_box(Color(0.22, 0.15, 0.32), ui.GOLD))
+	body.add_child(ch_card)
+	var ch := HBoxContainer.new()
+	ch.add_theme_constant_override("separation", 14)
+	ch_card.add_child(ch)
+	var disc := PanelContainer.new()
+	disc.add_theme_stylebox_override("panel", ui.sb(Color(0.95, 0.7, 0.2), 30, 3, false, 8))
+	disc.add_child(UIScript.HudIcon.new("scroll", 48, Color(1, 0.95, 0.8)))
+	disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ch.add_child(disc)
+	var cv := VBoxContainer.new()
+	cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ch.add_child(cv)
+	cv.add_child(ui.lbl("HERO CHARM  (owned: %d)" % p.charm_count(), 22, Color.WHITE, 8))
+	var cd: Label = ui.lbl("A random recruited hero with upgrades already bought (up to tier 4). Place it for free from the charm button in a game. Every win also drops a charm (two on Hard and Nightmare).", 14, Color(0.88, 0.85, 1.0), 0)
+	cd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cd.custom_minimum_size = Vector2(600, 0)
+	cv.add_child(cd)
+	var last_lbl: Label = ui.lbl("", 15, ui.GOLD, 5)
+	cv.add_child(last_lbl)
+	var cb: Button = ui.btn("BUY  %d" % p.CHARM_PRICE, ui.GREEN if p.gems() >= p.CHARM_PRICE else Color(0.4, 0.42, 0.5), 18, 10)
+	cb.icon = Icons.tex("gem", Color.WHITE, 40)
+	cb.add_theme_constant_override("icon_max_width", 20)
+	cb.custom_minimum_size = Vector2(170, 46)
+	cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cb.pressed.connect(func() -> void:
+		var key: String = game.progress.buy_charm(Defs.HERO_ORDER)
+		if key == "":
+			game.sfx.play("error")
+			return
+		game.sfx.play("quest")
+		game.save.save(game.SAVE_PATH)
+		_fill_store()
+		refresh()
+		var c2: Dictionary = game.progress.parse_charm(key)
+		ui.toast("HERO CHARM", "%s %s" % [Defs.HEROES[c2["hero"]]["name"], game.charm_label(key)]))
+	ch.add_child(cb)
+
 
 func show_home() -> void:
 	for k in screens:

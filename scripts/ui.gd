@@ -1257,12 +1257,26 @@ func _build_powers() -> void:
 	power_bar.position = Vector2(12, 132)
 	root.add_child(power_bar)
 
+var charm_popup: PanelContainer
+
 func refresh_powers() -> void:
 	for c in power_bar.get_children():
 		c.queue_free()
 	power_buttons.clear()
+	if charm_popup:
+		charm_popup.visible = false
 	if game.progress == null:
 		return
+	var nc: int = game.progress.charm_count()
+	if nc > 0:
+		var cb := round_btn(Color(0.95, 0.7, 0.2), 46)
+		cb.tooltip_text = "Hero Charms (%d): place a pre-upgraded hero for free" % nc
+		centered(cb, HudIcon.new("scroll", 28, Color(1, 0.95, 0.8)))
+		var cl := lbl(str(nc), 13, Color.WHITE, 6)
+		cl.position = Vector2(30, 26)
+		cb.add_child(cl)
+		cb.pressed.connect(toggle_charms)
+		power_bar.add_child(cb)
 	for pw in game.progress.POWERS:
 		var id: String = pw[0]
 		var n: int = game.progress.power_count(id)
@@ -1284,6 +1298,45 @@ func refresh_powers() -> void:
 		power_bar.add_child(b)
 		power_buttons.append([b, id])
 	_update_power_buttons()
+
+func toggle_charms() -> void:
+	if charm_popup and charm_popup.visible:
+		charm_popup.visible = false
+		return
+	if charm_popup == null:
+		charm_popup = panel_of(Color(0.12, 0.2, 0.35, 0.96), 14)
+		charm_popup.position = Vector2(66, 132)
+		root.add_child(charm_popup)
+	for c in charm_popup.get_children():
+		c.queue_free()
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	charm_popup.add_child(v)
+	v.add_child(lbl("HERO CHARMS", 16, GOLD, 6))
+	var ch: Dictionary = game.progress.charms()
+	var keys := ch.keys()
+	keys.sort()
+	for key in keys:
+		var cd: Dictionary = game.progress.parse_charm(key)
+		var hk: String = cd["hero"]
+		var b := btn("", TILE, 14, 8)
+		b.custom_minimum_size = Vector2(230, 46)
+		var h := HBoxContainer.new()
+		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 3)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(h)
+		h.add_child(_portrait_rect(hk, 40))
+		var l := lbl("%s  %s  x%d" % [Defs.HEROES[hk]["name"], game.charm_label(key), int(ch[key])], 15, Color.WHITE, 6)
+		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(l)
+		var blocked: bool = game.class_blocked(hk)
+		b.disabled = blocked or game.over
+		var ckey: String = key
+		b.pressed.connect(func() -> void:
+			charm_popup.visible = false
+			game.begin_charm(ckey))
+		v.add_child(b)
+	charm_popup.visible = true
 
 func _update_power_buttons() -> void:
 	for item in power_buttons:

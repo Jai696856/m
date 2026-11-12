@@ -612,6 +612,28 @@ func _test_blessings_and_continue(main) -> void:
 	main.game_over()
 	check(main.saved_run().is_empty(), "game over clears the save")
 	p.reset_blessings()
+	# Hero Charms
+	p.add_gems(200)
+	var ck: String = p.buy_charm(main.Defs.HERO_ORDER)
+	check(ck != "" and p.charm_count() >= 1, "buy a Hero Charm")
+	var tiers: Array = p.parse_charm(ck)["tiers"]
+	var deep := 0
+	for t in tiers:
+		if t >= 3:
+			deep += 1
+	check(deep <= 1, "charm tiers follow the path rules (%s)" % ck)
+	main.new_game("normal", 0, "standard")
+	main.ui.refresh_powers()
+	main.ui.toggle_charms()
+	check(main.ui.charm_popup.visible, "charm list opens in a game")
+	main.begin_charm(ck)
+	check(main.placing_charm == ck, "placing a charm")
+	var cash0: float = main.cash
+	var sp: Vector2 = _find_spots(main, 1)[0]
+	var ch = main.place_charm(sp.x, sp.y)
+	check(ch != null and ch.tiers == tiers and main.cash == cash0, "charm hero placed free with its upgrades")
+	check(not p.charms().has(ck) or p.charms()[ck] >= 1, "charm consumed")
+	main.cancel_placing()
 	print("blessings and continue ok")
 
 # Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.

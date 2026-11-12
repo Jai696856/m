@@ -24,6 +24,8 @@ func _initialize() -> void:
 	for i in range(10):
 		await process_frame
 	_save(out + "/store.png")
+	for i in range(3):
+		main.progress.add_charm(main.Progress.charm_key(["ninja", "mage", "kenta"][i], [[3, 1, 0], [0, 2, 3], [4, 0, 2]][i]))
 	for id in ["time_stop", "shrine_bomb", "cash_drop", "golden_touch"]:
 		main.progress.buy_power(id)
 	main.progress.buy_skin("komugi", 1)
@@ -54,6 +56,10 @@ func _initialize() -> void:
 	for i in range(70):
 		await process_frame
 	_save(out + "/game_farm.png")
+	main.ui.toggle_charms()
+	for i in range(5):
+		await process_frame
+	_save(out + "/game_charms.png")
 	main.queue_free()
 	await process_frame
 	quit(0)
