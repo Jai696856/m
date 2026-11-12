@@ -42,6 +42,11 @@ const ABILITIES := {
 	"hina": {"name": "Bullet Storm", "cd": 40.0, "desc": "The turret sprays 60 homing bullets."},
 	"hiro": {"name": "Market Day", "cd": 60.0, "desc": "Instantly earn $400 plus 5% of your money (max $3000)."},
 	"nao": {"name": "Blessing", "cd": 70.0, "desc": "Restores 25 lives."},
+	"kaito": {"name": "Broadside", "cd": 45.0, "desc": "Fires 16 cannon shockwaves in every direction."},
+	"rei": {"name": "Spirit Cannon", "cd": 55.0, "desc": "A colossal ki wave blasts everything in a line."},
+	"ichika": {"name": "Sealing Circle", "cd": 55.0, "desc": "Seals every spirit nearby in place and burns them."},
+	"gen": {"name": "Gadget Overload", "cd": 45.0, "desc": "Twelve flashbang grenades hit the strongest spirits."},
+	"lumi": {"name": "Starlight Transformation", "cd": 70.0, "desc": "Heroes attack twice as fast for 8 seconds and the shrine heals 10 lives."},
 }
 const ABILITY_TIER := 3
 
@@ -469,9 +474,11 @@ func _on_key(k: InputEventKey) -> void:
 	var code := k.keycode
 	if code >= KEY_1 and code <= KEY_5:
 		ui.select_class(code - KEY_1)
-	elif code in [KEY_Z, KEY_X, KEY_C]:
+	elif code in [KEY_Z, KEY_X, KEY_C, KEY_V]:
 		var cls: Array = Defs.CLASSES[ui.shop_class]["heroes"]
-		begin_placing(cls[[KEY_Z, KEY_X, KEY_C].find(code)])
+		var idx := [KEY_Z, KEY_X, KEY_C, KEY_V].find(code)
+		if idx < cls.size():
+			begin_placing(cls[idx])
 	elif code == KEY_ESCAPE:
 		if placing != "" or selected != null:
 			cancel_placing()
@@ -636,6 +643,13 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 	h.z = z
 	h.model = Models.build_hero(k)
 	h.stats = (def["base"] as Dictionary).duplicate(true)
+	if progress.mastered(k):
+		# Mastery: a permanent edge for this hero in every game
+		h.stats["rate"] = float(h.stats["rate"]) * 0.85
+		if int(h.stats.get("pierce", 0)) > 0:
+			h.stats["pierce"] = int(h.stats["pierce"]) + 1
+		if float(h.stats.get("dmg", 0.0)) > 0.0:
+			h.stats["dmg"] = float(h.stats["dmg"]) + 1.0
 	h.spent = cost
 	h.tiers = [0, 0, 0]
 	var root: Node3D = h.model["root"]
@@ -643,6 +657,9 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 	root.scale = Vector3.ONE * HERO_SCALE
 	(h.model["body"] as Node3D).rotation.y = atan2(-x, 20.0 - z)
 	add_child(root)
+	if progress.mastered(k):
+		Models.add(root, Models.torus(1.12, 0.07), Models.flat(0xffcc33), Vector3(0, 0.42, 0))
+		Models.add(root, Models.sphere(0.12, 4), Models.flat(0xffcc33), Vector3(0, 3.3, 0))
 	heroes.append(h)
 	if _tracking():
 		progress.add("heroes_placed")
@@ -690,6 +707,15 @@ func _upgrades_need_xp() -> bool:
 	return not attract and mode != "sandbox"
 
 ## Spend hero XP to unlock the next tier of a path (from the upgrade panel or the Heroes menu).
+func unlock_mastery(k: String) -> bool:
+	if not progress.unlock_mastery(k):
+		sfx.play("error")
+		return false
+	save.save(SAVE_PATH)
+	sfx.play("win")
+	ui.toast("MASTERY UNLOCKED", "%s has mastered every path" % Defs.HEROES[k]["name"])
+	return true
+
 func unlock_upgrade(k: String, p: int, t: int) -> bool:
 	if not progress.unlock_upgrade(k, p, t):
 		sfx.play("error")
@@ -840,6 +866,49 @@ func use_ability(h: Hero) -> void:
 				lives += 25
 				float_text("+25 LIVES", Vector3(h.x, 3.0, h.z), false)
 				ui.update_hud()
+		"kaito":
+			var ok := opt_from(s, h, {"dmg": 20.0, "type": "magic"})
+			for i in range(16):
+				fire(hpos, i / 16.0 * TAU, "wave", ok, 22.0, 30, {"r": 0.9, "life": 1.6})
+			shake = 0.3 * shake_mul()
+		"rei":
+			var tops := _strongest(1)
+			var ang := randf() * TAU
+			if not tops.is_empty():
+				ang = atan2(tops[0].pos.x - h.x, tops[0].pos.z - h.z)
+			var dx := sin(ang)
+			var dz := cos(ang)
+			var orr := opt_from(s, h, {"dmg": 400.0, "type": "magic"})
+			for e in enemies.duplicate():
+				if not e.alive:
+					continue
+				var rx: float = e.pos.x - h.x
+				var rz: float = e.pos.z - h.z
+				if rx * dx + rz * dz > 0.0 and absf(rx * dz - rz * dx) <= 2.4 + e.r:
+					hit_enemy(e, orr)
+			var holder := Node3D.new()
+			holder.rotation.y = ang
+			var bm2 := Models.fx_mat(Defs.col(0xffb02e, 0.95), true)
+			Models.add(holder, Models.cyl(1.0, 1.0, 1.0, 12), bm2, Vector3(0, 0, 40.0), Vector3(PI / 2, 0, 0), Vector3(2.4, 80.0, 2.4))
+			add_effect(holder, Vector3(h.x, 1.6, h.z), 0.6, "beam", 1.0, bm2)
+			shake = 0.5 * shake_mul()
+		"ichika":
+			var oi := opt_from(s, h, {"dmg": 30.0, "type": "magic"})
+			for e in enemies_near(h.x, h.z, 12.0, true):
+				e.stun = maxf(e.stun, 1.5 if e.boss else 3.0)
+				hit_enemy(e, oi)
+			_ring_fx(Vector3(h.x, 0.5, h.z), 12.0, 0xd81b60, 0.8)
+		"gen":
+			var og := opt_from(s, h, {"dmg": 25.0, "type": "magic", "stun": 1.0, "stun_boss": true})
+			for e in _strongest(12):
+				explode(e.pos.x, e.pos.z, {"r": 3.0, "pierce": 30}, og, false)
+		"lumi":
+			encore_t = 8.0
+			if mode != "sandbox":
+				lives += 10
+				ui.update_hud()
+			for o in heroes:
+				burst(Vector3(o.x, 2.5, o.z), Defs.col(0xff6fae), 10, 4.0)
 		"idol":
 			encore_t = 10.0
 			for o in heroes:

@@ -41,6 +41,7 @@ const ACHIEVEMENTS := [
 	["rounds_500", "Marathon", "Survive 500 rounds in total.", "rounds", 500],
 	["unlock_1", "Fresh Training", "Unlock a hero upgrade with hero XP.", "unlocks_bought", 1],
 	["unlock_30", "Dojo Master", "Unlock 30 hero upgrades.", "unlocks_bought", 30],
+	["mastery_1", "True Master", "Master a hero.", "masteries", 1],
 	["level_10", "Rising Star", "Reach player level 10.", "level", 10],
 	["level_25", "Legend of the Shrine", "Reach player level 25.", "level", 25],
 ]
@@ -213,16 +214,41 @@ func unlock_upgrade(k: String, path: int, tier: int) -> bool:
 	add("unlocks_bought")
 	return true
 
+## Mastery: the final node of each hero's tree. Needs all 12 upgrades unlocked.
+const MASTERY_COST := 8000
+
+func mastered(k: String) -> bool:
+	return bool(save.get_value("mastery", k, false))
+
+func mastery_blocker(k: String) -> String:
+	if mastered(k):
+		return "Mastered"
+	for p in range(3):
+		for t in range(2, 5):
+			if not upgrade_unlocked(k, p, t):
+				return "Unlock all 12 upgrades first"
+	if hero_xp(k) < MASTERY_COST:
+		return "Needs %d XP" % MASTERY_COST
+	return ""
+
+func unlock_mastery(k: String) -> bool:
+	if mastery_blocker(k) != "":
+		return false
+	save.set_value("hero_xp", k, hero_xp(k) - MASTERY_COST)
+	save.set_value("mastery", k, true)
+	add("masteries")
+	return true
+
 ## Test/debug helper: unlock every upgrade of every hero.
 func unlock_everything(hero_keys: Array) -> void:
-	if xp() < 7000.0:
-		save.set_value("progress", "xp", 7000.0)   # player level 13: every hero recruited
+	if xp() < 12000.0:
+		save.set_value("progress", "xp", 12000.0)   # player level 18: every hero recruited
 	for k in hero_keys:
 		for p in range(3):
 			for t in range(2, 5):
 				save.set_value("unlocks", "%s|%d|%d" % [k, p, t], true)
 
 func reset() -> void:
-	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks"]:
+	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery"]:
 		if save.has_section(section):
 			save.erase_section(section)

@@ -7,6 +7,7 @@ const Defs = preload("res://scripts/defs.gd")
 const Maps = preload("res://scripts/maps.gd")
 const Progress = preload("res://scripts/progress.gd")
 const UIScript = preload("res://scripts/ui.gd")
+const Icons = preload("res://scripts/icons.gd")
 
 const TIPS := [
 	"Tip: Heroes on tier 3 of any path unlock an ability. Press Q to Q-I to use them.",
@@ -28,11 +29,18 @@ var daily_btn: Button
 var medal_pill: Label
 var trophy_pill: Label
 var hero_class_i := 0
-var hero_list: VBoxContainer
+var hero_list: BoxContainer
 var hero_tabs: Array = []
 var tip_lbl: Label
 var screens := {}
-var hero_detail: VBoxContainer
+var tree_hero := "ninja"
+var tree_sel := Vector2i(0, 1)
+var tree_title: Label
+var tree_xp: Label
+var tree_desc: Label
+var tree_grid: VBoxContainer
+var tree_preview: VBoxContainer
+var tree_mastery: PanelContainer
 var tip_i := 0
 
 func _ready() -> void:
@@ -40,6 +48,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_home()
 	screens["heroes"] = _build_heroes()
+	screens["tree"] = _build_tree()
 	screens["achievements"] = _screen("ACHIEVEMENTS")
 	screens["stats"] = _screen("STATS")
 	screens["settings"] = _build_settings()
@@ -250,16 +259,17 @@ func show_home() -> void:
 # ---------------------------------------------------------------------
 func _screen(title: String) -> Control:
 	var shade := ColorRect.new()
-	shade.color = Color(0.05, 0.12, 0.25, 0.7)
+	shade.color = Color(0.12, 0.05, 0.25, 0.75)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.visible = false
 	add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
-	var card: PanelContainer = ui.panel_of(ui.NAVY, 24)
+	var card: PanelContainer = ui.panel_of(Color(0.09, 0.05, 0.22), 24)
 	card.custom_minimum_size = Vector2(1000, 600)
 	center.add_child(card)
+	card.add_child(_night_bg())
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	card.add_child(v)
@@ -306,6 +316,7 @@ func _open(which: String) -> void:
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():
+		c.remove_child(ch)
 		ch.queue_free()
 
 func _fill_achievements() -> void:
@@ -388,16 +399,13 @@ func _build_heroes() -> Control:
 		tb.pressed.connect(_pick_hero_class.bind(i))
 		tabs.add_child(tb)
 		hero_tabs.append(tb)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 14)
-	body.add_child(h)
-	hero_list = VBoxContainer.new()
-	hero_list.add_theme_constant_override("separation", 6)
-	h.add_child(hero_list)
-	hero_detail = VBoxContainer.new()
-	hero_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hero_detail.add_theme_constant_override("separation", 6)
-	h.add_child(hero_detail)
+	hero_list = HBoxContainer.new()
+	hero_list.add_theme_constant_override("separation", 14)
+	hero_list.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_child(hero_list)
+	var hint: Label = ui.lbl("Pick a hero to open their upgrade tree. Pop spirits with a hero to earn their XP.", 15, Color(0.85, 0.8, 1.0), 0)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(hint)
 	return sc
 
 func _pick_hero_class(i: int) -> void:
@@ -406,101 +414,334 @@ func _pick_hero_class(i: int) -> void:
 		var col: Color = Defs.col(Defs.CLASSES[j]["color"])
 		ui._set_btn_bg(hero_tabs[j], col if j == i else col.darkened(0.45), 10)
 	_clear(hero_list)
-	var heroes: Array = Defs.CLASSES[i]["heroes"]
-	for k in heroes:
+	for k in Defs.CLASSES[i]["heroes"]:
 		var key: String = k
 		var d: Dictionary = Defs.HEROES[key]
 		var unlocked: bool = game.progress.level() >= int(Defs.UNLOCK_LEVEL[key])
-		var b: Button = ui.btn("", ui.TILE if unlocked else Color(0.5, 0.55, 0.65), 14, 12)
-		b.custom_minimum_size = Vector2(250, 96)
-		var row := HBoxContainer.new()
-		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 8)
-		b.add_child(row)
-		var pic: TextureRect = ui._portrait_rect(key, 84)
-		if not unlocked:
-			pic.modulate = Color(0.25, 0.25, 0.35)
-		row.add_child(pic)
+		var b: Button = ui.btn("", Defs.col(Defs.CLASSES[i]["color"]) if unlocked else Color(0.35, 0.33, 0.48), 14, 18)
+		b.custom_minimum_size = Vector2(220, 380)
 		var v := VBoxContainer.new()
+		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(v)
-		v.add_child(ui.lbl(d["name"], 22, Color.WHITE, 8))
-		v.add_child(ui.lbl(d["role"], 14, Color.WHITE, 5))
-		v.add_child(ui.lbl("UNLOCKED" if unlocked else "LEVEL %d" % int(Defs.UNLOCK_LEVEL[key]), 14, ui.GREEN if unlocked else ui.GOLD, 5))
-		b.pressed.connect(func() -> void: _show_hero(key))
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.add_theme_constant_override("separation", 2)
+		b.add_child(v)
+		var pic: TextureRect = ui._portrait_rect(key, 190)
+		pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		if not unlocked:
+			pic.modulate = Color(0.2, 0.2, 0.3)
+		v.add_child(pic)
+		for line in [[d["name"], 30, Color.WHITE], [d["role"], 16, Color.WHITE], ["LEVEL %d" % int(Defs.UNLOCK_LEVEL[key]) if not unlocked else ("MASTERED" if game.progress.mastered(key) else "XP %s" % _num(game.progress.hero_xp(key))), 16, ui.GOLD]]:
+			var l: Label = ui.lbl(line[0], line[1], line[2], 8)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(l)
+		var count := 0
+		for p in range(3):
+			for t in range(2, 5):
+				if game.progress.upgrade_unlocked(key, p, t):
+					count += 1
+		var prog: Label = ui.lbl("%d / 12 UPGRADES" % count, 14, Color.WHITE, 6)
+		prog.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(prog)
+		b.pressed.connect(open_tree.bind(key))
 		hero_list.add_child(b)
-	_show_hero(heroes[0])
 
-func _show_hero(k: String) -> void:
-	_clear(hero_detail)
+# ---------------------------------------------------------------------
+# Upgrade tree: header with hero XP and arrows, preview on the left,
+# 3 paths x 4 tiers of round nodes, and the Mastery node on the right.
+# ---------------------------------------------------------------------
+func _build_tree() -> Control:
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.visible = false
+	add_child(root)
+	root.add_child(_night_bg())
+	var outer := VBoxContainer.new()
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 14)
+	outer.add_theme_constant_override("separation", 10)
+	root.add_child(outer)
+	# Header row
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	outer.add_child(head)
+	var back: Button = ui.btn("", ui.TILE.darkened(0.1), 14, 12)
+	back.custom_minimum_size = Vector2(64, 60)
+	ui.centered(back, _icon_rect("back", 40))
+	back.pressed.connect(func() -> void: _open("heroes"))
+	head.add_child(back)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(spacer)
+	var arrow_l: Button = ui.btn("", ui.GOLD, 14, 12)
+	arrow_l.custom_minimum_size = Vector2(54, 60)
+	ui.centered(arrow_l, _icon_rect("left", 36))
+	arrow_l.pressed.connect(func() -> void: _step_hero(-1))
+	head.add_child(arrow_l)
+	var banner: PanelContainer = ui.panel_of(Color(0.16, 0.12, 0.42, 0.95), 16)
+	banner.custom_minimum_size = Vector2(620, 0)
+	head.add_child(banner)
+	var bv := VBoxContainer.new()
+	bv.add_theme_constant_override("separation", 0)
+	banner.add_child(bv)
+	var bh := HBoxContainer.new()
+	bh.alignment = BoxContainer.ALIGNMENT_CENTER
+	bh.add_theme_constant_override("separation", 16)
+	bv.add_child(bh)
+	tree_title = ui.lbl("", 30, Color.WHITE, 10)
+	bh.add_child(tree_title)
+	tree_xp = ui.lbl("", 22, ui.GREEN, 8)
+	bh.add_child(tree_xp)
+	tree_desc = ui.lbl("", 14, Color.WHITE, 0)
+	tree_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(tree_desc)
+	var arrow_r: Button = ui.btn("", ui.GOLD, 14, 12)
+	arrow_r.custom_minimum_size = Vector2(54, 60)
+	ui.centered(arrow_r, _icon_rect("right", 36))
+	arrow_r.pressed.connect(func() -> void: _step_hero(1))
+	head.add_child(arrow_r)
+	var spacer2 := Control.new()
+	spacer2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(spacer2)
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(64, 0)
+	head.add_child(pad)
+	# Body: preview | grid | mastery
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(body)
+	tree_preview = VBoxContainer.new()
+	tree_preview.custom_minimum_size = Vector2(250, 0)
+	tree_preview.add_theme_constant_override("separation", 6)
+	body.add_child(tree_preview)
+	tree_grid = VBoxContainer.new()
+	tree_grid.add_theme_constant_override("separation", 6)
+	tree_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tree_grid.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_child(tree_grid)
+	tree_mastery = PanelContainer.new()
+	tree_mastery.custom_minimum_size = Vector2(170, 0)
+	tree_mastery.add_theme_stylebox_override("panel", _glow_box(Color(0.5, 0.25, 0.85), ui.GOLD))
+	body.add_child(tree_mastery)
+	return root
+
+func _night_bg() -> TextureRect:
+	var g := Gradient.new()
+	g.set_color(0, Color(0.36, 0.17, 0.62))
+	g.set_color(1, Color(0.09, 0.05, 0.22))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill_from = Vector2(0.5, 0.0)
+	gt.fill_to = Vector2(0.5, 1.0)
+	var tr := TextureRect.new()
+	tr.texture = gt
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
+
+func _glow_box(bg: Color, border: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(5)
+	s.set_corner_radius_all(18)
+	s.set_content_margin_all(10)
+	s.shadow_color = Color(border, 0.6)
+	s.shadow_size = 12
+	return s
+
+func _icon_rect(icon: String, px: int, col: Color = Color.WHITE) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = Icons.tex(icon, col, px * 2)
+	t.custom_minimum_size = Vector2(px, px)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+func open_tree(k: String) -> void:
+	tree_hero = k
+	tree_sel = Vector2i(0, 1)
+	for s in screens:
+		(screens[s] as Control).visible = s == "tree"
+	_fill_tree()
+
+func _step_hero(dir: int) -> void:
+	var order: Array = Defs.HERO_ORDER
+	var i := (order.find(tree_hero) + dir + order.size()) % order.size()
+	open_tree(order[i])
+
+## State of one node: "owned" (unlocked), "available" (affordable now), "locked".
+func _node_state(k: String, p: int, t: int) -> String:
+	var prog = game.progress
+	if prog.upgrade_unlocked(k, p, t):
+		return "owned"
+	if prog.unlock_blocker(k, p, t) == "":
+		return "available"
+	return "locked"
+
+func _fill_tree() -> void:
+	var k := tree_hero
 	var d: Dictionary = Defs.HEROES[k]
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 12)
-	hero_detail.add_child(top)
-	var pic := PanelContainer.new()
-	pic.add_theme_stylebox_override("panel", ui.sb(ui.TILE, 14, 3, false, 0))
-	pic.add_child(ui._portrait_rect(k, 120))
-	top.add_child(pic)
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(info)
-	info.add_child(ui.lbl("%s  -  %s" % [d["name"], d["role"]], 34, Color.WHITE, 12))
-	var need := int(Defs.UNLOCK_LEVEL[k])
-	if game.progress.level() < need:
-		info.add_child(ui.lbl("Joins your squad at player level %d (you are level %d)" % [need, game.progress.level()], 16, ui.GOLD, 6))
-	var desc: Label = ui.lbl(d["desc"], 16, Color(0.85, 0.92, 1.0), 0)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_child(desc)
-	info.add_child(ui.lbl("Cost $%d      Hero XP: %s" % [int(d["cost"]), _num(game.progress.hero_xp(k))], 18, ui.GOLD, 6))
-	var hint: Label = ui.lbl("Earn hero XP by popping spirits with %s. Spend it below to unlock upgrades for good." % d["name"], 13, Color(0.75, 0.65, 1.0), 0)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_child(hint)
-	var ab: Dictionary = game.ABILITIES[k]
-	var ab_lbl: Label = ui.lbl("Ability (tier 3): %s - %s" % [ab["name"], ab["desc"]], 15, Color(1, 0.85, 0.5), 0)
-	ab_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_child(ab_lbl)
-	var paths := HBoxContainer.new()
-	paths.add_theme_constant_override("separation", 8)
-	hero_detail.add_child(paths)
+	var cls_col: Color = Defs.col(Defs.hero_class(k)["color"])
+	tree_title.text = "%s  -  %s" % [String(d["name"]).to_upper(), String(d["role"]).to_upper()]
+	tree_xp.text = "XP: %s" % _num(game.progress.hero_xp(k))
+	tree_desc.text = d["desc"]
+	_clear(tree_grid)
 	for p in range(3):
-		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", ui.sb(ui.CARD, 12, 3, false, 8))
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		paths.add_child(card)
-		var v := VBoxContainer.new()
-		v.add_theme_constant_override("separation", 4)
-		card.add_child(v)
-		v.add_child(ui.dark_lbl(String(d["path_names"][p]).to_upper(), 18))
-		for t in range(4):
-			var up: Array = d["paths"][p][t]
-			var tier := t + 1
-			var unlocked: bool = game.progress.upgrade_unlocked(k, p, tier)
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 6)
-			v.add_child(row)
-			var name_lbl: Label = ui.dark_lbl("%d. %s  ($%d)" % [tier, up[0], int(up[1])], 14)
-			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(name_lbl)
-			if unlocked:
-				row.add_child(ui.lbl("OK", 13, ui.GREEN.darkened(0.2), 4))
-			else:
-				var block: String = game.progress.unlock_blocker(k, p, tier)
-				var ub: Button = ui.btn("%d XP" % int(game.progress.UNLOCK_COST[tier]), ui.VIOLET, 12, 8)
-				ub.disabled = block != ""
-				ub.tooltip_text = block if block != "" else "Unlock %s" % up[0]
-				ub.custom_minimum_size = Vector2(76, 26)
-				ub.pressed.connect(_unlock.bind(k, p, tier))
-				row.add_child(ub)
-			var ud: Label = ui.dark_lbl(up[2], 12)
-			ud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			ud.custom_minimum_size = Vector2(200, 0)
-			ud.modulate.a = 1.0 if unlocked else 0.6
-			v.add_child(ud)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 0)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		tree_grid.add_child(row)
+		var path_lbl: Label = ui.lbl(String(d["path_names"][p]).to_upper(), 14, ui.GOLD, 6)
+		path_lbl.custom_minimum_size = Vector2(96, 0)
+		path_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		path_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(path_lbl)
+		for t in range(1, 5):
+			if t > 1:
+				var bar := ColorRect.new()
+				bar.custom_minimum_size = Vector2(26, 8)
+				bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				bar.color = ui.GOLD if _node_state(k, p, t) == "owned" else Color(0.2, 0.12, 0.35)
+				bar.position.y = -14
+				row.add_child(bar)
+			row.add_child(_tree_node(k, p, t, cls_col))
+	# Mastery column
+	_clear(tree_mastery)
+	var mv := VBoxContainer.new()
+	mv.alignment = BoxContainer.ALIGNMENT_CENTER
+	mv.add_theme_constant_override("separation", 6)
+	tree_mastery.add_child(mv)
+	var mt: Label = ui.lbl("MASTERY", 22, ui.GOLD, 8)
+	mt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mv.add_child(mt)
+	var mastered: bool = game.progress.mastered(k)
+	var mb: Button = ui.round_btn(ui.GOLD if mastered else Color(0.3, 0.2, 0.5), 120)
+	mb.add_theme_stylebox_override("normal", _glow_box(ui.GOLD if mastered else Color(0.3, 0.2, 0.5), ui.GOLD))
+	(mb.get_theme_stylebox("normal") as StyleBoxFlat).set_corner_radius_all(60)
+	ui.centered(mb, _icon_rect("star", 70, Color.WHITE if mastered else Color(1, 0.85, 0.4)))
+	mb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	mb.pressed.connect(func() -> void:
+		tree_sel = Vector2i(-1, 0)
+		_fill_preview())
+	mv.add_child(mb)
+	var ml: Label = ui.lbl("MASTERED" if mastered else "%s XP" % _num(Progress.MASTERY_COST), 16, Color.WHITE, 6)
+	ml.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mv.add_child(ml)
+	var md: Label = ui.lbl("Faster attacks, +1 damage and pierce, and a golden crown in every game.", 12, Color(0.95, 0.9, 1.0), 0)
+	md.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	md.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mv.add_child(md)
+	_fill_preview()
 
-func _unlock(k: String, p: int, tier: int) -> void:
-	if game.unlock_upgrade(k, p, tier):
-		_show_hero(k)
+func _tree_node(k: String, p: int, t: int, cls_col: Color) -> Control:
+	var d: Dictionary = Defs.HEROES[k]
+	var up: Array = d["paths"][p][t - 1]
+	var state := _node_state(k, p, t)
+	var cell := VBoxContainer.new()
+	cell.custom_minimum_size = Vector2(118, 0)
+	cell.add_theme_constant_override("separation", 0)
+	var bg: Color = cls_col if state == "owned" else (Color(0.18, 0.2, 0.42) if state == "available" else Color(0.14, 0.1, 0.28))
+	var b: Button = ui.round_btn(bg, 84)
+	var st: StyleBoxFlat = ui.sb(bg, 42, 4)
+	if state == "available":
+		st.border_color = ui.GOLD
+		st.set_border_width_all(5)
+	if tree_sel == Vector2i(p, t):
+		st.shadow_color = Color(1, 1, 1, 0.8)
+		st.shadow_size = 10
+		st.shadow_offset = Vector2.ZERO
+	b.add_theme_stylebox_override("normal", st)
+	b.add_theme_stylebox_override("hover", st)
+	var icon := _icon_rect(Icons.for_upgrade(up[3]), 46, Color.WHITE if state != "locked" else Color(1, 1, 1, 0.35))
+	ui.centered(b, icon)
+	if state == "locked":
+		var lk := _icon_rect("lock", 22, Color(1, 1, 1, 0.9))
+		lk.position = Vector2(58, 58)
+		b.add_child(lk)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(func() -> void:
+		tree_sel = Vector2i(p, t)
+		_fill_tree())
+	cell.add_child(b)
+	var name_lbl: Label = ui.lbl(up[0], 13, Color.WHITE, 5)
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.custom_minimum_size = Vector2(112, 34)
+	cell.add_child(name_lbl)
+	return cell
+
+func _fill_preview() -> void:
+	_clear(tree_preview)
+	var k := tree_hero
+	var d: Dictionary = Defs.HEROES[k]
+	var mastery := tree_sel.x < 0
+	var title: String
+	var desc: String
+	var icon: String
+	var status: String
+	var can := false
+	var cost_txt := ""
+	if mastery:
+		title = "MASTERY"
+		desc = "The final node: this hero attacks 15% faster with +1 damage and pierce in every game, and wears a golden crown."
+		icon = "star"
+		var block: String = game.progress.mastery_blocker(k)
+		status = "MASTERED" if game.progress.mastered(k) else (block if block != "" else "AVAILABLE")
+		can = block == ""
+		cost_txt = "%s XP" % _num(Progress.MASTERY_COST)
+	else:
+		var up: Array = d["paths"][tree_sel.x][tree_sel.y - 1]
+		title = String(up[0]).to_upper()
+		desc = up[2]
+		icon = Icons.for_upgrade(up[3])
+		var state := _node_state(k, tree_sel.x, tree_sel.y)
+		status = {"owned": "UNLOCKED", "available": "AVAILABLE"}.get(state, String(game.progress.unlock_blocker(k, tree_sel.x, tree_sel.y)).to_upper())
+		can = state == "available"
+		cost_txt = "%d XP" % int(Progress.UNLOCK_COST[tree_sel.y])
+		desc += "\nIn-game cost: $%d" % int(up[1])
+	var t: Label = ui.lbl(title, 24, Color.WHITE, 8)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tree_preview.add_child(t)
+	var big := PanelContainer.new()
+	big.custom_minimum_size = Vector2(200, 200)
+	big.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	big.add_theme_stylebox_override("panel", _glow_box(Defs.col(Defs.hero_class(k)["color"]).darkened(0.2), ui.GOLD if mastery else Color(0.12, 0.08, 0.16)))
+	var stack := Control.new()
+	big.add_child(stack)
+	var pic: TextureRect = ui._portrait_rect(k, 180)
+	pic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(pic)
+	var ic := _icon_rect(icon, 70)
+	ic.position = Vector2(120, 110)
+	stack.add_child(ic)
+	tree_preview.add_child(big)
+	var s: Label = ui.lbl(status, 18, ui.GREEN if status in ["UNLOCKED", "MASTERED", "AVAILABLE"] else ui.GOLD, 6)
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tree_preview.add_child(s)
+	var dl: Label = ui.lbl(desc, 14, Color(0.92, 0.9, 1.0), 0)
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tree_preview.add_child(dl)
+	if status not in ["UNLOCKED", "MASTERED"]:
+		var ub: Button = ui.btn("UNLOCK  %s" % cost_txt, ui.GREEN if can else Color(0.4, 0.38, 0.5), 18, 14)
+		ub.disabled = not can
+		ub.pressed.connect(_unlock_selected)
+		tree_preview.add_child(ub)
+
+func _unlock_selected() -> void:
+	var ok := false
+	if tree_sel.x < 0:
+		ok = game.unlock_mastery(tree_hero)
+	else:
+		ok = game.unlock_upgrade(tree_hero, tree_sel.x, tree_sel.y)
+	if ok:
+		_fill_tree()
 		refresh()
 
 func _build_settings() -> Control:

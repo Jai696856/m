@@ -470,7 +470,7 @@ func _build_shop() -> void:
 	shop_grid.add_theme_constant_override("h_separation", 6)
 	shop_grid.add_theme_constant_override("v_separation", 6)
 	shop_scroll.add_child(shop_grid)
-	var hint := lbl("1-5: class  Z X C: hero\nSpace: play  Drag: rotate", 11, Color(0.8, 0.88, 1.0), 0)
+	var hint := lbl("1-5: class  Z X C V: hero\nSpace: play  Drag: rotate", 11, Color(0.8, 0.88, 1.0), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.name = "Hint"
@@ -510,7 +510,7 @@ func rebuild_shop() -> void:
 		var cost := lbl("$%d" % game.price(h["cost"]), 20, CASH, 8)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(cost)
-		var num := lbl(["Z", "X", "C"][i], 13, Color.WHITE, 6)
+		var num := lbl(["Z", "X", "C", "V"][i], 13, Color.WHITE, 6)
 		num.position = Vector2(6, 2)
 		b.add_child(num)
 		if not game.hero_available(k):

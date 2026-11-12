@@ -48,14 +48,14 @@ func _initialize() -> void:
 
 # Heroes join at player levels; the shop groups them into 5 classes of 3.
 func _test_hero_levels(main) -> void:
-	check(main.Defs.HERO_ORDER.size() == 15, "15 heroes")
+	check(main.Defs.HERO_ORDER.size() == 20, "20 heroes")
 	var seen := {}
 	for c in main.Defs.CLASSES:
-		check((c["heroes"] as Array).size() == 3, "class %s has 3 heroes" % c["name"])
+		check((c["heroes"] as Array).size() == 4, "class %s has 4 heroes" % c["name"])
 		for k in c["heroes"]:
 			seen[k] = true
 			check(main.Defs.HEROES.has(k) and main.ABILITIES.has(k) and main.Defs.UNLOCK_LEVEL.has(k), "%s has data, an ability and an unlock level" % k)
-	check(seen.size() == 15 and main.Defs.CLASSES.size() == 5, "5 classes cover all 15 heroes")
+	check(seen.size() == 20 and main.Defs.CLASSES.size() == 5, "5 classes cover all 20 heroes")
 	main.new_game("normal", 0, "standard")
 	main.cash = 1.0e6
 	check(main.progress.level() == 1, "fresh save starts at level 1")
@@ -121,6 +121,31 @@ func _test_unlocks_and_looks(main) -> void:
 		if p == 2:
 			check((hh.model["spinners"] as Array).size() >= 2, "mystic path adds orbiting parts")
 	print("unlocks and looks ok")
+	# Upgrade tree screen
+	main.to_home()
+	main.menu._open("heroes")
+	main.menu._pick_hero_class(0)
+	check(main.menu.hero_list.get_child_count() == 4, "Heroes screen lists the 4 heroes of a class")
+	main.menu.open_tree("ninja")
+	check(main.menu.screens["tree"].visible, "upgrade tree opens")
+	check(main.menu.tree_grid.get_child_count() == 3, "tree shows 3 paths")
+	main.progress.add_hero_xp("ninja", 250.0)
+	main.menu.tree_sel = Vector2i(1, 2)
+	main.menu._fill_tree()
+	main.menu._unlock_selected()
+	check(main.progress.upgrade_unlocked("ninja", 1, 2), "unlocking from the tree preview works")
+	main.menu._step_hero(1)
+	check(main.menu.tree_hero == main.Defs.HERO_ORDER[1], "tree arrows step to the next hero")
+	main.menu._step_hero(-2)
+	check(main.menu.tree_hero == main.Defs.HERO_ORDER[main.Defs.HERO_ORDER.size() - 1], "tree arrows wrap around")
+	# Mastery needs every upgrade, then XP
+	check(main.progress.mastery_blocker("miko") != "", "mastery is locked at first")
+	main.progress.unlock_everything(["miko"])
+	main.progress.add_hero_xp("miko", 8000.0)
+	check(main.unlock_mastery("miko") and main.progress.mastered("miko"), "mastery unlocks with all upgrades and XP")
+	main.new_game("normal", 0, "standard")
+	var hm = main.place_hero("miko", spots[1].x, spots[1].y)
+	check(hm != null and float(hm.stats["rate"]) < 1.1 and int(hm.stats["pierce"]) == 3, "a mastered hero spawns stronger")
 
 # Main menu, attract demo, daily challenge, settings, XP, achievements, sandbox tools.
 func _test_menu_and_progress(main) -> void:
@@ -220,11 +245,11 @@ func _run_rounds(main, n: int) -> void:
 		await process_frame
 
 # Valid build spots within reach of the track, like a player would choose.
-func _find_spots(main, n: int) -> Array:
+func _find_spots(main, n: int, reach: float = 6.0) -> Array:
 	var out: Array = []
 	for x in range(-34, 30, 2):
 		for z in range(-20, 21, 2):
-			if main.valid_spot(float(x), float(z)) and main.dist_to_path(float(x), float(z)) < 6.0:
+			if main.valid_spot(float(x), float(z)) and main.dist_to_path(float(x), float(z)) < reach:
 				var far := true
 				for o in out:
 					if o.distance_to(Vector2(x, z)) < 3.0:
@@ -341,7 +366,7 @@ func _test_abilities(main) -> void:
 	main.new_game("normal", 0, "standard")
 	main.cash = 1.0e7
 	var n_heroes: int = main.Defs.HERO_ORDER.size()
-	var spots := _find_spots(main, n_heroes)
+	var spots := _find_spots(main, n_heroes, 9.0)
 	check(spots.size() >= n_heroes, "room for %d heroes (%d spots)" % [n_heroes, spots.size()])
 	var hs: Array = []
 	for i in range(mini(n_heroes, spots.size())):

@@ -501,6 +501,52 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, torus(0.2, 0.05), flat(0x00e5ff), Vector3(0, 0, 0.86), Vector3(PI / 2, 0, 0))
 			add(c.body, box(0.7, 0.7, 0.35), toon(0x6b7385), Vector3(0, 1.0, -0.45))
 			return c
+		"kaito":
+			var c := make_chibi({"outfit": 0xc62828, "legs": 0x2b3a6b, "hair": 0x2b2a3d, "style": "spiky", "eye": 0x2b3a6b, "trim": 0xffd34d, "sleeve": 0xf5f0e6})
+			# Captain's tricorn hat
+			add(c.head, cyl(0.8, 0.85, 0.12, 3), toon(0x1f1f2b), Vector3(0, 0.55, 0), Vector3(-0.1, PI, 0))
+			add(c.head, cyl(0.5, 0.6, 0.45, 12), toon(0x1f1f2b), Vector3(0, 0.78, -0.05))
+			add(c.head, sphere(0.1, 8), toon(0xffd34d), Vector3(0, 0.82, 0.55))
+			add(c.body, box(0.12, 0.9, 0.12), toon(0xffd34d), Vector3(-0.2, 0.9, 0.38), Vector3(0, 0, 0.6))
+			add(c.holder, box(0.07, 1.2, 0.18), toon(0xe6ecf5), Vector3(0, 0.75, 0), Vector3(0, 0, 0.15))
+			add(c.holder, torus(0.16, 0.04), toon(0xffd34d), Vector3(0, 0.12, 0))
+			add(c.body, cyl(0.06, 0.06, 0.55, 8), toon(0x6b4a2a), Vector3(0.55, 0.72, 0.2), Vector3(PI / 2, 0, 0))
+			return c
+		"rei":
+			var c := make_chibi({"outfit": 0xff9a26, "legs": 0x2f4f9e, "hair": 0x1f1f2b, "style": "spiky", "eye": 0x2b2a3d, "trim": 0x2f4f9e, "sleeve": SKIN})
+			for i in range(4):
+				add(c.head, cone(0.16, 0.55, 5), toon(0x1f1f2b), Vector3(-0.3 + i * 0.2, 0.62, -0.1), Vector3(-0.3, 0, (i - 1.5) * 0.35))
+			add(c.body, cyl(0.5, 0.5, 0.12, 16), toon(0x2f4f9e), Vector3(0, 0.62, 0))
+			add(c.holder, sphere(0.28, 12), flat(0xffd34d, 0.85), Vector3(0, 0.05, 0.2))
+			add(c.holder, sphere(0.42, 12), fx_mat(Defs.col(0xff9a26, 0.35), true), Vector3(0, 0.05, 0.2))
+			return c
+		"ichika":
+			var c := make_chibi({"outfit": 0x1f1f2b, "skirt": 0x1f1f2b, "legs": 0x1f1f2b, "hair": 0xe9e4f0, "style": "ponytail", "eye": 0xd81b60, "trim": 0xd81b60, "accent": 0xd81b60})
+			add(c.body, box(0.95, 0.12, 0.5), toon(0x2b2a3d), Vector3(0, 1.25, 0))
+			for i in range(3):
+				add(c.body, box(0.18, 0.32, 0.02), flat(0xfff3c4), Vector3(-0.35 + i * 0.35, 0.95, 0.47), Vector3(0, 0, (i - 1) * 0.25))
+			add(c.holder, box(0.22, 0.36, 0.02), flat(0xfff3c4), Vector3(0, 0.15, 0.08))
+			add(c.holder, box(0.12, 0.04, 0.03), flat(0xd81b60), Vector3(0, 0.2, 0.1))
+			add(c.root, torus(1.15, 0.04), flat(0xd81b60, 0.8), Vector3(0, 0.4, 0))
+			return c
+		"gen":
+			var c := make_chibi({"outfit": 0x2e7d6b, "legs": 0x2b2a3d, "hair": 0x3a8a3a, "style": "short", "eye": 0xffd34d, "trim": 0xffd34d, "sleeve": 0x2e7d6b})
+			for s in [-1.0, 1.0]:
+				add(c.head, torus(0.13, 0.05), toon(0x4a4a55), Vector3(0.18 * s, 0.4, 0.45), Vector3(PI / 2 - 0.6, 0, 0))
+				add(c.head, cyl(0.1, 0.1, 0.02, 14), flat(0xffd34d, 0.8), Vector3(0.18 * s, 0.4, 0.47), Vector3(PI / 2 - 0.6, 0, 0))
+			add(c.body, box(0.75, 0.75, 0.4), toon(0x4a4a55), Vector3(0, 1.0, -0.45))
+			add(c.body, cyl(0.06, 0.06, 0.7, 6), toon(0x9aa7b4), Vector3(0.25, 1.55, -0.45))
+			add(c.holder, sphere(0.16, 10), toon(0x3a8a3a), Vector3(0, 0.05, 0.05))
+			add(c.holder, cyl(0.05, 0.05, 0.12, 6), toon(0x9aa7b4), Vector3(0, 0.22, 0.05))
+			return c
+		"lumi":
+			var c := make_chibi({"outfit": 0xffffff, "skirt": 0x7fb6ff, "legs": 0xffffff, "hair": 0xffd34d, "style": "twintails", "eye": 0x2f8cff, "trim": 0xff6fae, "accent": 0xff6fae, "sleeve": 0xffffff})
+			add(c.body, sphere(0.16, 10), toon(0xff6fae), Vector3(0, 1.12, 0.42), Vector3.ZERO, Vector3(1.6, 0.8, 0.6))
+			add(c.head, sphere(0.12, 4), toon(0xffd34d), Vector3(0, 0.6, 0.3), Vector3.ZERO, Vector3(1.4, 1.4, 0.5))
+			add(c.holder, cyl(0.04, 0.04, 0.9, 6), toon(0xff6fae), Vector3(0, 0.25, 0))
+			add(c.holder, sphere(0.2, 4), flat(0xffd34d), Vector3(0, 0.8, 0), Vector3.ZERO, Vector3(1.2, 1.2, 0.5))
+			add(c.holder, torus(0.25, 0.03), flat(0xff6fae), Vector3(0, 0.8, 0), Vector3(PI / 2, 0, 0))
+			return c
 		"ren":
 			var c := make_chibi({"outfit": 0xf5f5f5, "legs": 0x2b2a3d, "hair": 0xd9452b, "style": "spiky", "eye": 0xffb02e, "trim": 0x2b2a3d, "sleeve": SKIN, "accent": 0xffffff})
 			add(c.head, cyl(0.645, 0.645, 0.1, 22), toon(0xd9452b, 1.0, false), Vector3(0, 0.27, 0), Vector3(-0.18, 0, 0))

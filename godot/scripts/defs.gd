@@ -45,21 +45,22 @@ static func rank(k: String) -> int:
 # Heroes. Upgrade effects are data: {"key": add, "key*": multiply, "key=": set}.
 # Dotted keys reach into nested dictionaries (e.g. "explode.r").
 # ---------------------------------------------------------------------
-const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao"]
+const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao", "kaito", "rei", "ichika", "gen", "lumi"]
 
-## Five classes of three heroes each (the shop shows one class per tab).
+## Five classes of four heroes each (the shop shows one class per tab).
 const CLASSES := [
-	{"id": "primary", "name": "STRIKERS", "color": 0xff6b5b, "heroes": ["ninja", "samurai", "ren"]},
-	{"id": "ranged", "name": "MARKSMEN", "color": 0x5bc0ff, "heroes": ["miko", "kenta", "saya"]},
-	{"id": "magic", "name": "MYSTICS", "color": 0xb37bff, "heroes": ["mage", "ice", "sora"]},
-	{"id": "tech", "name": "ENGINEERS", "color": 0xffb02e, "heroes": ["mecha", "riku", "hina"]},
-	{"id": "support", "name": "SUPPORT", "color": 0x5fd36b, "heroes": ["idol", "hiro", "nao"]},
+	{"id": "primary", "name": "STRIKERS", "color": 0xff6b5b, "heroes": ["ninja", "samurai", "ren", "kaito"]},
+	{"id": "ranged", "name": "MARKSMEN", "color": 0x5bc0ff, "heroes": ["miko", "kenta", "saya", "rei"]},
+	{"id": "magic", "name": "MYSTICS", "color": 0xb37bff, "heroes": ["mage", "ice", "sora", "ichika"]},
+	{"id": "tech", "name": "ENGINEERS", "color": 0xffb02e, "heroes": ["mecha", "riku", "hina", "gen"]},
+	{"id": "support", "name": "SUPPORT", "color": 0x5fd36b, "heroes": ["idol", "hiro", "nao", "lumi"]},
 ]
 
 ## Player level needed before a hero can be recruited.
 const UNLOCK_LEVEL := {
 	"ninja": 1, "miko": 1, "mage": 1, "samurai": 2, "ice": 3, "idol": 4, "kenta": 5, "mecha": 6,
 	"ren": 7, "saya": 8, "sora": 9, "riku": 10, "hiro": 11, "hina": 12, "nao": 13,
+	"kaito": 14, "rei": 15, "ichika": 16, "gen": 17, "lumi": 18,
 }
 
 static func hero_class(k: String) -> Dictionary:
@@ -367,6 +368,106 @@ const HEROES := {
 			 ["Temple Bell", 900, "Waves +2 damage.", {"pulse_dmg": 2.0}],
 			 ["Holy Light", 2800, "Waves +4 damage and reach further.", {"pulse_dmg": 4.0, "pulse_range": 1.5}],
 			 ["Exorcism", 11000, "Waves +10 damage, twice as fast, 4x boss damage.", {"pulse_dmg": 10.0, "rate*": 0.5, "boss_mul=": 4.0, "pierce": 25}]],
+		],
+	},
+	"kaito": {
+		"name": "Kaito", "role": "Pirate Captain", "cost": 520,
+		"desc": "Cutlass sweeps up close, and a flintlock that blasts shockwaves down the track.",
+		"base": {"kind": "slash", "range": 4.2, "rate": 0.8, "dmg": 2.0, "pierce": 5, "type": "sharp", "camo": false},
+		"path_names": ["Cutlass", "Flintlock", "Crew"],
+		"paths": [
+			[["Sharpened Steel", 300, "+1 damage.", {"dmg": 1.0}],
+			 ["Twin Cutlasses", 750, "+5 pierce, 15% faster.", {"pierce": 5, "rate*": 0.85}],
+			 ["Storm Slash", 2800, "+4 damage, +4 vs masks.", {"dmg": 4.0, "mask_bonus": 4.0}],
+			 ["King of the Seas", 12000, "+12 damage, +10 pierce, 3x boss damage.", {"dmg": 12.0, "pierce": 10, "boss_mul=": 3.0}]],
+			[["Powder Horn", 250, "+1 range.", {"range": 1.0}],
+			 ["Flintlock Shot", 700, "Each swing also fires a cannon shockwave.", {"wave=": {"dmg": 2.0, "pierce": 8, "speed": 20.0}}],
+			 ["Grapeshot", 2400, "Shockwaves +3 damage, +15 pierce.", {"wave.dmg": 3.0, "wave.pierce": 15}],
+			 ["Broadside", 9500, "Twice as fast, +2 range.", {"rate*": 0.5, "range": 2.0}]],
+			[["Lookout", 250, "Can see veiled spirits.", {"camo=": true}],
+			 ["Sea Legs", 800, "Swings 20% faster.", {"rate*": 0.8}],
+			 ["Treasure Hunter", 2600, "4x boss damage.", {"boss_mul=": 4.0}],
+			 ["Grand Fleet", 13000, "+8 damage, +12 pierce, much faster.", {"dmg": 8.0, "pierce": 12, "rate*": 0.6}]],
+		],
+	},
+	"rei": {
+		"name": "Rei", "role": "Ki Blaster", "cost": 800,
+		"desc": "Charges up ki and fires a wide energy wave through every spirit in its path.",
+		"base": {"kind": "beam", "range": 11.0, "rate": 1.4, "dmg": 3.0, "pierce": 8, "type": "magic", "count": 1, "width": 1.0, "camo": false, "beam_color": 0xff9a26},
+		"path_names": ["Ki Power", "Rapid Blasts", "Focus"],
+		"paths": [
+			[["Focused Ki", 400, "+1 damage.", {"dmg": 1.0}],
+			 ["Wide Wave", 900, "+6 pierce, wider waves.", {"pierce": 6, "width=": 1.4}],
+			 ["Mega Wave", 3200, "+6 damage.", {"dmg": 6.0}],
+			 ["Ultimate Wave", 13500, "+18 damage, +20 pierce, 3x boss damage.", {"dmg": 18.0, "pierce": 20, "boss_mul=": 3.0, "width=": 2.0}]],
+			[["Quick Charge", 350, "Fires 20% faster.", {"rate*": 0.8}],
+			 ["Double Palm", 1000, "Two waves at different targets.", {"count=": 2}],
+			 ["Ki Barrage", 3000, "Fires twice as fast.", {"rate*": 0.5}],
+			 ["Endless Barrage", 11000, "Four waves, faster again.", {"count=": 4, "rate*": 0.6}]],
+			[["Sense Ki", 300, "Can see veiled spirits.", {"camo=": true}],
+			 ["Long Reach", 600, "+3 range.", {"range": 3.0}],
+			 ["Spirit Breaker", 2600, "4x boss damage.", {"boss_mul=": 4.0}],
+			 ["Limit Break", 10000, "+5 range, +8 damage.", {"range": 5.0, "dmg": 8.0}]],
+		],
+	},
+	"ichika": {
+		"name": "Ichika", "role": "Curse Exorcist", "cost": 700,
+		"desc": "Throws sealing talismans that burst into rings of exorcising energy.",
+		"base": {"kind": "pulse", "range": 5.0, "rate": 1.6, "dmg": 1.0, "pierce": 25, "type": "magic", "freeze": 0.0, "camo": false},
+		"path_names": ["Exorcism", "Seals", "Barrier"],
+		"paths": [
+			[["Blessed Ink", 350, "+1 damage.", {"dmg": 1.0}],
+			 ["Purge", 900, "+2 damage, +3 vs masks.", {"dmg": 2.0, "mask_bonus": 3.0}],
+			 ["Grand Exorcism", 3000, "+5 damage, +25 pierce.", {"dmg": 5.0, "pierce": 25}],
+			 ["Heaven's Judgement", 12500, "+15 damage, 4x boss damage.", {"dmg": 15.0, "boss_mul=": 4.0}]],
+			[["Binding Seal", 300, "Rings slow spirits.", {"slow=": 0.6, "slow_dur=": 1.5}],
+			 ["Paralysis Seal", 800, "Rings stun spirits briefly.", {"freeze": 0.4}],
+			 ["Iron Seal", 2600, "Longer stuns, works on bosses.", {"freeze": 0.6, "stun_boss=": true}],
+			 ["Eternal Seal", 9500, "Permanently slows everything nearby.", {"aura_slow=": 0.5, "freeze": 0.6}]],
+			[["Wider Circle", 250, "+1.5 range.", {"range": 1.5}],
+			 ["Spirit Sight", 350, "Can see veiled spirits.", {"camo=": true}],
+			 ["Rapid Rites", 2200, "Pulses twice as fast.", {"rate*": 0.5}],
+			 ["Sacred Ground", 9000, "+3 range, +4 damage.", {"range": 3.0, "dmg": 4.0}]],
+		],
+	},
+	"gen": {
+		"name": "Gen", "role": "Gadgeteer", "cost": 600,
+		"desc": "A hero-academy student who lobs sticky gadget grenades that slow and stun.",
+		"base": {"kind": "proj", "range": 10.0, "rate": 1.3, "dmg": 1.0, "pierce": 1, "type": "blast", "proj_speed": 22.0, "count": 1, "spread": 0.2, "camo": false, "proj": "frag", "slow": 0.6, "slow_dur": 1.5, "explode": {"r": 2.0, "pierce": 14, "cluster": 0}},
+		"path_names": ["Grenades", "Workshop", "Support Gear"],
+		"paths": [
+			[["Bigger Charges", 300, "Bigger blasts.", {"explode.r": 0.6, "explode.pierce": 8}],
+			 ["Glue Bombs", 700, "Slows much harder.", {"slow=": 0.35, "slow_dur=": 2.5}],
+			 ["Flashbangs", 2400, "Blasts stun spirits, +2 damage.", {"stun=": 0.6, "dmg": 2.0}],
+			 ["Ultimate Support Item", 10500, "+10 damage, stuns bosses, 3x boss damage.", {"dmg": 10.0, "stun_boss=": true, "boss_mul=": 3.0}]],
+			[["Quick Toss", 300, "Throws 20% faster.", {"rate*": 0.8}],
+			 ["Double Grenade", 800, "Throws 2 grenades.", {"count=": 2}],
+			 ["Cluster Grenades", 2600, "Blasts split into 5 bomblets.", {"explode.cluster=": 5}],
+			 ["Gadget Storm", 9500, "Throws 4, twice as fast.", {"count=": 4, "rate*": 0.5}]],
+			[["Goggles", 250, "Can see veiled spirits.", {"camo=": true}],
+			 ["Targeting Visor", 500, "+3 range.", {"range": 3.0}],
+			 ["Plasma Charges", 2000, "Blasts become magic, +2 damage.", {"type=": "magic", "dmg": 2.0}],
+			 ["Mastermind", 8500, "+4 range, 4x boss damage.", {"range": 4.0, "boss_mul=": 4.0}]],
+		],
+	},
+	"lumi": {
+		"name": "Lumi", "role": "Magical Girl", "cost": 900,
+		"desc": "Sparkling starlight heals the shrine and powers up nearby heroes.",
+		"base": {"kind": "support", "range": 7.5, "rate": 1.2, "dmg": 0.0, "pierce": 12, "income": 0, "lives_regen": 1, "buff_rate": 0.92, "buff_dmg": 0.0, "buff_pierce": 0, "buff_camo": false, "pulse_dmg": 1.0, "pulse_range": 4.5, "camo": true, "type": "magic"},
+		"path_names": ["Starlight", "Friendship", "Moon Power"],
+		"paths": [
+			[["Twinkle", 400, "Sparkles +1 damage.", {"pulse_dmg": 1.0}],
+			 ["Shooting Star", 900, "Sparkles +2 damage, reach further.", {"pulse_dmg": 2.0, "pulse_range": 1.0}],
+			 ["Supernova Heart", 3000, "Sparkles +5 damage, twice as fast.", {"pulse_dmg": 5.0, "rate*": 0.5}],
+			 ["Galaxy Princess", 12000, "Sparkles +12 damage, 4x boss damage.", {"pulse_dmg": 12.0, "boss_mul=": 4.0, "pierce": 25}]],
+			[["Pep Talk", 400, "Nearby heroes attack faster.", {"buff_rate=": 0.85}],
+			 ["Team Spirit", 900, "Nearby heroes +1 pierce.", {"buff_pierce=": 1}],
+			 ["Power of Friendship", 2800, "Nearby heroes +2 damage.", {"buff_dmg=": 2.0}],
+			 ["Bonds Beyond Time", 10000, "Nearby heroes +3 pierce, much faster.", {"buff_pierce=": 3, "buff_rate=": 0.7}]],
+			[["Moon Charm", 300, "+2 lives per round.", {"lives_regen": 2}],
+			 ["Moonlight Shield", 800, "+4 lives per round.", {"lives_regen": 4}],
+			 ["Full Moon", 2500, "+10 lives per round.", {"lives_regen": 10}],
+			 ["Eternal Moon", 9000, "+25 lives per round, nearby heroes see veiled spirits.", {"lives_regen": 25, "buff_camo=": true}]],
 		],
 	},
 }
