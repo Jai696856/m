@@ -578,7 +578,7 @@ func _on_click(screen: Vector2, button: int, shift: bool) -> void:
 		if valid_spot(p.x, p.z):
 			var k := placing
 			var h := place_hero(k, p.x, p.z)
-			if h and shift and cash >= price(Defs.HEROES[k]["cost"]):
+			if h and shift and cash >= hero_price(k):
 				ui.refresh()
 				return
 			cancel_placing()
@@ -603,6 +603,20 @@ func _on_click(screen: Vector2, button: int, shift: bool) -> void:
 # =====================================================================
 # Placement / selection
 # =====================================================================
+## Shrine Blessings apply in every mode except Sandbox.
+func blessed(id: String) -> bool:
+	return mode != "sandbox" and progress != null and progress.has_blessing(id)
+
+func hero_price(k: String) -> int:
+	return price(float(Defs.HEROES[k]["cost"]) * (0.95 if blessed("recruit") else 1.0))
+
+func upgrade_price(h: Hero, p: int) -> int:
+	var up: Array = h.def["paths"][p][h.tiers[p]]
+	return price(float(up[1]) * (0.85 if h.tiers[p] == 0 and blessed("apprentice") else 1.0))
+
+func power_limit() -> int:
+	return POWER_LIMIT + (1 if blessed("charm") else 0)
+
 func price(c) -> int:
 	return int(round(float(c) * cost_mul / 5.0) * 5.0)
 
@@ -635,7 +649,7 @@ func begin_placing(k: String) -> void:
 		sfx.play("error")
 		ui.toast("LOCKED", "%s joins at player level %d" % [Defs.HEROES[k]["name"], int(Defs.UNLOCK_LEVEL[k])])
 		return
-	if cash < price(Defs.HEROES[k]["cost"]):
+	if cash < hero_price(k):
 		sfx.play("error")
 		return
 	select_hero(null)
@@ -698,7 +712,7 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 	if not hero_available(k):
 		return null
 	var def: Dictionary = Defs.HEROES[k]
-	var cost := price(def["cost"])
+	var cost := hero_price(k)
 	if cash < cost:
 		return null
 	add_cash(-cost)
@@ -719,6 +733,12 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 			h.stats["pierce"] = int(h.stats["pierce"]) + 1
 		if float(h.stats.get("dmg", 0.0)) > 0.0:
 			h.stats["dmg"] = float(h.stats["dmg"]) + 1.0
+	if blessed("range"):
+		h.stats["range"] = float(h.stats["range"]) * 1.05
+	if blessed("rate"):
+		h.stats["rate"] = float(h.stats["rate"]) * 0.96
+	if blessed("pierce") and h.stats["kind"] != "support" and int(h.stats.get("pierce", 0)) > 0:
+		h.stats["pierce"] = int(h.stats["pierce"]) + 1
 	h.spent = cost
 	h.tiers = [0, 0, 0]
 	var root: Node3D = h.model["root"]
@@ -804,7 +824,7 @@ func buy_upgrade(h: Hero, p: int) -> void:
 	if can_upgrade(h, p) != "":
 		return
 	var up: Array = h.def["paths"][p][h.tiers[p]]
-	var cost := price(up[1])
+	var cost := upgrade_price(h, p)
 	if cash < cost:
 		sfx.play("error")
 		return
@@ -853,7 +873,7 @@ func _strongest(n: int) -> Array:
 func use_ability(h: Hero) -> void:
 	if over or paused or h.ability_cd != 0.0:
 		return
-	h.ability_cd = float(ABILITIES[h.key]["cd"])
+	h.ability_cd = float(ABILITIES[h.key]["cd"]) * (0.9 if blessed("focus") else 1.0)
 	var s := eff(h)
 	var hpos := Vector2(h.x, h.z)
 	h.anim = 0.4
@@ -1003,7 +1023,7 @@ const POWER_LIMIT := 3  # per game, so powers help without trivialising a run
 func can_use_power(id: String) -> bool:
 	if over or paused or attract:
 		return false
-	if mode != "sandbox" and powers_used_game >= POWER_LIMIT:
+	if mode != "sandbox" and powers_used_game >= power_limit():
 		return false
 	return mode == "sandbox" or progress.power_count(id) > 0
 
@@ -1266,7 +1286,7 @@ func hit_enemy(e: Enemy, o: Dictionary) -> bool:
 	if dmg <= 0.0:
 		return true
 	if e.boss:
-		dmg *= float(o.get("boss_mul", 1.0))
+		dmg *= float(o.get("boss_mul", 1.0)) * (1.1 if blessed("bane") else 1.0)
 	if e.def.get("mask", false):
 		dmg += float(o.get("mask_bonus", 0.0))
 	damage_enemy(e, dmg, o)
@@ -1461,7 +1481,7 @@ func _grow_crop(h: Hero, s: Dictionary, mul: float = 1.0) -> void:
 	var node := Models.crop_bundle()
 	node.position = Vector3(h.x, 1.0, h.z)
 	add_child(node)
-	var c := {"node": node, "value": float(s["coin_value"]) * mul, "t": float(s["collect_time"]), "auto": bool(s.get("auto_collect", false)),
+	var c := {"node": node, "value": float(s["coin_value"]) * mul * (1.1 if blessed("soil") else 1.0), "t": float(s["collect_time"]), "auto": bool(s.get("auto_collect", false)),
 		"from": Vector3(h.x, 1.0, h.z), "to": target, "fly": 0.0, "hero": h}
 	if c["auto"]:
 		c["t"] = 0.9
@@ -1883,7 +1903,7 @@ func start_round() -> void:
 func _end_round() -> void:
 	running = false
 	collect_all_crops()
-	var bonus := 100 + round_num
+	var bonus := int((100 + round_num) * (1.15 if blessed("guild") else 1.0))
 	if _tracking():
 		progress.add("rounds", 1.0, false)
 		progress.add_xp(10.0 + round_num)
@@ -1910,12 +1930,91 @@ func _end_round() -> void:
 	if round_num >= max_round and not freeplay:
 		victory()
 		return
+	_save_run()
 	if mode == "rush":
 		auto_timer = 0.05
 	elif auto_start:
 		auto_timer = 1.0
 	ui.update_hud()
 	ui.update_next_round()
+
+# =====================================================================
+# Continue: the game is saved between rounds and can be resumed from the menu
+# =====================================================================
+func _save_run() -> void:
+	if attract or over:
+		return
+	var hs: Array = []
+	for h in heroes:
+		hs.append({"k": h.key, "x": h.x, "z": h.z, "t": h.tiers.duplicate(), "pr": h.priority, "spent": h.spent, "pops": h.pops})
+	save.set_value("run", "data", {
+		"map": map_index, "diff": difficulty, "mode": mode, "round": round_num, "cash": cash, "lives": lives,
+		"heroes": hs, "daily": daily_active, "powers": powers_used_game, "class": locked_class,
+		"start_lives": start_lives, "squad": squad.keys(), "pops": game_pops, "earned": cash_earned,
+		"freeplay": freeplay,
+	})
+	save.save(SAVE_PATH)
+
+func clear_run() -> void:
+	if save.has_section("run"):
+		save.erase_section("run")
+
+func saved_run() -> Dictionary:
+	return save.get_value("run", "data", {})
+
+func continue_run() -> bool:
+	var r: Dictionary = saved_run()
+	if r.is_empty():
+		return false
+	save.set_value("settings", "tutorial_seen", true)
+	new_game(r["diff"], int(r["map"]), r["mode"])
+	daily_active = bool(r.get("daily", false))
+	cash = 1.0e12
+	for hd in r["heroes"]:
+		var h := place_hero(hd["k"], float(hd["x"]), float(hd["z"]))
+		if h == null:
+			continue
+		var tiers: Array = hd["t"]
+		# Re-buy upgrades in the order that keeps path rules happy: the deep path first
+		var order := [0, 1, 2]
+		order.sort_custom(func(a, b): return int(tiers[a]) > int(tiers[b]))
+		for p in order:
+			for i in range(int(tiers[p])):
+				_force_upgrade(h, p)
+		h.priority = hd["pr"]
+		h.spent = int(hd["spent"])
+		h.pops = int(hd["pops"])
+	cash = float(r["cash"])
+	lives = float(r["lives"])
+	round_num = int(r["round"])
+	powers_used_game = int(r.get("powers", 0))
+	locked_class = String(r.get("class", ""))
+	start_lives = float(r.get("start_lives", lives))
+	for k in r.get("squad", []):
+		squad[k] = true
+	game_pops = int(r.get("pops", 0))
+	cash_earned = float(r.get("earned", 0.0))
+	freeplay = bool(r.get("freeplay", false))
+	select_hero(null)
+	ui.rebuild_shop()
+	ui.refresh_abilities()
+	ui.update_hud()
+	ui.update_next_round()
+	ui.banner("ROUND %d" % (round_num + 1), "Welcome back!")
+	return true
+
+## Apply an upgrade without paying or checking XP unlocks (used when resuming).
+func _force_upgrade(h: Hero, p: int) -> void:
+	if h.tiers[p] >= 4:
+		return
+	var up: Array = h.def["paths"][p][h.tiers[p]]
+	Defs.apply_upgrade(h.stats, up[3])
+	h.tiers[p] += 1
+	Models.apply_upgrade_look(h.model, p, h.tiers[p])
+	_refresh_hero_look(h)
+	recalc_buffs()
+	if h.ability_cd < 0.0 and h.tiers.max() >= ABILITY_TIER:
+		h.ability_cd = 0.0
 
 ## Money earned from pops and rounds goes through the game mode's rules.
 func earn(n: float) -> void:
@@ -2002,6 +2101,10 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 			cash = 1.0e9
 			lives = 1.0e9
 	cost_mul = d["cost"]
+	if mode not in ["sandbox", "deflation"]:
+		cash += (100.0 if blessed("cash_1") else 0.0) + (200.0 if blessed("cash_2") else 0.0)
+	if mode != "sandbox" and diff != "nightmare":
+		lives += (10.0 if blessed("lives_1") else 0.0) + (20.0 if blessed("lives_2") else 0.0)
 	round_num = 0
 	speed = 1
 	running = false
@@ -2018,6 +2121,8 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 		music.play_song("game")
 	tutorial_step = -1
 	ui.hide_tutorial()
+	if not demo:
+		clear_run()
 	if not demo and mode != "sandbox" and not bool(save.get_value("settings", "tutorial_seen", false)):
 		start_tutorial()
 	ui.set_hud_visible(not demo)
@@ -2172,6 +2277,7 @@ func game_over() -> void:
 		return
 	over = true
 	running = false
+	clear_run()
 	sfx.play("lose")
 	var gems := 0
 	if _tracking():
@@ -2182,6 +2288,7 @@ func game_over() -> void:
 
 func victory() -> void:
 	over = true
+	clear_run()
 	var win_gems := 0
 	sfx.play("win")
 	var medal := mode != "sandbox"
@@ -2200,7 +2307,7 @@ func victory() -> void:
 		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0, "nightmare": 1500.0}[difficulty])
 		if difficulty == "nightmare":
 			progress.add("nightmare_wins", 1.0, false)
-		win_gems = int({"easy": 15, "normal": 25, "hard": 40, "nightmare": 80}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0))
+		win_gems = int({"easy": 15, "normal": 25, "hard": 40, "nightmare": 80}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0) * (1.2 if blessed("finder") else 1.0))
 		progress.add_gems(win_gems)
 		for k in squad:
 			progress.add_hero_xp(k, 200.0)

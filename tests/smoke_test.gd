@@ -34,6 +34,7 @@ func _initialize() -> void:
 	await _test_gems_powers_quests(main)
 	await _test_tutorial_and_music(main)
 	await _test_new_spirits(main)
+	await _test_blessings_and_continue(main)
 	await _test_touch(main)
 	await _test_pause(main)
 	await _test_full_game(main)
@@ -566,6 +567,52 @@ func _test_new_spirits(main) -> void:
 	main.menu._open("almanac")
 	check(main.menu.screens["almanac"].visible, "almanac opens")
 	print("new spirits ok")
+
+func _test_blessings_and_continue(main) -> void:
+	var p = main.progress
+	p.reset_blessings()
+	check(p.blessing_points() == p.level() - 1, "one blessing point per level")
+	check(p.blessing_blocker("cash_2") != "", "Golden Coin needs Lucky Coin")
+	for id in ["cash_1", "cash_2", "lives_1", "recruit", "apprentice", "range", "charm"]:
+		p.buy_blessing(id)
+	check(p.has_blessing("cash_2"), "blessings can be chained")
+	check(not p.has_blessing("charm"), "Extra Charm needs Focus first")
+	main.new_game("normal", 0, "standard")
+	check(main.cash == 950.0, "Lucky + Golden Coin add $300 (%.0f)" % main.cash)
+	check(main.lives == 160.0, "Sturdy Gate adds 10 lives")
+	check(main.hero_price("ninja") < main.price(main.Defs.HEROES["ninja"]["cost"]), "Recruiter makes heroes cheaper")
+	main.cash = 1.0e5
+	var spots := _find_spots(main, 2)
+	var h = main.place_hero("ninja", spots[0].x, spots[0].y)
+	check(absf(float(h.stats["range"]) - float(main.Defs.HEROES["ninja"]["base"]["range"]) * 1.05) < 0.01, "Keen Eyes adds range")
+	check(main.upgrade_price(h, 0) < main.price(main.Defs.HEROES["ninja"]["paths"][0][0][1]), "Apprentice Discount on tier 1")
+	main.new_game("normal", 0, "sandbox")
+	check(main.hero_price("ninja") == main.price(main.Defs.HEROES["ninja"]["cost"]), "no blessings in sandbox")
+	main.to_home()
+	main.menu._open("blessings")
+	check(main.menu.screens["blessings"].visible, "blessings screen opens")
+	# Continue
+	main.new_game("normal", 3, "standard")
+	main.cash = 5000.0
+	spots = _find_spots(main, 2)
+	var a = main.place_hero("mage", spots[0].x, spots[0].y)
+	main.buy_upgrade(a, 1)
+	main.buy_upgrade(a, 1)
+	main.buy_upgrade(a, 0)
+	a.priority = "strong"
+	await _run_rounds(main, 2)
+	var saved: Dictionary = main.saved_run()
+	check(not saved.is_empty() and int(saved["round"]) == 2, "game saved after each round")
+	var cash_then: float = main.cash
+	main.to_home()
+	check(main.menu.continue_btn.visible, "home shows CONTINUE")
+	check(main.continue_run(), "continue a saved game")
+	check(main.map_index == 3 and main.round_num == 2 and absf(main.cash - cash_then) < 0.01, "map, round and cash restored")
+	check(main.heroes.size() == 1 and main.heroes[0].tiers == [1, 2, 0] and main.heroes[0].priority == "strong", "heroes, upgrades and targeting restored")
+	main.game_over()
+	check(main.saved_run().is_empty(), "game over clears the save")
+	p.reset_blessings()
+	print("blessings and continue ok")
 
 # Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.
 func _test_touch(main) -> void:

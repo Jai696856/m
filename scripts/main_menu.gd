@@ -43,6 +43,7 @@ var tree_preview: VBoxContainer
 var tree_mastery: PanelContainer
 var tip_i := 0
 var gem_pill: Label
+var continue_btn: Button
 var quest_box: VBoxContainer
 var skin_row: HBoxContainer
 
@@ -58,6 +59,7 @@ func _ready() -> void:
 	screens["howto"] = _build_howto()
 	screens["store"] = _screen("STORE")
 	screens["almanac"] = _screen("SPIRIT ALMANAC")
+	screens["blessings"] = _screen("SHRINE BLESSINGS")
 	var t := Timer.new()
 	t.wait_time = 6.0
 	t.autostart = true
@@ -136,6 +138,7 @@ func _build_home() -> void:
 	var left := _icon_column(true)
 	_icon_button(left, "gear", "SETTINGS", Color(0.35, 0.5, 0.75), func() -> void: _open("settings"))
 	_icon_button(left, "book", "HOW TO PLAY", Color(0.35, 0.5, 0.75), func() -> void: _open("howto"))
+	_icon_button(left, "star", "BLESSINGS", Color(0.95, 0.6, 0.2), func() -> void: _open("blessings"))
 	_icon_button(left, "ghost", "ALMANAC", Color(0.55, 0.4, 0.85), func() -> void: _open("almanac"))
 	if OS.has_feature("pc") and not OS.has_feature("web"):
 		_icon_button(left, "door", "QUIT", Color(0.92, 0.3, 0.3), func() -> void: get_tree().quit())
@@ -174,6 +177,21 @@ func _build_home() -> void:
 	quest_box = VBoxContainer.new()
 	quest_box.add_theme_constant_override("separation", 6)
 	qp.add_child(quest_box)
+
+	# Continue a saved game, just above PLAY
+	continue_btn = ui.btn("CONTINUE", ui.ORANGE, 18, 16)
+	continue_btn.anchor_left = 0.5
+	continue_btn.anchor_right = 0.5
+	continue_btn.anchor_top = 1.0
+	continue_btn.anchor_bottom = 1.0
+	continue_btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	continue_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	continue_btn.offset_bottom = -186
+	continue_btn.custom_minimum_size = Vector2(300, 46)
+	continue_btn.icon = Icons.tex("play", Color.WHITE, 40)
+	continue_btn.add_theme_constant_override("icon_max_width", 20)
+	continue_btn.pressed.connect(func() -> void: game.continue_run())
+	add_child(continue_btn)
 
 	tip_lbl = ui.lbl("", 15, Color.WHITE, 6)
 	tip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -272,6 +290,10 @@ func refresh() -> void:
 				medals += 1
 	medal_pill.text = str(medals)
 	gem_pill.text = _num(p.gems())
+	var run: Dictionary = game.saved_run()
+	continue_btn.visible = not run.is_empty()
+	if not run.is_empty():
+		continue_btn.text = "CONTINUE  -  ROUND %d  -  %s" % [int(run["round"]) + 1, String(Maps.MAPS[int(run["map"])]["name"]).to_upper()]
 	_fill_quests()
 
 func _fill_quests() -> void:
@@ -340,6 +362,71 @@ const SPIRIT_NOTES := {
 	"dragon": "Final boss: a long storm dragon with 1,100 health that releases four Oni Lords.",
 }
 
+func _fill_blessings() -> void:
+	var body := _body("blessings")
+	_clear(body)
+	var p = game.progress
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	body.add_child(top)
+	top.add_child(UIScript.HudIcon.new("star", 40, ui.GOLD))
+	var pts: Label = ui.lbl("%d BLESSING POINT%s" % [p.blessing_points(), "" if p.blessing_points() == 1 else "S"], 26, Color.WHITE, 8)
+	pts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(pts)
+	var rs: Button = ui.btn("RESET (FREE)", Color(0.45, 0.45, 0.6), 16, 10)
+	rs.custom_minimum_size = Vector2(160, 40)
+	rs.pressed.connect(func() -> void:
+		game.progress.reset_blessings()
+		game.save.save(game.SAVE_PATH)
+		_fill_blessings())
+	top.add_child(rs)
+	var info: Label = ui.lbl("You earn a point every time you level up. Blessings last forever and work in every mode except Sandbox.", 14, Color(0.85, 0.8, 1.0), 0)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(940, 0)
+	body.add_child(info)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	body.add_child(grid)
+	for b in p.BLESSINGS:
+		var id: String = b[0]
+		var owned: bool = p.has_blessing(id)
+		var block: String = p.blessing_blocker(id)
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34) if not owned else Color(0.3, 0.2, 0.5), ui.GOLD if owned else (ui.GREEN if block == "" else Color(0.3, 0.3, 0.42))))
+		card.custom_minimum_size = Vector2(305, 92)
+		grid.add_child(card)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		card.add_child(h)
+		var disc := PanelContainer.new()
+		disc.add_theme_stylebox_override("panel", ui.sb(ui.GOLD if owned else Color(0.35, 0.3, 0.55), 24, 3, false, 6))
+		disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		disc.add_child(_icon_rect(b[5], 34))
+		h.add_child(disc)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 0)
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(v)
+		v.add_child(ui.lbl(b[1], 17, Color.WHITE, 6))
+		var d: Label = ui.lbl(b[2], 12, Color(0.88, 0.85, 1.0), 0)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(170, 0)
+		v.add_child(d)
+		if owned:
+			v.add_child(ui.lbl("BLESSED", 13, ui.GOLD, 4))
+		else:
+			var buy: Button = ui.btn("%d PT" % int(b[3]) if block == "" else block, ui.GREEN if block == "" else Color(0.4, 0.38, 0.5), 13, 8)
+			buy.disabled = block != ""
+			buy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			buy.pressed.connect(func() -> void:
+				if game.progress.buy_blessing(id):
+					game.sfx.play("upgrade")
+					game.save.save(game.SAVE_PATH)
+					_fill_blessings())
+			v.add_child(buy)
+
 func _fill_almanac() -> void:
 	var body := _body("almanac")
 	_clear(body)
@@ -400,7 +487,7 @@ func _fill_store() -> void:
 	body.add_child(top)
 	top.add_child(UIScript.HudIcon.new("gem", 34, ui.GEM))
 	top.add_child(ui.lbl("%s Spirit Gems" % _num(p.gems()), 26, Color.WHITE, 8))
-	var info: Label = ui.lbl("Earn gems by winning games, finishing daily quests, unlocking achievements and levelling up. Up to %d powers can be used per game." % game.POWER_LIMIT, 14, Color(0.85, 0.8, 1.0), 0)
+	var info: Label = ui.lbl("Earn gems by winning games, finishing daily quests, unlocking achievements and levelling up. Up to %d powers can be used per game." % game.power_limit(), 14, Color(0.85, 0.8, 1.0), 0)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(940, 0)
 	body.add_child(info)
@@ -518,6 +605,8 @@ func _open(which: String) -> void:
 			_fill_store()
 		"almanac":
 			_fill_almanac()
+		"blessings":
+			_fill_blessings()
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():

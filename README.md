@@ -75,6 +75,11 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 - **15 spirit types**, including the **Fox Spirit** (two hits, three tails), the **Paper Crane** (very fast,
   carries a fox), the **Lantern Ghost** (sharp attacks can't pierce it) and the boss **Shadow Shogun**
   (rounds 32 and 36, and in freeplay).
+- **Shrine Blessings** (star button on the home screen): 15 permanent perks, such as extra starting money and
+  lives, cheaper heroes, more range or speed, richer farms, faster abilities, an extra power slot and more
+  gems. You earn one point per player level, and you can reset them for free. They don't apply in Sandbox.
+- **Continue:** the game saves at the end of every round. If you leave, a **CONTINUE** button on the home
+  screen resumes it with the same heroes, upgrades, targeting, money and lives.
 - **Spirit Almanac** (ghost button on the home screen): a 3D portrait, stats and tips for every spirit,
   filled in as you pop each kind.
 - **Spirit modifiers:** *fortified* spirits have double health and a steel band; *regrowing* spirits have

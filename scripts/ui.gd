@@ -124,11 +124,13 @@ class HudIcon extends Control:
 				g.append(g[0])
 				draw_polyline(g, ink, 3.0, true)
 			"bag":
-				draw_circle(c + Vector2(0, 0.08) * s.x, s.x * 0.34, col)
-				draw_arc(c + Vector2(0, 0.08) * s.x, s.x * 0.34, 0, TAU, 32, ink, 3.0, true)
-				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), col)
-				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), ink, false, 2.5)
-				draw_line(c + Vector2(-0.18, -0.24) * s.x, c + Vector2(0.18, -0.24) * s.x, ink, 3.0, true)
+				var bp := PackedVector2Array([c + Vector2(-0.32, -0.16) * s.x, c + Vector2(0.32, -0.16) * s.x, c + Vector2(0.38, 0.4) * s.x, c + Vector2(-0.38, 0.4) * s.x])
+				draw_arc(c + Vector2(0, -0.16) * s.x, s.x * 0.17, PI, TAU, 16, ink, s.x * 0.1, true)
+				draw_arc(c + Vector2(0, -0.16) * s.x, s.x * 0.17, PI, TAU, 16, col, s.x * 0.05, true)
+				draw_colored_polygon(bp, col)
+				bp.append(bp[0])
+				draw_polyline(bp, ink, 3.0, true)
+				draw_circle(c + Vector2(0, 0.12) * s.x, s.x * 0.08, ink)
 			"ghost":
 				var gp := PackedVector2Array()
 				for i in range(13):
@@ -592,7 +594,7 @@ func rebuild_shop() -> void:
 		pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		v.add_child(pic)
-		var cost := lbl("$%d" % game.price(h["cost"]), 20, CASH, 8)
+		var cost := lbl("$%d" % game.hero_price(k), 20, CASH, 8)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(cost)
 		var num := lbl(["Z", "X", "C", "V", "B"][i], 13, Color.WHITE, 6)
@@ -1267,7 +1269,7 @@ func refresh_powers() -> void:
 		if n <= 0:
 			continue
 		var b := round_btn(Defs.col(pw[5]).darkened(0.15), 46)
-		b.tooltip_text = "%s (x%d)\n%s\nUp to %d powers per game." % [pw[1], n, pw[2], game.POWER_LIMIT]
+		b.tooltip_text = "%s (x%d)\n%s\nUp to %d powers per game." % [pw[1], n, pw[2], game.power_limit()]
 		var ic := TextureRect.new()
 		ic.texture = Icons.tex(pw[3], Color.WHITE, 64)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1395,7 +1397,7 @@ func update_hud() -> void:
 func refresh() -> void:
 	for k in shop_buttons:
 		var b: Button = shop_buttons[k]
-		var poor: bool = game.cash < game.price(Defs.HEROES[k]["cost"]) or not game.hero_available(k)
+		var poor: bool = game.cash < game.hero_price(k) or not game.hero_available(k)
 		b.modulate = Color(0.6, 0.6, 0.66, 0.8) if poor else Color.WHITE
 		_set_btn_bg(b, GOLD if game.placing == k else TILE, 10)
 	if cancel_btn:
@@ -1508,7 +1510,7 @@ func build_panel(h) -> void:
 			v.add_child(d)
 		else:
 			var up: Array = def["paths"][p][tier]
-			var cost: int = game.price(up[1])
+			var cost: int = game.upgrade_price(h, p)
 			v.add_child(dark_lbl(up[0], 16))
 			var d2 := dark_lbl(up[2], 12)
 			d2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

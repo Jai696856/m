@@ -26,6 +26,8 @@ const ACHIEVEMENTS := [
 	["modes_7", "Mode Legend", "Win in all 7 challenge modes.", "#modes_won", 7],
 	["maps_10", "Explorer", "Win on 10 different maps.", "#maps_won", 10],
 	["maps_all", "Cartographer", "Win on every map.", "#maps_won", 46],
+	["blessing_1", "Blessed", "Choose a Shrine Blessing.", "blessings", 1],
+	["blessing_all", "Chosen One", "Hold every Shrine Blessing at once.", "blessings_held", 15],
 	["almanac", "Spirit Scholar", "Fill the Spirit Almanac: pop every kind of spirit.", "#spirits_seen", 15],
 	["themes_6", "World Traveler", "Play a map of every theme.", "#themes_played", 6],
 	["heroes_50", "Recruiter", "Place 50 heroes.", "heroes_placed", 50],
@@ -421,7 +423,76 @@ func select_skin(k: String, i: int) -> void:
 func skin(k: String) -> int:
 	return int(save.get_value("skin_sel", k, 0))
 
+# ---------------------------------------------------------------------
+# Shrine Blessings: permanent perks. One point per player level after the first.
+# [id, name, description, cost, requires, icon]
+# ---------------------------------------------------------------------
+const BLESSINGS := [
+	["cash_1", "Lucky Coin", "Start every game with +$100.", 1, "", "coin"],
+	["cash_2", "Golden Coin", "Start every game with +$200 more.", 2, "cash_1", "coin"],
+	["lives_1", "Sturdy Gate", "+10 starting lives.", 1, "", "heart"],
+	["lives_2", "Stone Gate", "+20 more starting lives.", 2, "lives_1", "heart"],
+	["recruit", "Recruiter", "Heroes cost 5% less.", 1, "", "fist"],
+	["apprentice", "Apprentice Discount", "Tier 1 upgrades cost 15% less.", 1, "recruit", "star"],
+	["range", "Keen Eyes", "Every hero gets +5% range.", 1, "", "eye"],
+	["rate", "Swift Training", "Every hero attacks 4% faster.", 2, "range", "bolt"],
+	["pierce", "Sharp Edges", "Every attacking hero gets +1 pierce.", 2, "rate", "arrows"],
+	["soil", "Rich Soil", "Farm coin bundles are worth 10% more.", 1, "", "sprout"],
+	["guild", "Merchant Guild", "+15% end-of-round bonus money.", 1, "soil", "coin"],
+	["focus", "Focus", "Hero abilities recharge 10% faster.", 1, "", "spiral"],
+	["charm", "Extra Charm", "Use one more power per game.", 2, "focus", "gem"],
+	["finder", "Gem Finder", "+20% Spirit Gems from wins.", 1, "", "gem"],
+	["bane", "Demon Bane", "+10% damage to bosses.", 2, "finder", "skull"],
+]
+
+func blessing_points() -> int:
+	var spent := 0
+	for b in BLESSINGS:
+		if has_blessing(b[0]):
+			spent += int(b[3])
+	return level() - 1 - spent
+
+func has_blessing(id: String) -> bool:
+	return bool(save.get_value("blessings", id, false))
+
+func blessing_blocker(id: String) -> String:
+	for b in BLESSINGS:
+		if b[0] == id:
+			if has_blessing(id):
+				return "OWNED"
+			if b[4] != "" and not has_blessing(b[4]):
+				return "Needs %s" % _blessing_name(b[4])
+			if blessing_points() < int(b[3]):
+				return "Need %d point%s" % [b[3], "s" if int(b[3]) > 1 else ""]
+			return ""
+	return "?"
+
+func _blessing_name(id: String) -> String:
+	for b in BLESSINGS:
+		if b[0] == id:
+			return b[1]
+	return id
+
+func buy_blessing(id: String) -> bool:
+	if blessing_blocker(id) != "":
+		return false
+	save.set_value("blessings", id, true)
+	set_max("blessings_held", float(_held()))
+	add("blessings")
+	return true
+
+func _held() -> int:
+	var n := 0
+	for b in BLESSINGS:
+		if has_blessing(b[0]):
+			n += 1
+	return n
+
+func reset_blessings() -> void:
+	if save.has_section("blessings"):
+		save.erase_section("blessings")
+
 func reset() -> void:
-	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel"]:
+	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel", "blessings"]:
 		if save.has_section(section):
 			save.erase_section(section)
