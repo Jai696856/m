@@ -146,8 +146,10 @@ func set_heroes(keys: Array) -> void:
 	var n := keys.size()
 	for i in range(n):
 		var m: Dictionary = Models.build_hero(keys[i])
-		var a := PI * 0.15 + (PI * 0.7) * (float(i) / maxf(1.0, n - 1.0))
-		var pos := Vector3(cos(a) * -4.6, 0.12, sin(a) * 4.0 + 0.5)
+		# Spread along a wide arc in front of the fountain, alternating rows
+		var a := PI * 0.06 + (PI * 0.88) * (float(i) / maxf(1.0, n - 1.0))
+		var r := 6.2 if i % 2 == 0 else 4.9
+		var pos := Vector3(cos(a) * -r, 0.12, sin(a) * r * 0.75 + 0.6)
 		var root: Node3D = m["root"]
 		root.position = pos
 		root.scale = Vector3.ONE * 1.25
