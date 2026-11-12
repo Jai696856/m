@@ -22,6 +22,8 @@ func _initialize() -> void:
 	main.save = ConfigFile.new()  # don't touch the player's real save
 	main.progress.save = main.save
 
+	await _test_unlocks_and_looks(main)
+	main.progress.unlock_everything(main.Defs.HERO_ORDER)
 	await _test_menu_and_progress(main)
 	await _test_all_maps(main)
 	await _test_modes(main)
@@ -43,6 +45,55 @@ func _initialize() -> void:
 			print("  - ", f)
 		quit(1)
 
+# Hero XP gates upgrades past tier 1; every upgrade changes the hero's look.
+func _test_unlocks_and_looks(main) -> void:
+	main.new_game("normal", 0, "standard")
+	main.cash = 1.0e6
+	var spots := _find_spots(main, 3)
+	var h = main.place_hero("ninja", spots[0].x, spots[0].y)
+	var parts0: int = (h.model["root"] as Node3D).find_children("*", "MeshInstance3D", true, false).size()
+	main.buy_upgrade(h, 0)
+	check(h.tiers[0] == 1, "tier 1 is free to buy")
+	var parts1: int = (h.model["root"] as Node3D).find_children("*", "MeshInstance3D", true, false).size()
+	check(parts1 > parts0, "tier 1 adds visible parts (%d -> %d)" % [parts0, parts1])
+	main.buy_upgrade(h, 0)
+	check(h.tiers[0] == 1 and main.can_upgrade(h, 0) == "LOCKED", "tier 2 is locked without hero XP")
+	check(not main.unlock_upgrade("ninja", 0, 3), "can't unlock tier 3 before tier 2")
+	check(not main.unlock_upgrade("ninja", 0, 2), "can't unlock without enough XP")
+	main.progress.add_hero_xp("ninja", 300.0)
+	check(main.unlock_upgrade("ninja", 0, 2), "unlocking tier 2 with XP works")
+	check(main.progress.hero_xp("ninja") == 50.0, "unlocking spends hero XP (%.0f left)" % main.progress.hero_xp("ninja"))
+	main.buy_upgrade(h, 0)
+	check(h.tiers[0] == 2, "an unlocked upgrade can be bought")
+	check(main.progress.is_unlocked("unlock_1"), "Fresh Training achievement unlocks")
+	# Hero XP is earned in play
+	var xp0: float = main.progress.hero_xp("ninja")
+	await _run_rounds(main, 2)
+	check(main.progress.hero_xp("ninja") > xp0, "heroes earn XP in play (%.0f -> %.0f)" % [xp0, main.progress.hero_xp("ninja")])
+	# Looks: every path and tier adds parts, tier 3 tints the outfit, path 3 adds spinning orbs
+	for p in range(3):
+		main.new_game("normal", 0, "sandbox")
+		var hh = main.place_hero("miko", spots[1].x, spots[1].y)
+		var torso: MeshInstance3D = hh.model["outfit_parts"][1]
+		var before_col: Color = (torso.material_override as StandardMaterial3D).albedo_color
+		var counts: Array = []
+		for t in range(4):
+			if p != 0 and t >= 2:
+				pass
+			main.buy_upgrade(hh, p)
+			counts.append((hh.model["root"] as Node3D).find_children("*", "MeshInstance3D", true, false).size())
+		check(hh.tiers[p] == 4, "sandbox ignores upgrade locks (path %d tier %d)" % [p + 1, hh.tiers[p]])
+		var grows := true
+		for i in range(1, counts.size()):
+			if counts[i] <= counts[i - 1] and not (p == 0 and i == 2):
+				grows = false
+		check(grows, "path %d: each tier adds visible parts %s" % [p + 1, counts])
+		var after_col: Color = (torso.material_override as StandardMaterial3D).albedo_color
+		check(not after_col.is_equal_approx(before_col), "path %d tier 3 tints the outfit" % (p + 1))
+		if p == 2:
+			check((hh.model["spinners"] as Array).size() >= 2, "mystic path adds orbiting parts")
+	print("unlocks and looks ok")
+
 # Main menu, attract demo, daily challenge, settings, XP, achievements, sandbox tools.
 func _test_menu_and_progress(main) -> void:
 	main.to_home()
@@ -55,7 +106,7 @@ func _test_menu_and_progress(main) -> void:
 	check(main.game_pops > 0, "demo heroes pop spirits (%d)" % main.game_pops)
 	check(main.progress.get_stat("pops") == pops_before, "the demo does not count toward stats")
 	main.menu.refresh()
-	check(main.menu.level_lbl.text == "1", "fresh save is level 1")
+	check(main.menu.level_lbl.text == str(main.progress.level()), "menu shows the player level")
 	main.menu._open("heroes")
 	main.menu._open("achievements")
 	main.menu._open("stats")
@@ -126,6 +177,8 @@ func _test_menu_and_progress(main) -> void:
 	check(main.attract and main.menu.visible, "HOME returns to the main menu")
 	main.reset_progress()
 	check(main.progress.xp() == 0.0 and main.progress.unlocked_count() == 0, "progress reset clears XP and achievements")
+	check(not main.progress.upgrade_unlocked("ninja", 0, 2), "progress reset re-locks upgrades")
+	main.progress.unlock_everything(main.Defs.HERO_ORDER)
 
 func _run_rounds(main, n: int) -> void:
 	for r in range(n):

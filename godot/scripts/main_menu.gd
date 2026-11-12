@@ -31,7 +31,7 @@ var hero_detail: VBoxContainer
 var tip_i := 0
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_home()
 	screens["heroes"] = _build_heroes()
@@ -205,11 +205,11 @@ func show_home() -> void:
 func _screen(title: String) -> Control:
 	var shade := ColorRect.new()
 	shade.color = Color(0.05, 0.12, 0.25, 0.7)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.visible = false
 	add_child(shade)
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
 	var card: PanelContainer = ui.panel_of(ui.NAVY, 24)
 	card.custom_minimum_size = Vector2(1000, 600)
@@ -370,7 +370,10 @@ func _show_hero(k: String) -> void:
 	var desc: Label = ui.lbl(d["desc"], 16, Color(0.85, 0.92, 1.0), 0)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_child(desc)
-	info.add_child(ui.lbl("Cost $%d" % int(d["cost"]), 18, ui.GOLD, 6))
+	info.add_child(ui.lbl("Cost $%d      Hero XP: %s" % [int(d["cost"]), _num(game.progress.hero_xp(k))], 18, ui.GOLD, 6))
+	var hint: Label = ui.lbl("Earn hero XP by popping spirits with %s. Spend it below to unlock upgrades for good." % d["name"], 13, Color(0.75, 0.65, 1.0), 0)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.add_child(hint)
 	var ab: Dictionary = game.ABILITIES[k]
 	var ab_lbl: Label = ui.lbl("Ability (tier 3): %s - %s" % [ab["name"], ab["desc"]], 15, Color(1, 0.85, 0.5), 0)
 	ab_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -389,11 +392,34 @@ func _show_hero(k: String) -> void:
 		v.add_child(ui.dark_lbl(String(d["path_names"][p]).to_upper(), 18))
 		for t in range(4):
 			var up: Array = d["paths"][p][t]
-			v.add_child(ui.dark_lbl("%d. %s  ($%d)" % [t + 1, up[0], int(up[1])], 14))
+			var tier := t + 1
+			var unlocked: bool = game.progress.upgrade_unlocked(k, p, tier)
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 6)
+			v.add_child(row)
+			var name_lbl: Label = ui.dark_lbl("%d. %s  ($%d)" % [tier, up[0], int(up[1])], 14)
+			name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(name_lbl)
+			if unlocked:
+				row.add_child(ui.lbl("OK", 13, ui.GREEN.darkened(0.2), 4))
+			else:
+				var block: String = game.progress.unlock_blocker(k, p, tier)
+				var ub: Button = ui.btn("%d XP" % int(game.progress.UNLOCK_COST[tier]), ui.VIOLET, 12, 8)
+				ub.disabled = block != ""
+				ub.tooltip_text = block if block != "" else "Unlock %s" % up[0]
+				ub.custom_minimum_size = Vector2(76, 26)
+				ub.pressed.connect(_unlock.bind(k, p, tier))
+				row.add_child(ub)
 			var ud: Label = ui.dark_lbl(up[2], 12)
 			ud.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			ud.custom_minimum_size = Vector2(200, 0)
+			ud.modulate.a = 1.0 if unlocked else 0.6
 			v.add_child(ud)
+
+func _unlock(k: String, p: int, tier: int) -> void:
+	if game.unlock_upgrade(k, p, tier):
+		_show_hero(k)
+		refresh()
 
 func _build_settings() -> Control:
 	return _screen("SETTINGS")

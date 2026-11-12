@@ -272,6 +272,7 @@ static func add(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3 = Vector
 # ---------------------------------------------------------------------
 static func make_chibi(o: Dictionary) -> Dictionary:
 	var root := Node3D.new()
+	var outfit_parts: Array = []
 	add(root, cyl(0.95, 1.08, 0.36, 24), toon(o.get("base", 0xe8dcc8)), Vector3(0, 0.18, 0))
 	var ring_mat := StandardMaterial3D.new()
 	ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -287,8 +288,8 @@ static func make_chibi(o: Dictionary) -> Dictionary:
 		add(body, cyl(0.13, 0.12, 0.45, 10), toon(o.get("legs", 0x2b2a3d)), Vector3(0.17 * s, 0.22, 0))
 		add(body, sphere(0.15, 10), toon(o.get("shoes", 0x3a2b2b)), Vector3(0.17 * s, 0.04, 0.05), Vector3.ZERO, Vector3(1, 0.7, 1.4))
 	if o.has("skirt"):
-		add(body, cyl(0.36, 0.66, 0.52, 18), toon(o["skirt"]), Vector3(0, 0.52, 0))
-	add(body, cyl(0.34, 0.48, 0.78, 16), toon(outfit), Vector3(0, 0.86, 0))
+		outfit_parts.append(add(body, cyl(0.36, 0.66, 0.52, 18), toon(o["skirt"]), Vector3(0, 0.52, 0)))
+	outfit_parts.append(add(body, cyl(0.34, 0.48, 0.78, 16), toon(outfit), Vector3(0, 0.86, 0)))
 	if o.has("trim"):
 		add(body, cyl(0.47, 0.47, 0.12, 16), toon(o["trim"], 1.0, false), Vector3(0, 0.62, 0))
 		add(body, torus(0.3, 0.07), toon(o["trim"], 1.0, false), Vector3(0, 1.24, 0))
@@ -345,7 +346,7 @@ static func make_chibi(o: Dictionary) -> Dictionary:
 		arm.position = Vector3(0.47 * s, 1.15, 0)
 		arm.rotation.z = 0.25 * s
 		body.add_child(arm)
-		add(arm, capsule(0.1, 0.32), toon(o.get("sleeve", outfit)), Vector3(0, -0.24, 0))
+		outfit_parts.append(add(arm, capsule(0.1, 0.32), toon(o.get("sleeve", outfit)), Vector3(0, -0.24, 0)))
 		add(arm, sphere(0.11, 10), toon(SKIN), Vector3(0, -0.48, 0))
 		arms.append(arm)
 	var rarm: Node3D = arms[0]
@@ -354,7 +355,99 @@ static func make_chibi(o: Dictionary) -> Dictionary:
 	holder.position.y = -0.5
 	holder.rotation.x = 0.9
 	rarm.add_child(holder)
-	return {"root": root, "body": body, "head": head, "rarm": rarm, "holder": holder, "ring": ring, "ring_mat": ring_mat}
+	return {"root": root, "body": body, "head": head, "rarm": rarm, "larm": arms[1], "holder": holder, "ring": ring, "ring_mat": ring_mat, "outfit_parts": outfit_parts, "spinners": []}
+
+# ---------------------------------------------------------------------
+# Upgrade looks: every tier on every path visibly changes the hero.
+#   Path 1 (power):   sash -> spiked pauldrons -> glowing weapon -> horned crown
+#   Path 2 (speed):   headband -> visor -> flowing cape -> wings
+#   Path 3 (mystic):  charm -> orbiting spirit orb -> rune circle -> halo
+# At tier 3 the outfit also shifts toward the path's colour.
+# ---------------------------------------------------------------------
+const PATH_COLORS := [0xff5a3c, 0x3cc8ff, 0xb36bff]
+
+static func apply_upgrade_look(m: Dictionary, path: int, tier: int) -> void:
+	var body: Node3D = m["body"]
+	var head: Node3D = m["head"]
+	var col: int = PATH_COLORS[path]
+	var glow := fx_mat(Defs.col(col, 0.35), true)
+	match path:
+		0:
+			match tier:
+				1:
+					add(body, box(0.16, 0.95, 0.12), toon(col), Vector3(0, 0.9, 0.36), Vector3(0, 0, 0.75))
+				2:
+					for s in [-1.0, 1.0]:
+						add(body, sphere(0.26, 12, true), toon(0x9aa7b4), Vector3(0.47 * s, 1.2, 0), Vector3(0, 0, -0.35 * s))
+						for i in range(2):
+							add(body, cone(0.07, 0.3, 6), toon(0xe8edf2), Vector3((0.5 + i * 0.1) * s, 1.38, -0.05 + i * 0.12), Vector3(0, 0, -0.5 * s))
+				3:
+					var holder: Node3D = m["holder"]
+					holder.scale = Vector3.ONE * 1.35
+					add(holder, sphere(0.5, 14), glow, Vector3(0, 0.4, 0.1))
+					_tint_outfit(m, col)
+				4:
+					add(head, torus(0.5, 0.06), toon(0xffd34d), Vector3(0, 0.45, -0.05), Vector3(-0.15, 0, 0))
+					for s in [-1.0, 1.0]:
+						add(head, cone(0.1, 0.55, 8), toon(0x2a1838), Vector3(0.35 * s, 0.75, -0.05), Vector3(0, 0, -0.45 * s))
+					for i in range(5):
+						var a := (i - 2) * 0.32
+						add(head, cone(0.09, 0.35, 6), flat(0xff8a3c), Vector3(sin(a) * 0.48, 0.62, cos(a) * 0.15 - 0.05), Vector3(0, 0, -a))
+		1:
+			match tier:
+				1:
+					add(head, torus(0.63, 0.05), toon(col), Vector3(0, 0.22, 0), Vector3(-0.15, 0, 0))
+					add(head, box(0.08, 0.35, 0.05), toon(col), Vector3(0.15, 0.05, -0.62), Vector3(0.3, 0, 0.3))
+				2:
+					add(head, box(0.78, 0.16, 0.1), flat(0x7ff6ff, 0.75), Vector3(0, 0.0, 0.56))
+				3:
+					add(body, box(0.95, 1.1, 0.06), toon(col), Vector3(0, 0.8, -0.45), Vector3(0.22, 0, 0))
+					_tint_outfit(m, col)
+				4:
+					for s in [-1.0, 1.0]:
+						var wing := Node3D.new()
+						wing.position = Vector3(0.18 * s, 1.15, -0.35)
+						wing.rotation = Vector3(0.2, 0.5 * s, 0.35 * s)
+						body.add_child(wing)
+						for i in range(3):
+							add(wing, capsule(0.12, 0.9 - i * 0.2), toon(0xf4fbff if i % 2 == 0 else col), Vector3(0.45 * s, 0.25 - i * 0.18, 0), Vector3(0, 0, (1.1 + i * 0.25) * s), Vector3(1, 1, 0.35))
+		2:
+			match tier:
+				1:
+					add(body, sphere(0.1, 4), flat(col), Vector3(0, 1.05, 0.45))
+					add(body, torus(0.22, 0.02), toon(0xffd34d), Vector3(0, 1.2, 0.3), Vector3(PI / 2 - 0.4, 0, 0))
+				2, 3:
+					var pivot := Node3D.new()
+					pivot.position = Vector3(0, 1.4, 0)
+					pivot.rotation.y = tier * 1.7
+					body.add_child(pivot)
+					add(pivot, sphere(0.16, 12), flat(col), Vector3(0.95, 0.2 if tier == 2 else -0.1, 0))
+					add(pivot, sphere(0.28, 12), glow, Vector3(0.95, 0.2 if tier == 2 else -0.1, 0))
+					(m["spinners"] as Array).append(pivot)
+					if tier == 3:
+						var root: Node3D = m["root"]
+						add(root, torus(1.25, 0.05), flat(col, 0.8), Vector3(0, 0.4, 0))
+						for i in range(6):
+							var a2 := i * TAU / 6.0
+							add(root, box(0.18, 0.02, 0.18), flat(0xffffff, 0.9), Vector3(cos(a2) * 1.25, 0.41, sin(a2) * 1.25), Vector3(0, a2, 0))
+						_tint_outfit(m, col)
+				4:
+					var halo := Node3D.new()
+					halo.position = Vector3(0, 2.45, -0.55)
+					head.add_child(halo)
+					add(halo, torus(0.7, 0.06), flat(0xffe9a8), Vector3.ZERO, Vector3(PI / 2, 0, 0))
+					for i in range(8):
+						var a3 := i * TAU / 8.0
+						add(halo, sphere(0.07, 6), flat(col), Vector3(cos(a3) * 0.7, sin(a3) * 0.7, 0))
+					add(head, sphere(0.22, 4), flat(col), Vector3(0, 1.25, 0), Vector3.ZERO, Vector3(0.7, 1.3, 0.7))
+					(m["spinners"] as Array).append(halo)
+
+# Blend the hero's clothes 40% toward the path colour.
+static func _tint_outfit(m: Dictionary, hex: int) -> void:
+	for part in m["outfit_parts"]:
+		var mi := part as MeshInstance3D
+		var base := (mi.material_override as StandardMaterial3D).albedo_color
+		mi.material_override = make_toon(base.lerp(Defs.col(hex), 0.4))
 
 static func build_hero(key: String) -> Dictionary:
 	match key:

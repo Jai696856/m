@@ -39,6 +39,8 @@ const ACHIEVEMENTS := [
 	["sell_10", "Second Thoughts", "Sell 10 heroes.", "sold", 10],
 	["daily", "Daily Devotion", "Win a daily challenge.", "daily_wins", 1],
 	["rounds_500", "Marathon", "Survive 500 rounds in total.", "rounds", 500],
+	["unlock_1", "Fresh Training", "Unlock a hero upgrade with hero XP.", "unlocks_bought", 1],
+	["unlock_30", "Dojo Master", "Unlock 30 hero upgrades.", "unlocks_bought", 30],
 	["level_10", "Rising Star", "Reach player level 10.", "level", 10],
 	["level_25", "Legend of the Shrine", "Reach player level 25.", "level", 25],
 ]
@@ -49,7 +51,7 @@ const STAT_LABELS := [
 	["rounds", "Rounds survived"], ["best_round", "Highest round"], ["heroes_placed", "Heroes placed"],
 	["upgrades", "Upgrades bought"], ["tier4", "Tier 4 upgrades"], ["abilities", "Abilities used"],
 	["sold", "Heroes sold"], ["cash_earned", "Money earned"], ["#maps_won", "Maps conquered"],
-	["#themes_played", "Themes explored"], ["daily_wins", "Daily challenges won"],
+	["#themes_played", "Themes explored"], ["daily_wins", "Daily challenges won"], ["unlocks_bought", "Upgrades unlocked"],
 ]
 
 var save: ConfigFile
@@ -174,7 +176,51 @@ func complete_daily() -> void:
 		add("daily_wins")
 		add_xp(1000.0)
 
+# ---------------------------------------------------------------------
+# Hero XP and upgrade unlocks. Each hero earns its own XP from its pops and
+# from rounds survived; spending it permanently unlocks upgrades, in order.
+# Tier 1 of every path is free.
+# ---------------------------------------------------------------------
+const UNLOCK_COST := [0, 0, 250, 1000, 4000]   # by tier (index 1..4)
+
+func hero_xp(k: String) -> float:
+	return float(save.get_value("hero_xp", k, 0.0))
+
+func add_hero_xp(k: String, n: float) -> void:
+	if n > 0.0:
+		save.set_value("hero_xp", k, hero_xp(k) + n)
+
+func upgrade_unlocked(k: String, path: int, tier: int) -> bool:
+	if tier <= 1:
+		return true
+	return bool(save.get_value("unlocks", "%s|%d|%d" % [k, path, tier], false))
+
+## "" if the upgrade can be unlocked now, otherwise the reason it can't.
+func unlock_blocker(k: String, path: int, tier: int) -> String:
+	if upgrade_unlocked(k, path, tier):
+		return "Unlocked"
+	if not upgrade_unlocked(k, path, tier - 1):
+		return "Unlock tier %d first" % (tier - 1)
+	if hero_xp(k) < UNLOCK_COST[tier]:
+		return "Needs %d XP" % UNLOCK_COST[tier]
+	return ""
+
+func unlock_upgrade(k: String, path: int, tier: int) -> bool:
+	if unlock_blocker(k, path, tier) != "":
+		return false
+	save.set_value("hero_xp", k, hero_xp(k) - UNLOCK_COST[tier])
+	save.set_value("unlocks", "%s|%d|%d" % [k, path, tier], true)
+	add("unlocks_bought")
+	return true
+
+## Test/debug helper: unlock every upgrade of every hero.
+func unlock_everything(hero_keys: Array) -> void:
+	for k in hero_keys:
+		for p in range(3):
+			for t in range(2, 5):
+				save.set_value("unlocks", "%s|%d|%d" % [k, p, t], true)
+
 func reset() -> void:
-	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals"]:
+	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks"]:
 		if save.has_section(section):
 			save.erase_section(section)

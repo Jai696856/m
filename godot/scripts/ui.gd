@@ -1119,6 +1119,8 @@ func build_panel(h) -> void:
 	pops_lbl = lbl("%s - %s" % [def["role"], info], 14, Color(0.8, 0.9, 1.0), 0)
 	names.add_child(pops_lbl)
 	names.add_child(lbl(_stat_line(h), 13, GOLD, 0))
+	if game._upgrades_need_xp():
+		names.add_child(lbl("%s hero XP: %d" % [def["name"], int(game.progress.hero_xp(h.key))], 12, Color(0.75, 0.65, 1.0), 0))
 	if h.ability_cd >= 0.0:
 		var ab: Dictionary = game.ABILITIES[h.key]
 		names.add_child(lbl("Ability: %s - %s" % [ab["name"], ab["desc"]], 12, Color(1, 0.85, 0.5), 0))
@@ -1147,6 +1149,8 @@ func build_panel(h) -> void:
 		var bg := CARD
 		if why == "MAXED":
 			bg = Color(1, 0.93, 0.6)
+		elif why == "LOCKED":
+			bg = Color(0.8, 0.78, 0.92)
 		elif why != "":
 			bg = Color(0.62, 0.66, 0.74)
 		var card := PanelContainer.new()
@@ -1165,7 +1169,25 @@ func build_panel(h) -> void:
 			pip.custom_minimum_size = Vector2(36, 10)
 			pip.add_theme_stylebox_override("panel", sb(GREEN if i < tier else Color(0.8, 0.84, 0.9), 5, 2, false, 0))
 			pips.add_child(pip)
-		if why != "":
+		if why == "LOCKED":
+			# Not unlocked yet: spend this hero's XP to unlock it.
+			var up_l: Array = def["paths"][p][tier]
+			v.add_child(dark_lbl("LOCKED: " + String(up_l[0]), 15))
+			var block: String = game.progress.unlock_blocker(h.key, p, tier + 1)
+			var dl := dark_lbl(up_l[2], 12)
+			dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			dl.custom_minimum_size = Vector2(170, 34)
+			dl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			v.add_child(dl)
+			var xp_cost: int = game.progress.UNLOCK_COST[tier + 1]
+			var ub := btn("UNLOCK %d XP" % xp_cost, VIOLET, 16)
+			ub.disabled = block != ""
+			ub.tooltip_text = block if block != "" else "Spend %s's hero XP to unlock this upgrade for good." % def["name"]
+			var pi: int = p
+			var ti: int = tier + 1
+			ub.pressed.connect(func() -> void: game.unlock_upgrade(h.key, pi, ti))
+			v.add_child(ub)
+		elif why != "":
 			var last: Array = def["paths"][p][3]
 			v.add_child(dark_lbl(String(last[0]) if why == "MAXED" else "Path closed", 16))
 			var d := dark_lbl("Fully upgraded!" if why == "MAXED" else "Only two paths, and only one past tier 2.", 12)

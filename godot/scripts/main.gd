@@ -654,7 +654,25 @@ func can_upgrade(h: Hero, p: int) -> String:
 		for i in range(3):
 			if i != p and h.tiers[i] >= 3:
 				return "Path closed"
+	if _upgrades_need_xp() and not progress.upgrade_unlocked(h.key, p, nxt):
+		return "LOCKED"
 	return ""
+
+## Upgrades must be unlocked with hero XP, except in sandbox and the menu demo.
+func _upgrades_need_xp() -> bool:
+	return not attract and mode != "sandbox"
+
+## Spend hero XP to unlock the next tier of a path (from the upgrade panel or the Heroes menu).
+func unlock_upgrade(k: String, p: int, t: int) -> bool:
+	if not progress.unlock_upgrade(k, p, t):
+		sfx.play("error")
+		return false
+	save.save(SAVE_PATH)
+	sfx.play("upgrade")
+	ui.toast("UPGRADE UNLOCKED", String(Defs.HEROES[k]["paths"][p][t - 1][0]))
+	if selected:
+		ui.build_panel(selected)
+	return true
 
 func buy_upgrade(h: Hero, p: int) -> void:
 	if can_upgrade(h, p) != "":
@@ -668,6 +686,7 @@ func buy_upgrade(h: Hero, p: int) -> void:
 	Defs.apply_upgrade(h.stats, up[3])
 	h.tiers[p] += 1
 	h.spent += cost
+	Models.apply_upgrade_look(h.model, p, h.tiers[p])
 	if _tracking():
 		progress.add("upgrades", 1.0, false)
 		if h.tiers[p] == 4:
@@ -772,6 +791,9 @@ func _refresh_hero_look(h: Hero) -> void:
 		total += v
 	var col := Defs.col(RING_COLORS[mx])
 	(h.model["ring_mat"] as StandardMaterial3D).albedo_color = col
+	var main_path: int = h.tiers.find(mx)
+	if mx >= 3:
+		col = Defs.col(Models.PATH_COLORS[main_path])
 	(h.model["body"] as Node3D).scale = Vector3.ONE * (1.0 + total * 0.025)
 	var root: Node3D = h.model["root"]
 	if mx >= 3 and h.aura == null:
@@ -779,8 +801,6 @@ func _refresh_hero_look(h: Hero) -> void:
 		h.aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if h.aura:
 		(h.aura.material_override as StandardMaterial3D).albedo_color = Color(col, 0.18)
-	if mx >= 4 and h.halo == null:
-		h.halo = Models.add(root, Models.torus(0.5, 0.05), Models.flat(0xffe066), Vector3(0, 3.25, 0))
 
 func recalc_buffs() -> void:
 	for t in heroes:
@@ -953,6 +973,8 @@ func pop_enemy(e: Enemy, hero) -> Array:
 		progress.add_xp(0.25)
 		if e.boss:
 			progress.add(e.type + "_pops")
+		if hero != null:
+			progress.add_hero_xp(hero.key, 1.0)
 	if hero != null:
 		hero.pops += 1
 	var col := Color.from_hsv(randf(), 0.7, 1.0) if e.def.get("rainbow", false) else Defs.col(e.def["color"])
@@ -1459,6 +1481,8 @@ func _end_round() -> void:
 		progress.add("rounds", 1.0, false)
 		progress.add_xp(10.0 + round_num)
 		progress.set_max("best_round", round_num)
+		for k in squad:
+			progress.add_hero_xp(k, 5.0 + round_num)
 	var income := 0
 	var interest := 0
 	for h in heroes:
@@ -1717,6 +1741,8 @@ func victory() -> void:
 		progress.add_to_set("modes_won", mode)
 		progress.add_to_set("maps_won", String(m["id"]))
 		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0}[difficulty])
+		for k in squad:
+			progress.add_hero_xp(k, 200.0)
 		if daily_active:
 			progress.complete_daily()
 		progress.check()
@@ -1841,8 +1867,8 @@ func _process(delta: float) -> void:
 			body.rotation.y += sim_dt * 30.0
 		if h.aura:
 			h.aura.rotation.y += dt
-		if h.halo:
-			h.halo.position.y = 3.25 + sin(time * 2.0) * 0.08
+		for sp in h.model["spinners"]:
+			(sp as Node3D).rotation.y += dt * 2.2
 		if h.stats["kind"] == "support" and float(h.stats.get("pulse_dmg", 0.0)) <= 0.0:
 			body.rotation.y = sin(time * 1.3 + h.z) * 0.6
 	if not ghost.is_empty():
