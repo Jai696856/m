@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _test_modes(main)
 	await _test_modifiers(main)
 	await _test_abilities(main)
+	await _test_farm(main)
 	await _test_touch(main)
 	await _test_pause(main)
 	await _test_full_game(main)
@@ -49,14 +50,14 @@ func _initialize() -> void:
 
 # Heroes join at player levels; the shop groups them into 5 classes of 3.
 func _test_hero_levels(main) -> void:
-	check(main.Defs.HERO_ORDER.size() == 20, "20 heroes")
+	check(main.Defs.HERO_ORDER.size() == 21, "21 heroes")
 	var seen := {}
 	for c in main.Defs.CLASSES:
-		check((c["heroes"] as Array).size() == 4, "class %s has 4 heroes" % c["name"])
+		check((c["heroes"] as Array).size() >= 4, "class %s has 4+ heroes" % c["name"])
 		for k in c["heroes"]:
 			seen[k] = true
 			check(main.Defs.HEROES.has(k) and main.ABILITIES.has(k) and main.Defs.UNLOCK_LEVEL.has(k), "%s has data, an ability and an unlock level" % k)
-	check(seen.size() == 20 and main.Defs.CLASSES.size() == 5, "5 classes cover all 20 heroes")
+	check(seen.size() == 21 and main.Defs.CLASSES.size() == 5, "5 classes cover all 21 heroes")
 	main.new_game("normal", 0, "standard")
 	main.cash = 1.0e6
 	check(main.progress.level() == 1, "fresh save starts at level 1")
@@ -127,6 +128,9 @@ func _test_unlocks_and_looks(main) -> void:
 	main.menu._open("heroes")
 	main.menu._pick_hero_class(0)
 	check(main.menu.hero_list.get_child_count() == 4, "Heroes screen lists the 4 heroes of a class")
+	main.menu._pick_hero_class(4)
+	check(main.menu.hero_list.get_child_count() == 5, "Support lists 5 heroes with the farm")
+	main.menu._pick_hero_class(0)
 	main.menu.open_tree("ninja")
 	check(main.menu.screens["tree"].visible, "upgrade tree opens")
 	check(main.menu.tree_grid.get_child_count() == 3, "tree shows 3 paths")
@@ -398,6 +402,38 @@ func _test_abilities(main) -> void:
 		main._remove_enemy(e)
 	main.enemies.clear()
 	print("abilities ok")
+
+func _test_farm(main) -> void:
+	main.new_game("normal", 0, "standard")
+	main.cash = 1.0e6
+	var spot: Vector2 = _find_spots(main, 1)[0]
+	var f = main.place_hero("komugi", spot.x, spot.y)
+	check(f != null and f.stats.get("farm", false), "farm placed")
+	main.start_round()
+	for i in range(60 * 8):
+		main._step(1.0 / 60.0)
+		if not main.running:
+			break
+	check(main.crops.size() >= 1 or not main.running, "farm grows coin bundles during a round (%d)" % main.crops.size())
+	if not main.crops.is_empty():
+		var c: Dictionary = main.crops[0]
+		var cash0: float = main.cash
+		main._collect_crop(c, true)
+		check(main.cash > cash0, "collecting a bundle pays")
+		check(main.progress.get_stat("crops_tapped") >= 1, "tapped crops are counted")
+	for t in range(2):
+		main.buy_upgrade(f, 1)
+	check(f.stats["auto_collect"], "Farm Hand collects bundles automatically")
+	main.collect_all_crops()
+	main._grow_crop(f, main.eff(f))
+	for i in range(120):
+		main._step(1.0 / 60.0)
+		main._update_crops(1.0 / 60.0)
+	check(main.crops.is_empty(), "auto-collected bundles disappear")
+	main._grow_crop(f, main.eff(f))
+	main._end_round()
+	check(main.crops.is_empty(), "round end collects every bundle")
+	print("farm ok")
 
 # Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.
 func _test_touch(main) -> void:

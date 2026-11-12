@@ -46,6 +46,7 @@ const ABILITIES := {
 	"rei": {"name": "Spirit Cannon", "cd": 55.0, "desc": "A colossal ki wave blasts everything in a line."},
 	"ichika": {"name": "Sealing Circle", "cd": 55.0, "desc": "Seals every spirit nearby in place and burns them."},
 	"gen": {"name": "Gadget Overload", "cd": 45.0, "desc": "Twelve flashbang grenades hit the strongest spirits."},
+	"komugi": {"name": "Bumper Crop", "cd": 50.0, "desc": "The paddy bursts: 8 coin bundles at once, worth double."},
 	"lumi": {"name": "Starlight Transformation", "cd": 70.0, "desc": "Heroes attack twice as fast for 8 seconds and the shrine heals 10 lives."},
 }
 const ABILITY_TIER := 3
@@ -108,6 +109,7 @@ class Hero:
 	var aura: MeshInstance3D = null
 	var halo: MeshInstance3D = null
 	var ability_cd := -1.0  # < 0 while locked
+	var crop_t := 0.0  # farm: seconds until the next coin bundle
 
 class Proj:
 	var node: Node3D
@@ -170,6 +172,8 @@ var projectiles: Array = []
 var effects: Array = []
 var blockers: Array = []  # Vector3(x, z, radius)
 var animated: Array = []  # Callables(t, dt)
+var crops: Array = []  # farm coin bundles {node, value, t, auto, base}
+const CROP_PICK := 1.6
 
 var path_pts := PackedVector3Array()
 var path_samples := PackedVector3Array()
@@ -515,9 +519,9 @@ func _on_key(k: InputEventKey) -> void:
 	var code := k.keycode
 	if code >= KEY_1 and code <= KEY_5:
 		ui.select_class(code - KEY_1)
-	elif code in [KEY_Z, KEY_X, KEY_C, KEY_V]:
+	elif code in [KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B]:
 		var cls: Array = Defs.CLASSES[ui.shop_class]["heroes"]
-		var idx := [KEY_Z, KEY_X, KEY_C, KEY_V].find(code)
+		var idx := [KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B].find(code)
 		if idx < cls.size():
 			begin_placing(cls[idx])
 	elif code == KEY_ESCAPE:
@@ -573,6 +577,10 @@ func _on_click(screen: Vector2, button: int, shift: bool) -> void:
 				select_hero(h)
 		else:
 			sfx.play("error")
+		return
+	var crop = _crop_at(p)
+	if crop != null:
+		_collect_crop(crop, true)
 		return
 	var best: Hero = null
 	var bd := 1.8
@@ -902,6 +910,9 @@ func use_ability(h: Hero) -> void:
 			var gain := minf(3000.0, 400.0 + cash * 0.05)
 			earn(gain)
 			float_text("+$%d" % int(gain), Vector3(h.x, 3.0, h.z), false)
+		"komugi":
+			for i in range(8):
+				_grow_crop(h, s, 2.0)
 		"nao":
 			if mode != "sandbox":
 				lives += 25
@@ -1308,6 +1319,76 @@ func _ring_fx(pos: Vector3, size: float, hex: int, life: float) -> void:
 	var m := Models.fx_mat(Defs.col(hex, 0.8))
 	add_effect(Models.mi(Models.torus(1.0, 0.06), m), pos, life, "ring", size)
 
+# =====================================================================
+# Farm coin bundles
+# =====================================================================
+func _grow_crop(h: Hero, s: Dictionary, mul: float = 1.0) -> void:
+	var a := randf() * TAU
+	var r := randf_range(1.4, 2.6)
+	var target := Vector3(h.x + cos(a) * r, 0.0, h.z + sin(a) * r)
+	var node := Models.crop_bundle()
+	node.position = Vector3(h.x, 1.0, h.z)
+	add_child(node)
+	var c := {"node": node, "value": float(s["coin_value"]) * mul, "t": float(s["collect_time"]), "auto": bool(s.get("auto_collect", false)),
+		"from": Vector3(h.x, 1.0, h.z), "to": target, "fly": 0.0, "hero": h}
+	if c["auto"]:
+		c["t"] = 0.9
+	crops.append(c)
+	h.anim = 0.3
+	sfx.play("place")
+
+func _collect_crop(c: Dictionary, by_tap: bool) -> void:
+	if not crops.has(c):
+		return
+	crops.erase(c)
+	var node: Node3D = c["node"]
+	var pos := node.position
+	earn(c["value"])
+	float_text("+$%d" % int(c["value"]), pos + Vector3(0, 1.2, 0), false)
+	burst(pos + Vector3(0, 0.5, 0), Color(1.0, 0.85, 0.3), 8, 3.0)
+	node.queue_free()
+	sfx.play("coin")
+	if _tracking():
+		progress.add("crops")
+		if by_tap:
+			progress.add("crops_tapped")
+
+func _update_crops(dt: float) -> void:
+	for c in crops.duplicate():
+		var node: Node3D = c["node"]
+		if c["fly"] < 1.0:
+			c["fly"] = minf(1.0, c["fly"] + dt * 2.5)
+			var f: float = c["fly"]
+			var p: Vector3 = (c["from"] as Vector3).lerp(c["to"], f)
+			p.y = (1.0 - f) * 1.0 + sin(f * PI) * 2.0
+			node.position = p
+			continue
+		node.rotation.y += dt * 1.5
+		node.position.y = absf(sin(time * 3.0 + node.position.x)) * 0.15
+		c["t"] -= dt
+		if c["t"] <= 0.0:
+			_collect_crop(c, false)
+
+func _crop_at(p: Vector3):
+	var best = null
+	var bd := CROP_PICK
+	for c in crops:
+		var n: Node3D = c["node"]
+		var dd := Vector2(n.position.x, n.position.z).distance_to(Vector2(p.x, p.z))
+		if dd < bd:
+			bd = dd
+			best = c
+	return best
+
+func collect_all_crops() -> void:
+	for c in crops.duplicate():
+		_collect_crop(c, false)
+
+func _clear_crops() -> void:
+	for c in crops:
+		(c["node"] as Node3D).queue_free()
+	crops.clear()
+
 func _aim(h: Hero, x: float, z: float) -> void:
 	(h.model["body"] as Node3D).rotation.y = atan2(x - h.x, z - h.z)
 
@@ -1318,6 +1399,11 @@ func _hero_update(h: Hero, dt: float) -> void:
 	if float(s.get("aura_slow", 0.0)) > 0.0:
 		for e in enemies_near(h.x, h.z, rng, true):
 			apply_slow(e, s["aura_slow"], 0.2)
+	if s.get("farm", false) and running:
+		h.crop_t -= dt
+		if h.crop_t <= 0.0:
+			h.crop_t = float(s["crop_rate"])
+			_grow_crop(h, s)
 	if h.cool > 0.0:
 		return
 	var kind: String = s["kind"]
@@ -1657,6 +1743,7 @@ func start_round() -> void:
 
 func _end_round() -> void:
 	running = false
+	collect_all_crops()
 	var bonus := 100 + round_num
 	if _tracking():
 		progress.add("rounds", 1.0, false)
@@ -1760,6 +1847,7 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 	for h in heroes:
 		(h.model["root"] as Node3D).queue_free()
 	heroes.clear()
+	_clear_crops()
 	cancel_placing()
 	select_hero(null)
 	var d: Dictionary = DIFFS[diff]
@@ -1827,6 +1915,7 @@ func _enter_menus() -> void:
 	for h in heroes:
 		(h.model["root"] as Node3D).queue_free()
 	heroes.clear()
+	_clear_crops()
 	cancel_placing()
 	select_hero(null)
 	ui.set_hud_visible(false)
@@ -2085,6 +2174,7 @@ func _process(delta: float) -> void:
 		(ghost["body"] as Node3D).position.y = 0.36 + sin(time * 5.0) * 0.1
 
 	_update_effects(sim_dt)
+	_update_crops(sim_dt)
 	_update_particles(dt)
 	for fn in animated:
 		fn.call(time, dt)

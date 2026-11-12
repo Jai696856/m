@@ -622,6 +622,24 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, cone(0.18, 0.3, 10), toon(0xffd34d), Vector3(0, 0.75, 0), Vector3(PI, 0, 0))
 			add(c.holder, sphere(0.06, 6), toon(0xffd34d), Vector3(0, 0.55, 0))
 			return c
+		"komugi":
+			var c := make_chibi({"outfit": 0x6fae4f, "skirt": 0x3c6e9f, "legs": 0x3c6e9f, "hair": 0x7a4a24, "style": "short", "eye": 0x6b3f1d, "trim": 0xf2d16b, "sleeve": 0xfdf6e3, "base": 0x8fc75c})
+			# Straw hat
+			add(c.head, cyl(0.95, 1.0, 0.07, 20), toon(0xe9c46a), Vector3(0, 0.45, 0))
+			add(c.head, cone(0.55, 0.42, 18), toon(0xe9c46a), Vector3(0, 0.68, 0))
+			add(c.head, torus(0.53, 0.05), toon(0xc0392b, 1.0, false), Vector3(0, 0.5, 0))
+			# Sickle-hoe
+			add(c.holder, cyl(0.04, 0.04, 1.1, 6), toon(0x8b5a2b), Vector3(0, 0.25, 0))
+			add(c.holder, box(0.42, 0.06, 0.12), toon(0xb8c2cc), Vector3(0.15, 0.8, 0))
+			# Rice paddy on the base, with sprouts
+			add(c.root, cyl(0.86, 0.86, 0.04, 20), toon(0x5aa7c8, 1.0, false), Vector3(0, 0.37, 0))
+			for i in range(10):
+				var a := i / 10.0 * TAU
+				var sp := add(c.root, cone(0.06, 0.36, 5), toon(0x7ccf52, 1.0, false), Vector3(cos(a) * 0.72, 0.52, sin(a) * 0.72))
+				sp.rotation.z = sin(a * 3.0) * 0.25
+			# Sack of rice
+			add(c.root, sphere(0.26, 10), toon(0xf3e4c0), Vector3(-0.72, 0.58, 0.45), Vector3.ZERO, Vector3(1, 1.15, 1))
+			return c
 		_:
 			var c := make_chibi({"outfit": 0xff7ac8, "skirt": 0xffffff, "legs": 0xffffff, "hair": 0x9b6bff, "style": "twintails", "eye": 0xff3d8b, "trim": 0xffd34d, "accent": 0xffd34d, "base": 0xffc6e4})
 			add(c.head, sphere(0.17, 4), toon(0xffd34d), Vector3(0.4, 0.42, 0.35))
@@ -818,6 +836,15 @@ static func lantern() -> Node3D:
 	add(g, box(0.5, 0.35, 0.8), flat(0xffd27a), Vector3(0, 1.7, 0))
 	add(g, cone(0.75, 0.5, 6), stone, Vector3(0, 2.25, 0))
 	g.set_meta("r", 0.9)
+	return g
+
+## A coin bundle (rice sack tied with gold string) that a farm grows.
+static func crop_bundle() -> Node3D:
+	var g := Node3D.new()
+	add(g, sphere(0.32, 12), toon(0xf3e4c0), Vector3(0, 0.3, 0), Vector3.ZERO, Vector3(1, 1.1, 1))
+	add(g, torus(0.16, 0.05), toon(0xffc93c, 1.0, false), Vector3(0, 0.6, 0))
+	add(g, cone(0.12, 0.2, 8), toon(0xf3e4c0), Vector3(0, 0.72, 0))
+	add(g, cyl(0.16, 0.16, 0.05, 12), toon(0xffd34d), Vector3(0.18, 0.35, 0.26), Vector3(PI / 2, 0, 0))
 	return g
 
 static func projectile(kind: String) -> Node3D:

@@ -395,7 +395,9 @@ func _build_heroes() -> Control:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb: Button = ui.btn(c["name"], Defs.col(c["color"]).darkened(0.3), 16, 10)
-		tb.custom_minimum_size = Vector2(150, 40)
+		tb.custom_minimum_size = Vector2(170, 44)
+		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 56)
+		tb.add_theme_constant_override("icon_max_width", 26)
 		tb.pressed.connect(_pick_hero_class.bind(i))
 		tabs.add_child(tb)
 		hero_tabs.append(tb)
@@ -419,7 +421,7 @@ func _pick_hero_class(i: int) -> void:
 		var d: Dictionary = Defs.HEROES[key]
 		var unlocked: bool = game.progress.level() >= int(Defs.UNLOCK_LEVEL[key])
 		var b: Button = ui.btn("", Defs.col(Defs.CLASSES[i]["color"]) if unlocked else Color(0.35, 0.33, 0.48), 14, 18)
-		b.custom_minimum_size = Vector2(220, 380)
+		b.custom_minimum_size = Vector2(220 if Defs.CLASSES[i]["heroes"].size() < 5 else 190, 380)
 		var v := VBoxContainer.new()
 		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE

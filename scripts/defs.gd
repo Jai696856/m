@@ -45,7 +45,7 @@ static func rank(k: String) -> int:
 # Heroes. Upgrade effects are data: {"key": add, "key*": multiply, "key=": set}.
 # Dotted keys reach into nested dictionaries (e.g. "explode.r").
 # ---------------------------------------------------------------------
-const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao", "kaito", "rei", "ichika", "gen", "lumi"]
+const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao", "kaito", "rei", "ichika", "gen", "lumi", "komugi"]
 
 ## Five classes of four heroes each (the shop shows one class per tab).
 const CLASSES := [
@@ -53,14 +53,14 @@ const CLASSES := [
 	{"id": "ranged", "name": "MARKSMEN", "color": 0x5bc0ff, "heroes": ["miko", "kenta", "saya", "rei"]},
 	{"id": "magic", "name": "MYSTICS", "color": 0xb37bff, "heroes": ["mage", "ice", "sora", "ichika"]},
 	{"id": "tech", "name": "ENGINEERS", "color": 0xffb02e, "heroes": ["mecha", "riku", "hina", "gen"]},
-	{"id": "support", "name": "SUPPORT", "color": 0x5fd36b, "heroes": ["idol", "hiro", "nao", "lumi"]},
+	{"id": "support", "name": "SUPPORT", "color": 0x5fd36b, "heroes": ["idol", "hiro", "nao", "lumi", "komugi"]},
 ]
 
 ## Player level needed before a hero can be recruited.
 const UNLOCK_LEVEL := {
 	"ninja": 1, "miko": 1, "mage": 1, "samurai": 2, "ice": 3, "idol": 4, "kenta": 5, "mecha": 6,
 	"ren": 7, "saya": 8, "sora": 9, "riku": 10, "hiro": 11, "hina": 12, "nao": 13,
-	"kaito": 14, "rei": 15, "ichika": 16, "gen": 17, "lumi": 18,
+	"kaito": 14, "rei": 15, "ichika": 16, "gen": 17, "lumi": 18, "komugi": 3,
 }
 
 static func hero_class(k: String) -> Dictionary:
@@ -468,6 +468,26 @@ const HEROES := {
 			 ["Moonlight Shield", 800, "+4 lives per round.", {"lives_regen": 4}],
 			 ["Full Moon", 2500, "+10 lives per round.", {"lives_regen": 10}],
 			 ["Eternal Moon", 9000, "+25 lives per round, nearby heroes see veiled spirits.", {"lives_regen": 25, "buff_camo=": true}]],
+		],
+	},
+	"komugi": {
+		"name": "Komugi", "role": "Rice Farmer", "cost": 1100,
+		"desc": "Tends a rice paddy that grows coin bundles during each round. Tap the bundles to collect them.",
+		"base": {"kind": "support", "farm": true, "range": 4.5, "rate": 1.2, "dmg": 0.0, "pierce": 6, "income": 0, "lives_regen": 0, "buff_rate": 1.0, "buff_dmg": 0.0, "buff_pierce": 0, "buff_camo": false, "pulse_dmg": 0.0, "pulse_range": 3.5, "camo": false, "type": "magic", "crop_rate": 6.0, "coin_value": 25, "collect_time": 9.0, "auto_collect": false},
+		"path_names": ["Harvest", "Market", "Scarecrow"],
+		"paths": [
+			[["Fertile Soil", 450, "Grows bundles 25% faster.", {"crop_rate*": 0.75}],
+			 ["Twin Paddies", 1100, "Bundles are worth +$20.", {"coin_value": 20}],
+			 ["Golden Rice", 3500, "Bundles worth 1.6x and grow faster.", {"coin_value*": 1.6, "crop_rate*": 0.8}],
+			 ["Rice Empire", 11000, "Bundles worth 2.5x and grow much faster.", {"coin_value*": 2.5, "crop_rate*": 0.6}]],
+			[["Harvest Basket", 300, "Bundles stay twice as long before collecting themselves.", {"collect_time": 9.0}],
+			 ["Farm Hand", 900, "Bundles are collected automatically.", {"auto_collect=": true}],
+			 ["Market Stall", 2600, "+$250 income at the end of every round.", {"income": 250}],
+			 ["Rice Exchange", 8500, "+$900 income per round, and 5% interest on your money (max $800).", {"income": 900, "interest=": true}]],
+			[["Scarecrow", 350, "A scarecrow shakes off nearby spirits.", {"pulse_dmg": 1.0}],
+			 ["Crow Flock", 1000, "Crows deal +2 damage and spot veiled spirits.", {"pulse_dmg": 2.0, "camo=": true}],
+			 ["Harvest Festival", 3200, "+3 lives per round, nearby heroes attack 10% faster.", {"lives_regen": 3, "buff_rate=": 0.9, "pulse_dmg": 2.0}],
+			 ["Spirit of the Field", 10500, "Huge scarecrow sweeps: +10 damage, longer reach.", {"pulse_dmg": 10.0, "pulse_range": 1.5, "pierce": 14, "rate*": 0.6}]],
 		],
 	},
 }

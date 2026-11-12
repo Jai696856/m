@@ -5,6 +5,7 @@ extends CanvasLayer
 const Defs = preload("res://scripts/defs.gd")
 const Models = preload("res://scripts/models.gd")
 const Maps = preload("res://scripts/maps.gd")
+const Icons = preload("res://scripts/icons.gd")
 const LevelScript = preload("res://scripts/level/level.gd")
 const GameModes := ["standard", "half_cash", "fortified", "deflation", "rush", "sandbox"]
 
@@ -455,7 +456,11 @@ func _build_shop() -> void:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb := btn(str(i + 1), Defs.col(c["color"]).darkened(0.25), 14, 8)
-		tb.custom_minimum_size = Vector2(38, 30)
+		tb.custom_minimum_size = Vector2(44, 30)
+		tb.text = ""
+		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 40)
+		tb.expand_icon = true
+		tb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tb.tooltip_text = "%s (key %d)" % [c["name"], i + 1]
 		tb.pressed.connect(select_class.bind(i))
 		tabs.add_child(tb)
@@ -472,7 +477,7 @@ func _build_shop() -> void:
 	shop_grid.add_theme_constant_override("h_separation", 6)
 	shop_grid.add_theme_constant_override("v_separation", 6)
 	shop_scroll.add_child(shop_grid)
-	var hint_text := "1-5: class  Z X C V: hero\nSpace: play  Drag: rotate"
+	var hint_text := "1-5: class  Z-B: hero\nSpace: play  Drag: rotate"
 	if DisplayServer.is_touchscreen_available():
 		hint_text = "Tap a hero, then tap grass\nDrag: rotate  Pinch: zoom"
 	var hint := lbl(hint_text, 11, Color(0.8, 0.88, 1.0), 0)
@@ -515,7 +520,7 @@ func rebuild_shop() -> void:
 		var cost := lbl("$%d" % game.price(h["cost"]), 20, CASH, 8)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(cost)
-		var num := lbl(["Z", "X", "C", "V"][i], 13, Color.WHITE, 6)
+		var num := lbl(["Z", "X", "C", "V", "B"][i], 13, Color.WHITE, 6)
 		num.position = Vector2(6, 2)
 		b.add_child(num)
 		if not game.hero_available(k):

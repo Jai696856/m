@@ -12,7 +12,7 @@ var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 var _last := {}
 
-const GAPS := {"pop": 28, "boom": 70, "throw": 45, "beam": 60, "slash": 60, "cast": 60, "freeze": 80, "wave": 80}
+const GAPS := {"coin": 40, "pop": 28, "boom": 70, "throw": 45, "beam": 60, "slash": 60, "cast": 60, "freeze": 80, "wave": 80}
 
 func _ready() -> void:
 	for i in range(14):
@@ -37,6 +37,9 @@ func _ready() -> void:
 	_streams["win"] = _make([[523.0, 0.0, 0.25, "tri", 0.4, 0.0], [659.0, 0.0, 0.25, "tri", 0.4, 0.12], [784.0, 0.0, 0.25, "tri", 0.4, 0.24], [1047.0, 0.0, 0.25, "tri", 0.4, 0.36], [1319.0, 0.0, 0.4, "tri", 0.4, 0.48]])
 	_streams["lose"] = _make([[392.0, 0.0, 0.3, "saw", 0.3, 0.0], [330.0, 0.0, 0.3, "saw", 0.3, 0.18], [262.0, 0.0, 0.3, "saw", 0.3, 0.36], [196.0, 0.0, 0.5, "saw", 0.3, 0.54]])
 	_streams["boss"] = _make([[80.0, 50.0, 0.8, "saw", 0.45, 0.0]])
+	_streams["coin"] = _make([[1320.0, 0.0, 0.06, "square", 0.18, 0.0], [1760.0, 0.0, 0.12, "square", 0.18, 0.05]])
+	_streams["power"] = _make([[220.0, 880.0, 0.35, "saw", 0.3, 0.0], [440.0, 1760.0, 0.3, "tri", 0.3, 0.1]])
+	_streams["quest"] = _make([[784.0, 0.0, 0.1, "tri", 0.4, 0.0], [1047.0, 0.0, 0.1, "tri", 0.4, 0.08], [1568.0, 0.0, 0.25, "sine", 0.4, 0.16]])
 	_streams["error"] = _make([[200.0, 0.0, 0.12, "square", 0.2, 0.0]])
 
 func play(id: String) -> void:
