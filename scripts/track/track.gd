@@ -123,7 +123,7 @@ func _build_tiles() -> void:
 			stone_items.append([xf * (s[0] as Transform3D), (s[1] as Color) * stone_tint])
 		for g in tile.grout:
 			grout_items.append([xf * (g[0] as Transform3D), g[1]])
-	var stones_mm := Models.batch(Models.chamfer_box(0.12), stone_items)
+	var stones_mm := Models.batch(Models.chamfer_box(0.08), stone_items)
 	stones_mm.name = "Stones"
 	add_child(stones_mm)
 	var grout_mm := Models.batch(Models.box(1, 1, 1), grout_items, false, false)

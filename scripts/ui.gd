@@ -9,21 +9,30 @@ const Icons = preload("res://scripts/icons.gd")
 const LevelScript = preload("res://scripts/level/level.gd")
 const GameModes := ["standard", "half_cash", "fortified", "deflation", "rush", "one_class", "boss_rush", "sandbox"]
 
-const INK := Color(0.12, 0.08, 0.16)
-const NAVY := Color(0.1, 0.17, 0.29, 0.9)
-const TILE := Color(0.6, 0.84, 1.0)
-const CARD := Color(0.93, 0.97, 1.0)
-const PINK := Color(1.0, 0.435, 0.682)
-const GREEN := Color(0.36, 0.86, 0.3)
-const GOLD := Color(1.0, 0.8, 0.2)
-const ORANGE := Color(1.0, 0.6, 0.15)
-const VIOLET := Color(0.54, 0.36, 1.0)
-const CASH := Color(1.0, 0.86, 0.3)
+# Palette: deep navy surfaces, soft accents, one ink colour for text shadows.
+const INK := Color(0.06, 0.08, 0.16)
+const NAVY := Color(0.075, 0.1, 0.19, 0.94)
+const SURFACE := Color(0.13, 0.165, 0.29)
+const TILE := Color(0.15, 0.19, 0.33)
+const CARD := Color(0.13, 0.165, 0.29)
+const TEXT := Color(0.93, 0.95, 1.0)
+const MUTED := Color(0.62, 0.68, 0.82)
+const BLUE := Color(0.29, 0.5, 0.95)
+const PINK := Color(1.0, 0.4, 0.62)
+const GREEN := Color(0.2, 0.78, 0.5)
+const GOLD := Color(1.0, 0.78, 0.26)
+const ORANGE := Color(1.0, 0.56, 0.24)
+const VIOLET := Color(0.55, 0.44, 1.0)
+const RED := Color(0.94, 0.33, 0.38)
+const GREY := Color(0.33, 0.37, 0.5)
+const CASH := Color(1.0, 0.82, 0.3)
 
-# Small vector icons drawn in code (heart, coin, play, fast-forward).
+# An icon from the shared set (scripts/icons.gd), tinted, with a soft drop shadow.
 class HudIcon extends Control:
+	const IconSet = preload("res://scripts/icons.gd")
 	var kind := "heart"
 	var col := Color.WHITE
+	var shadow := true
 
 	func _init(k: String, px: float, c: Color) -> void:
 		kind = k
@@ -36,125 +45,11 @@ class HudIcon extends Control:
 		queue_redraw()
 
 	func _draw() -> void:
-		var ink := Color(0.12, 0.08, 0.16)
-		var s := size
-		var c := s * 0.5
-		match kind:
-			"heart":
-				var pts := PackedVector2Array()
-				for i in range(48):
-					var t := TAU * i / 48.0
-					var x := 16.0 * pow(sin(t), 3)
-					var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
-					pts.append(c + Vector2(x, y + 2.0) * (s.x / 38.0))
-				draw_colored_polygon(pts, col)
-				pts.append(pts[0])
-				draw_polyline(pts, ink, 3.0, true)
-				draw_circle(c + Vector2(-s.x * 0.17, -s.y * 0.12), s.x * 0.07, Color(1, 1, 1, 0.7))
-			"coin":
-				draw_circle(c, s.x * 0.47, ink)
-				draw_circle(c, s.x * 0.41, col)
-				draw_circle(c, s.x * 0.27, col.darkened(0.18))
-				draw_circle(c + Vector2(-s.x * 0.14, -s.y * 0.14), s.x * 0.07, Color(1, 1, 1, 0.8))
-			"play":
-				var tri := PackedVector2Array([c + Vector2(-0.2, -0.27) * s.x, c + Vector2(0.28, 0) * s.x, c + Vector2(-0.2, 0.27) * s.x])
-				draw_colored_polygon(tri, col)
-				tri.append(tri[0])
-				draw_polyline(tri, ink, 3.0, true)
-			"gear":
-				var pts := PackedVector2Array()
-				for i in range(32):
-					var t := TAU * i / 32.0
-					var r := s.x * (0.42 if (i / 2) % 2 == 0 else 0.32)
-					pts.append(c + Vector2(cos(t), sin(t)) * r)
-				draw_colored_polygon(pts, col)
-				pts.append(pts[0])
-				draw_polyline(pts, ink, 3.0, true)
-				draw_circle(c, s.x * 0.13, ink)
-			"trophy":
-				var cup := PackedVector2Array([c + Vector2(-0.28, -0.32) * s.x, c + Vector2(0.28, -0.32) * s.x, c + Vector2(0.18, 0.05) * s.x, c + Vector2(-0.18, 0.05) * s.x])
-				draw_colored_polygon(cup, col)
-				draw_rect(Rect2(c + Vector2(-0.05, 0.05) * s.x, Vector2(0.1, 0.18) * s.x), col)
-				draw_rect(Rect2(c + Vector2(-0.2, 0.22) * s.x, Vector2(0.4, 0.1) * s.x), col)
-				draw_arc(c + Vector2(-0.3, -0.18) * s.x, s.x * 0.1, PI * 0.5, PI * 1.5, 12, col, 3.0)
-				draw_arc(c + Vector2(0.3, -0.18) * s.x, s.x * 0.1, -PI * 0.5, PI * 0.5, 12, col, 3.0)
-				cup.append(cup[0])
-				draw_polyline(cup, ink, 2.0, true)
-			"calendar":
-				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.6) * s.x), col)
-				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.16) * s.x), Color(1, 0.35, 0.35))
-				for i in range(3):
-					for j in range(2):
-						draw_rect(Rect2(c + Vector2(-0.22 + i * 0.16, -0.02 + j * 0.15) * s.x, Vector2(0.1, 0.09) * s.x), ink)
-				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.6) * s.x), ink, false, 2.0)
-			"chart":
-				for i in range(3):
-					var hgt: float = [0.3, 0.5, 0.65][i]
-					draw_rect(Rect2(c + Vector2(-0.3 + i * 0.22, 0.32 - hgt) * s.x, Vector2(0.16, hgt) * s.x), col)
-					draw_rect(Rect2(c + Vector2(-0.3 + i * 0.22, 0.32 - hgt) * s.x, Vector2(0.16, hgt) * s.x), ink, false, 2.0)
-			"book":
-				var lp := PackedVector2Array([c + Vector2(0, -0.22) * s.x, c + Vector2(-0.36, -0.3) * s.x, c + Vector2(-0.36, 0.26) * s.x, c + Vector2(0, 0.32) * s.x])
-				var rp := PackedVector2Array([c + Vector2(0, -0.22) * s.x, c + Vector2(0.36, -0.3) * s.x, c + Vector2(0.36, 0.26) * s.x, c + Vector2(0, 0.32) * s.x])
-				draw_colored_polygon(lp, col)
-				draw_colored_polygon(rp, col.darkened(0.15))
-				lp.append(lp[0])
-				rp.append(rp[0])
-				draw_polyline(lp, ink, 2.0, true)
-				draw_polyline(rp, ink, 2.0, true)
-			"door":
-				draw_rect(Rect2(c - Vector2(0.22, 0.32) * s.x, Vector2(0.44, 0.64) * s.x), col)
-				draw_rect(Rect2(c - Vector2(0.22, 0.32) * s.x, Vector2(0.44, 0.64) * s.x), ink, false, 2.0)
-				draw_circle(c + Vector2(0.12, 0.02) * s.x, s.x * 0.04, ink)
-			"star":
-				var sp := PackedVector2Array()
-				for i in range(10):
-					var t := -PI / 2 + TAU * i / 10.0
-					var r := s.x * (0.45 if i % 2 == 0 else 0.2)
-					sp.append(c + Vector2(cos(t), sin(t)) * r)
-				draw_colored_polygon(sp, col)
-				sp.append(sp[0])
-				draw_polyline(sp, ink, 3.0, true)
-			"gem":
-				var g := PackedVector2Array([c + Vector2(-0.26, -0.3) * s.x, c + Vector2(0.26, -0.3) * s.x, c + Vector2(0.44, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, c + Vector2(-0.44, -0.08) * s.x])
-				draw_colored_polygon(g, col)
-				draw_colored_polygon(PackedVector2Array([c + Vector2(-0.26, -0.3) * s.x, c + Vector2(0.26, -0.3) * s.x, c + Vector2(0.14, -0.08) * s.x, c + Vector2(-0.14, -0.08) * s.x]), col.lightened(0.45))
-				draw_line(c + Vector2(-0.44, -0.08) * s.x, c + Vector2(0.44, -0.08) * s.x, ink, 2.0, true)
-				draw_line(c + Vector2(-0.14, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, ink, 1.5, true)
-				draw_line(c + Vector2(0.14, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, ink, 1.5, true)
-				g.append(g[0])
-				draw_polyline(g, ink, 3.0, true)
-			"bag":
-				var bp := PackedVector2Array([c + Vector2(-0.32, -0.16) * s.x, c + Vector2(0.32, -0.16) * s.x, c + Vector2(0.38, 0.4) * s.x, c + Vector2(-0.38, 0.4) * s.x])
-				draw_arc(c + Vector2(0, -0.16) * s.x, s.x * 0.17, PI, TAU, 16, ink, s.x * 0.1, true)
-				draw_arc(c + Vector2(0, -0.16) * s.x, s.x * 0.17, PI, TAU, 16, col, s.x * 0.05, true)
-				draw_colored_polygon(bp, col)
-				bp.append(bp[0])
-				draw_polyline(bp, ink, 3.0, true)
-				draw_circle(c + Vector2(0, 0.12) * s.x, s.x * 0.08, ink)
-			"ghost":
-				var gp := PackedVector2Array()
-				for i in range(13):
-					var a := PI + PI * i / 12.0
-					gp.append(c + Vector2(cos(a), sin(a)) * s.x * 0.32 + Vector2(0, -0.02) * s.x)
-				for i in range(7):
-					var xx := 0.32 - 0.64 * i / 6.0
-					gp.append(c + Vector2(xx, 0.36 if i % 2 == 0 else 0.24) * s.x)
-				draw_colored_polygon(gp, col)
-				gp.append(gp[0])
-				draw_polyline(gp, ink, 3.0, true)
-				for x in [-0.11, 0.11]:
-					draw_circle(c + Vector2(x, -0.04) * s.x, s.x * 0.05, ink)
-			"scroll":
-				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), col)
-				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), ink, false, 3.0)
-				for yy in [-0.18, 0.0, 0.18]:
-					draw_line(c + Vector2(-0.18, yy) * s.x, c + Vector2(0.18, yy) * s.x, ink, 2.5, true)
-			"fast":
-				for off in [-0.17, 0.13]:
-					var t2 := PackedVector2Array([c + Vector2(off - 0.12, -0.24) * s.x, c + Vector2(off + 0.17, 0) * s.x, c + Vector2(off - 0.12, 0.24) * s.x])
-					draw_colored_polygon(t2, col)
-					t2.append(t2[0])
-					draw_polyline(t2, ink, 3.0, true)
+		var px := int(clampf(maxf(size.x, size.y) * 2.0, 32.0, 256.0))
+		var t: Texture2D = IconSet.tex(kind, Color.WHITE, px)
+		if shadow:
+			draw_texture_rect(t, Rect2(Vector2(0, size.y * 0.07), size), false, Color(0.05, 0.07, 0.15, 0.35))
+		draw_texture_rect(t, Rect2(Vector2.ZERO, size), false, col)
 
 # Minimap preview of a map's track, drawn from its route.
 class MapThumb extends Control:
@@ -211,11 +106,12 @@ class MapThumb extends Control:
 var game
 var cash_dirty := true
 var font: Font
+var font_bold: Font
 
 var root: Control
 var lives_lbl: Label
 var cash_lbl: Label
-var round_box: VBoxContainer
+var round_box: Control
 var round_lbl: Label
 var shop: PanelContainer
 var shop_scroll: ScrollContainer
@@ -287,10 +183,19 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var theme := Theme.new()
-	font = load("res://fonts/LuckiestGuy-Regular.ttf") as Font
+	font = load("res://fonts/Fredoka-SemiBold.ttf") as Font
+	font_bold = load("res://fonts/Fredoka-Bold.ttf") as Font
 	if font:
 		theme.default_font = font
 	theme.default_font_size = 18
+	# Tooltips match the panels
+	var tip := StyleBoxFlat.new()
+	tip.bg_color = Color(0.05, 0.07, 0.14, 0.96)
+	tip.set_corner_radius_all(8)
+	tip.set_content_margin_all(8)
+	theme.set_stylebox("panel", "TooltipPanel", tip)
+	theme.set_color("font_color", "TooltipLabel", TEXT)
+	theme.set_font_size("font_size", "TooltipLabel", 14)
 	root.theme = theme
 	add_child(root)
 	for k in Defs.HERO_ORDER:
@@ -316,53 +221,82 @@ func _ready() -> void:
 # ---------------------------------------------------------------------
 # Style helpers
 # ---------------------------------------------------------------------
+## Flat rounded surface with a hairline edge and a soft shadow.
 func sb(bg: Color, radius: int = 14, border: int = 3, shadow: bool = true, margin: int = 8) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
-	s.border_color = INK
-	s.set_border_width_all(border)
+	s.border_color = Color(1, 1, 1, 0.1) if bg.get_luminance() < 0.5 else Color(0, 0, 0, 0.12)
+	s.set_border_width_all(mini(border, 2) if border < 4 else 3)
 	s.set_corner_radius_all(radius)
 	s.set_content_margin_all(margin)
+	s.anti_aliasing_size = 1.2
 	if shadow:
-		s.shadow_color = Color(0, 0, 0, 0.3)
-		s.shadow_size = 1
-		s.shadow_offset = Vector2(0, 4)
+		s.shadow_color = Color(0.02, 0.03, 0.08, 0.28)
+		s.shadow_size = 6
+		s.shadow_offset = Vector2(0, 3)
 	return s
 
-# Chunky cartoon text: white fill with a thick dark outline by default.
+## Button face: flat colour with a darker lip along the bottom.
+func bsb(bg: Color, radius: int = 12, lip: int = 3) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = bg.darkened(0.28)
+	s.border_width_bottom = lip
+	s.set_corner_radius_all(radius)
+	s.set_content_margin_all(8)
+	s.content_margin_left = 10
+	s.content_margin_right = 10
+	s.anti_aliasing_size = 1.2
+	s.shadow_color = Color(0.02, 0.03, 0.08, 0.22)
+	s.shadow_size = 4
+	s.shadow_offset = Vector2(0, 2)
+	return s
+
+# Clean rounded text. `outline` is the old chunky outline width; it now maps to a thin
+# dark edge that keeps text readable over the 3D scene (0 = none, for text on panels).
 func lbl(text: String, size: int = 16, color: Color = Color.WHITE, outline: int = 8) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
+	if size >= 24 and font_bold:
+		l.add_theme_font_override("font", font_bold)
 	if outline > 0:
-		l.add_theme_constant_override("outline_size", outline)
-		l.add_theme_color_override("font_outline_color", INK)
+		l.add_theme_constant_override("outline_size", clampi(int(round(outline * 0.5)), 2, 5))
+		l.add_theme_color_override("font_outline_color", Color(INK, 0.85))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
+## Secondary text on a panel (the name is historical: panels used to be light).
 func dark_lbl(text: String, size: int = 14) -> Label:
-	return lbl(text, size, INK, 0)
+	return lbl(text, size, TEXT, 0)
 
 func btn(text: String, bg: Color, size: int = 20, radius: int = 12) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", size)
-	b.add_theme_constant_override("outline_size", 8)
-	b.add_theme_color_override("font_outline_color", INK)
+	b.add_theme_constant_override("outline_size", 3)
+	b.add_theme_color_override("font_outline_color", Color(INK, 0.45))
+	b.add_theme_constant_override("h_separation", 8)
 	_set_btn_bg(b, bg, radius)
-	b.add_theme_stylebox_override("disabled", sb(Color(0.62, 0.64, 0.68), radius, 3, false))
+	var dis := bsb(GREY.darkened(0.15), radius)
+	b.add_theme_stylebox_override("disabled", dis)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		b.add_theme_color_override(c, Color.WHITE)
-	b.add_theme_color_override("font_disabled_color", Color(0.85, 0.85, 0.85))
+	b.add_theme_color_override("font_disabled_color", Color(0.72, 0.75, 0.85))
+	for c in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+		b.add_theme_color_override(c, Color.WHITE)
+	b.add_theme_color_override("icon_disabled_color", Color(0.72, 0.75, 0.85))
 	return b
 
 func _set_btn_bg(b: Button, bg: Color, radius: int = 12) -> void:
-	b.add_theme_stylebox_override("normal", sb(bg, radius))
-	b.add_theme_stylebox_override("hover", sb(bg.lightened(0.15), radius))
-	b.add_theme_stylebox_override("pressed", sb(bg.darkened(0.15), radius, 3, false))
+	b.add_theme_stylebox_override("normal", bsb(bg, radius))
+	b.add_theme_stylebox_override("hover", bsb(bg.lightened(0.1), radius))
+	var pressed := bsb(bg.darkened(0.1), radius, 1)
+	pressed.content_margin_top = 10
+	b.add_theme_stylebox_override("pressed", pressed)
 
 func round_btn(bg: Color, px: int) -> Button:
 	var b := btn("", bg, 16, px / 2)
@@ -378,7 +312,7 @@ func centered(parent: Control, child: Control) -> void:
 
 func panel_of(bg: Color = NAVY, radius: int = 16) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", sb(bg, radius, 3, true, 10))
+	p.add_theme_stylebox_override("panel", sb(bg, radius, 2, true, 12))
 	return p
 
 # ---------------------------------------------------------------------
@@ -410,8 +344,8 @@ func _make_portrait(k: String) -> Texture2D:
 	var cam := Camera3D.new()
 	cam.fov = 30.0
 	vp.add_child(cam)
-	cam.position = Vector3(0.9, 2.4, 5.0)
-	cam.look_at(Vector3(0, 1.7, 0), Vector3.UP)
+	cam.position = Vector3(0.9, 2.15, 5.0)
+	cam.look_at(Vector3(0, 1.47, 0), Vector3.UP)
 	cam.make_current()
 	portrait_vps.append(vp)
 	return vp.get_texture()
@@ -478,43 +412,63 @@ func _build_hud() -> void:
 	hud.position = Vector2(14, 10)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hud)
+	hud.add_theme_constant_override("separation", 10)
 	for which in ["lives", "cash"]:
+		var pill := PanelContainer.new()
+		var st := sb(Color(NAVY, 0.88), 22, 2, true, 6)
+		st.content_margin_left = 12
+		st.content_margin_right = 16
+		pill.add_theme_stylebox_override("panel", st)
+		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(pill)
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hud.add_child(h)
+		pill.add_child(h)
 		if which == "lives":
-			h.add_child(HudIcon.new("heart", 38, Color(1, 0.25, 0.35)))
-			lives_lbl = lbl("150", 36, Color.WHITE, 12)
+			h.add_child(HudIcon.new("heart", 28, Color(1, 0.35, 0.45)))
+			lives_lbl = lbl("150", 28, Color.WHITE, 0)
 			h.add_child(lives_lbl)
 		else:
-			h.add_child(HudIcon.new("coin", 36, CASH))
-			cash_lbl = lbl("650", 36, Color.WHITE, 12)
+			h.add_child(HudIcon.new("coin", 28, CASH))
+			cash_lbl = lbl("650", 28, Color.WHITE, 0)
 			h.add_child(cash_lbl)
 
-	round_box = VBoxContainer.new()
-	round_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	round_box.add_theme_constant_override("separation", -6)
-	round_box.anchor_left = 1.0
-	round_box.anchor_right = 1.0
-	round_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	round_box.offset_top = 8
-	root.add_child(round_box)
-	var cap := lbl("ROUND", 18, Color.WHITE, 8)
-	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	round_box.add_child(cap)
-	round_lbl = lbl("0/40", 36, Color.WHITE, 12)
-	round_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	round_box.add_child(round_lbl)
-	map_info_lbl = lbl("", 13, Color.WHITE, 6)
+	var rp := PanelContainer.new()
+	var rst := sb(Color(NAVY, 0.88), 16, 2, true, 8)
+	rst.content_margin_left = 14
+	rst.content_margin_right = 14
+	rp.add_theme_stylebox_override("panel", rst)
+	round_box = rp
+	rp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rp.anchor_left = 1.0
+	rp.anchor_right = 1.0
+	rp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	rp.offset_top = 8
+	root.add_child(rp)
+	var rv := VBoxContainer.new()
+	rv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rv.add_theme_constant_override("separation", 0)
+	rp.add_child(rv)
+	var rh := HBoxContainer.new()
+	rh.alignment = BoxContainer.ALIGNMENT_END
+	rh.add_theme_constant_override("separation", 8)
+	rh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rv.add_child(rh)
+	var cap := lbl("ROUND", 15, MUTED, 0)
+	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rh.add_child(cap)
+	round_lbl = lbl("0/40", 28, Color.WHITE, 0)
+	rh.add_child(round_lbl)
+	map_info_lbl = lbl("", 12, MUTED, 0)
 	map_info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	round_box.add_child(map_info_lbl)
+	rv.add_child(map_info_lbl)
 	# Next-round preview: coloured dots with counts
 	next_box = HBoxContainer.new()
 	next_box.alignment = BoxContainer.ALIGNMENT_END
 	next_box.add_theme_constant_override("separation", 4)
 	next_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	round_box.add_child(next_box)
+	rv.add_child(next_box)
 
 func _build_shop() -> void:
 	shop = panel_of(NAVY)
@@ -533,10 +487,10 @@ func _build_shop() -> void:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb := btn(str(i + 1), Defs.col(c["color"]).darkened(0.25), 14, 8)
-		tb.custom_minimum_size = Vector2(36, 30)
+		tb.custom_minimum_size = Vector2(34, 30)
 		tb.text = ""
 		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 40)
-		tb.expand_icon = true
+		tb.add_theme_constant_override("icon_max_width", 20)
 		tb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tb.tooltip_text = "%s (key %d)" % [c["name"], i + 1]
 		tb.pressed.connect(select_class.bind(i))
@@ -647,7 +601,7 @@ func _build_controls() -> void:
 	h.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(h)
 	# Touch-friendly buttons: cancel placement (instead of right-click) and pause (instead of Esc)
-	cancel_btn = round_btn(Color(0.92, 0.3, 0.3), 58)
+	cancel_btn = round_btn(RED, 58)
 	cancel_btn.text = "X"
 	cancel_btn.add_theme_font_size_override("font_size", 26)
 	cancel_btn.tooltip_text = "Cancel placing"
@@ -655,19 +609,19 @@ func _build_controls() -> void:
 	cancel_btn.visible = false
 	cancel_btn.pressed.connect(func() -> void: game.cancel_placing())
 	h.add_child(cancel_btn)
-	pause_btn = round_btn(Color(0.35, 0.5, 0.75), 58)
+	pause_btn = round_btn(BLUE, 58)
 	pause_btn.text = "II"
 	pause_btn.add_theme_font_size_override("font_size", 22)
 	pause_btn.tooltip_text = "Pause"
 	pause_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	pause_btn.pressed.connect(func() -> void: game.toggle_pause())
 	h.add_child(pause_btn)
-	mute_btn = round_btn(Color(0.35, 0.5, 0.75), 58)
+	mute_btn = round_btn(BLUE, 58)
 	mute_btn.text = "SFX"
 	mute_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	mute_btn.pressed.connect(func() -> void: game.toggle_mute())
 	h.add_child(mute_btn)
-	auto_btn = round_btn(Color(0.35, 0.5, 0.75), 58)
+	auto_btn = round_btn(BLUE, 58)
 	auto_btn.text = "AUTO"
 	auto_btn.add_theme_font_size_override("font_size", 14)
 	auto_btn.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -746,7 +700,7 @@ func _build_banner() -> void:
 
 func _overlay() -> Dictionary:
 	var shade := ColorRect.new()
-	shade.color = Color(0.05, 0.15, 0.3, 0.55)
+	shade.color = Color(0.03, 0.05, 0.12, 0.62)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(shade)
 	var center := CenterContainer.new()
@@ -761,13 +715,11 @@ func _overlay() -> Dictionary:
 	return {"shade": shade, "box": v, "card": card}
 
 func _title(v: VBoxContainer, a: String, b: String) -> Label:
-	var t1 := lbl(a, 76, Color.WHITE, 22)
-	t1.add_theme_color_override("font_shadow_color", PINK)
-	t1.add_theme_constant_override("shadow_offset_y", 7)
+	var t1 := lbl(a, 64, Color.WHITE, 0)
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t1)
 	if b != "":
-		var t2 := lbl(b, 36, GOLD, 14)
+		var t2 := lbl(b, 30, GOLD, 0)
 		t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(t2)
 	return t1
@@ -778,9 +730,7 @@ func _build_start() -> void:
 	menu_card = o["card"]
 	var v: VBoxContainer = o["box"]
 	v.add_theme_constant_override("separation", 8)
-	var t1 := lbl("SAKURA SPIRIT DEFENSE", 46, Color.WHITE, 16)
-	t1.add_theme_color_override("font_shadow_color", PINK)
-	t1.add_theme_constant_override("shadow_offset_y", 5)
+	var t1 := lbl("CHOOSE A MAP", 40, Color.WHITE, 0)
 	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t1)
 	# Tier tabs + medal count
@@ -790,7 +740,7 @@ func _build_start() -> void:
 	v.add_child(tabs)
 	for t in Maps.TIERS:
 		var key: String = t
-		var b := btn(key.to_upper(), Color(0.35, 0.5, 0.75), 18)
+		var b := btn(key.to_upper(), BLUE, 18)
 		b.custom_minimum_size = Vector2(150, 40)
 		b.pressed.connect(func() -> void: _pick_tier(key))
 		tabs.add_child(b)
@@ -846,7 +796,7 @@ func _build_start() -> void:
 	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
 	bottom.add_theme_constant_override("separation", 14)
 	v.add_child(bottom)
-	var back := btn("BACK", Color(0.35, 0.5, 0.75), 26, 18)
+	var back := btn("BACK", BLUE, 26, 18)
 	back.custom_minimum_size = Vector2(150, 58)
 	back.pressed.connect(_on_back_home)
 	bottom.add_child(back)
@@ -862,7 +812,7 @@ func _build_start() -> void:
 func _pick_tier(t: String) -> void:
 	sel_tier = t
 	for key in tier_buttons:
-		_set_btn_bg(tier_buttons[key], PINK if key == t else Color(0.35, 0.5, 0.75))
+		_set_btn_bg(tier_buttons[key], PINK if key == t else BLUE)
 	for c in map_grid.get_children():
 		c.queue_free()
 	map_cards.clear()
@@ -916,13 +866,13 @@ func _pick_map(i: int) -> void:
 func _pick_diff(k: String) -> void:
 	diff = k
 	for key in diff_buttons:
-		_set_btn_bg(diff_buttons[key], PINK if key == k else Color(0.35, 0.5, 0.75))
+		_set_btn_bg(diff_buttons[key], PINK if key == k else BLUE)
 	_refresh_menu()
 
 func _pick_mode(k: String) -> void:
 	sel_mode = k
 	for key in mode_buttons:
-		_set_btn_bg(mode_buttons[key], PINK if key == k else Color(0.35, 0.5, 0.75))
+		_set_btn_bg(mode_buttons[key], PINK if key == k else BLUE)
 	_refresh_menu()
 
 func _refresh_menu() -> void:
@@ -969,10 +919,10 @@ func _build_end() -> void:
 	var again := btn("RETRY", GREEN, 28, 16)
 	again.pressed.connect(_on_retry)
 	row.add_child(again)
-	var maps_btn := btn("MAPS", Color(0.35, 0.5, 0.75), 28, 16)
+	var maps_btn := btn("MAPS", BLUE, 28, 16)
 	maps_btn.pressed.connect(_on_maps)
 	row.add_child(maps_btn)
-	var home_btn := btn("HOME", Color(0.35, 0.5, 0.75), 28, 16)
+	var home_btn := btn("HOME", BLUE, 28, 16)
 	home_btn.pressed.connect(_on_home)
 	row.add_child(home_btn)
 
@@ -982,7 +932,7 @@ func _build_pause() -> void:
 	pause_screen.visible = false
 	var v: VBoxContainer = o["box"]
 	_title(v, "PAUSED", "")
-	for item in [["RESUME", GREEN, "_on_resume"], ["RESTART", GOLD, "_on_retry"], ["MAPS", Color(0.35, 0.5, 0.75), "_on_maps"], ["HOME", Color(0.35, 0.5, 0.75), "_on_home"], ["SOUND ON / OFF", Color(0.35, 0.5, 0.75), "_on_sound"]]:
+	for item in [["RESUME", GREEN, "_on_resume"], ["RESTART", GOLD, "_on_retry"], ["MAPS", BLUE, "_on_maps"], ["HOME", BLUE, "_on_home"], ["SOUND ON / OFF", BLUE, "_on_sound"]]:
 		var b := btn(item[0], item[1], 26, 16)
 		b.custom_minimum_size = Vector2(300, 54)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1042,20 +992,21 @@ func update_next_round() -> void:
 	if game.attract or game.over:
 		return
 	var nxt: int = game.round_num + 1
-	next_box.add_child(lbl("NEXT", 12, Color.WHITE, 5))
+	next_box.add_child(lbl("NEXT", 12, MUTED, 0))
 	var list: Array = game.preview_round(nxt)
 	for i in range(mini(list.size(), 5)):
 		var type: String = list[i][0]
 		var d: Dictionary = Defs.ENEMIES[type]
 		var dot := Panel.new()
-		var px := 22 if d.get("boss", false) else 16
+		var px := 18 if d.get("boss", false) else 13
 		dot.custom_minimum_size = Vector2(px, px)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
-		dot.add_theme_stylebox_override("panel", sb(col, px / 2, 2, false, 0))
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dot.add_theme_stylebox_override("panel", sb(col, px / 2, 0, false, 0))
 		dot.tooltip_text = d["name"]
 		next_box.add_child(dot)
-		next_box.add_child(lbl("x%d" % int(list[i][1]), 13, Color.WHITE, 5))
+		next_box.add_child(lbl("%d" % int(list[i][1]), 13, TEXT, 0))
 
 # ---------------------------------------------------------------------
 # Sandbox panel: spawn any spirit with any modifier
@@ -1088,7 +1039,7 @@ func _build_sandbox() -> void:
 	v.add_child(toggles)
 	for t in ["camo", "fort", "regrow"]:
 		var key2: String = t
-		var tb := btn({"camo": "VEILED", "fort": "FORTIFIED", "regrow": "REGROW"}[key2], Color(0.35, 0.5, 0.75), 11, 8)
+		var tb := btn({"camo": "VEILED", "fort": "FORTIFIED", "regrow": "REGROW"}[key2], BLUE, 11, 8)
 		tb.custom_minimum_size = Vector2(70, 28)
 		tb.pressed.connect(_toggle_sandbox.bind(key2))
 		toggles.add_child(tb)
@@ -1096,7 +1047,7 @@ func _build_sandbox() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	v.add_child(row)
-	var clear := btn("CLEAR", Color(0.92, 0.3, 0.3), 12, 8)
+	var clear := btn("CLEAR", RED, 12, 8)
 	clear.custom_minimum_size = Vector2(70, 28)
 	clear.pressed.connect(func() -> void: game.sandbox_clear())
 	row.add_child(clear)
@@ -1117,7 +1068,7 @@ func _toggle_sandbox(key: String) -> void:
 		"regrow":
 			sb_regrow = not sb_regrow
 	var on: bool = {"camo": sb_camo, "fort": sb_fort, "regrow": sb_regrow}[key]
-	_set_btn_bg(sb_toggles[key], PINK if on else Color(0.35, 0.5, 0.75), 8)
+	_set_btn_bg(sb_toggles[key], PINK if on else BLUE, 8)
 
 func show_sandbox(on: bool) -> void:
 	sandbox_panel.visible = on
@@ -1131,14 +1082,14 @@ func _build_toasts() -> void:
 	toast_box.anchor_left = 0.5
 	toast_box.anchor_right = 0.5
 	toast_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	toast_box.offset_top = 90
+	toast_box.offset_top = 64
 	toast_box.add_theme_constant_override("separation", 6)
 	root.add_child(toast_box)
 
 func toast(title: String, text: String) -> void:
-	var p := panel_of(Color(0.12, 0.2, 0.35, 0.95), 14)
+	var p := panel_of(Color(0.075, 0.1, 0.19, 0.96), 14)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.custom_minimum_size = Vector2(380, 0)
+	p.custom_minimum_size = Vector2(340, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	p.add_child(v)
@@ -1166,7 +1117,7 @@ var tut_step_lbl: Label
 
 func show_tutorial(step: int, total: int, text: String) -> void:
 	if tut_box == null:
-		tut_box = panel_of(Color(0.16, 0.1, 0.36, 0.95), 16)
+		tut_box = panel_of(Color(NAVY, 0.96), 16)
 		tut_box.anchor_left = 0.5
 		tut_box.anchor_right = 0.5
 		tut_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1221,6 +1172,12 @@ func _build_abilities() -> void:
 	ability_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	ability_bar.offset_bottom = -8
 	root.add_child(ability_bar)
+
+## The ability bar sits above the upgrade panel while a hero is selected.
+func _place_ability_bar() -> void:
+	var lift: float = panel.size.y + 22.0 if panel.visible and not portrait else 8.0
+	ability_bar.offset_bottom = -lift
+	ability_bar.offset_top = -lift - 58.0
 
 func refresh_abilities() -> void:
 	for c in ability_bar.get_children():
@@ -1427,6 +1384,7 @@ func _process(delta: float) -> void:
 			pops_lbl.text = "%s - Pops: %d" % [h.def["role"], h.pops]
 		_update_ability_cooldowns()
 		_update_power_buttons()
+		_place_ability_bar()
 
 func update_hud() -> void:
 	if game.mode == "sandbox":
@@ -1445,7 +1403,7 @@ func update_hud() -> void:
 		play_icon.set_kind("fast")
 		speed_lbl.text = "" if game.speed == 1 else "x%d" % game.speed
 		_set_btn_bg(play_btn, [GREEN, GREEN, GOLD, ORANGE][game.speed], 43)
-	_set_btn_bg(auto_btn, VIOLET if game.auto_start else Color(0.35, 0.5, 0.75), 29)
+	_set_btn_bg(auto_btn, VIOLET if game.auto_start else BLUE, 29)
 	mute_btn.text = "OFF" if game.sfx.muted else "SFX"
 
 func refresh() -> void:
@@ -1494,14 +1452,21 @@ func build_panel(h) -> void:
 		var ab: Dictionary = game.ABILITIES[h.key]
 		names.add_child(lbl("Ability: %s - %s" % [ab["name"], ab["desc"]], 12, Color(1, 0.85, 0.5), 0))
 	if not support or float(h.stats.get("pulse_dmg", 0.0)) > 0.0:
-		var pr := btn(String(h.priority).to_upper(), Color(0.35, 0.5, 0.75), 16)
+		var pr := btn(String(h.priority).to_upper(), BLUE, 16)
 		pr.tooltip_text = "Targeting (Tab)"
 		pr.pressed.connect(func() -> void: game.cycle_priority(h))
+		pr.icon = Icons.tex("target", Color.WHITE, 40)
+		pr.add_theme_constant_override("icon_max_width", 18)
+		pr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		head.add_child(pr)
-	var sell := btn("SELL $%d" % int(h.spent * 0.7), Color(0.92, 0.3, 0.3), 16)
+	var sell := btn("SELL $%d" % int(h.spent * 0.7), RED, 16)
 	sell.pressed.connect(func() -> void: game.sell_hero(h))
+	sell.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head.add_child(sell)
-	var close := btn("X", Color(0.35, 0.5, 0.75), 16)
+	var close := btn("", GREY, 16)
+	close.icon = Icons.tex("x", Color.WHITE, 40)
+	close.add_theme_constant_override("icon_max_width", 16)
+	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	close.pressed.connect(func() -> void: game.select_hero(null))
 	head.add_child(close)
 
@@ -1517,11 +1482,11 @@ func build_panel(h) -> void:
 		var why: String = game.can_upgrade(h, p)
 		var bg := CARD
 		if why == "MAXED":
-			bg = Color(1, 0.93, 0.6)
+			bg = Color(0.3, 0.24, 0.1)
 		elif why == "LOCKED":
-			bg = Color(0.8, 0.78, 0.92)
+			bg = Color(0.2, 0.16, 0.36)
 		elif why != "":
-			bg = Color(0.62, 0.66, 0.74)
+			bg = Color(0.09, 0.11, 0.19)
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", sb(bg, 12, 3, false, 8))
 		card.custom_minimum_size = Vector2(190, 0)
@@ -1536,7 +1501,7 @@ func build_panel(h) -> void:
 		for i in range(4):
 			var pip := Panel.new()
 			pip.custom_minimum_size = Vector2(36, 10)
-			pip.add_theme_stylebox_override("panel", sb(GREEN if i < tier else Color(0.8, 0.84, 0.9), 5, 2, false, 0))
+			pip.add_theme_stylebox_override("panel", sb(GREEN if i < tier else Color(1, 1, 1, 0.14), 5, 0, false, 0))
 			pips.add_child(pip)
 		if why == "LOCKED":
 			# Not unlocked yet: spend this hero's XP to unlock it.

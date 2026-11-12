@@ -6,7 +6,9 @@ extends RefCounted
 const Defs = preload("res://scripts/defs.gd")
 
 const INK := Color(0.165, 0.094, 0.22)
-const SKIN := 0xffe1cf
+const SKIN := 0xffe4d2
+## How far the hero rig is sunk so its token base is slim (see make_chibi).
+const BASE_DROP := 0.24
 
 static var _mats := {}
 static var _meshes := {}
@@ -14,7 +16,7 @@ static var _meshes := {}
 # ---------------------------------------------------------------------
 # Materials
 # ---------------------------------------------------------------------
-static func outline_mat(alpha: float = 1.0, grow: float = 0.03) -> StandardMaterial3D:
+static func outline_mat(alpha: float = 1.0, grow: float = 0.022) -> StandardMaterial3D:
 	var key := "outline_%s_%s" % [alpha, grow]
 	if _mats.has(key):
 		return _mats[key]
@@ -271,83 +273,87 @@ static func add(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3 = Vector
 # Chibi hero builder. Faces +Z. Returns a dictionary of useful parts.
 # ---------------------------------------------------------------------
 static func make_chibi(o: Dictionary) -> Dictionary:
+	# `root` is what the game positions on the ground. Everything is built inside `rig`,
+	# which keeps the old coordinates (feet at y = 0.36) above a slim token base.
 	var root := Node3D.new()
+	var rig := Node3D.new()
+	rig.position.y = -BASE_DROP
+	root.add_child(rig)
 	var outfit_parts: Array = []
-	add(root, cyl(0.95, 1.08, 0.36, 24), toon(o.get("base", 0xe8dcc8)), Vector3(0, 0.18, 0))
+	add(rig, cyl(0.84, 0.9, 0.36 - BASE_DROP, 32), toon(o.get("base", 0xefe9dc)), Vector3(0, (0.36 + BASE_DROP) / 2.0, 0))
 	var ring_mat := StandardMaterial3D.new()
 	ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ring_mat.albedo_color = Color.WHITE
-	var ring := add(root, torus(1.0, 0.08), ring_mat, Vector3(0, 0.36, 0))
+	var ring := add(rig, torus(0.91, 0.05), ring_mat, Vector3(0, 0.33, 0))
 
 	var body := Node3D.new()
 	body.position.y = 0.36
-	root.add_child(body)
+	rig.add_child(body)
 
 	var outfit: int = o["outfit"]
 	for s in [-1.0, 1.0]:
-		add(body, cyl(0.13, 0.12, 0.45, 10), toon(o.get("legs", 0x2b2a3d)), Vector3(0.17 * s, 0.22, 0))
-		add(body, sphere(0.15, 10), toon(o.get("shoes", 0x3a2b2b)), Vector3(0.17 * s, 0.04, 0.05), Vector3.ZERO, Vector3(1, 0.7, 1.4))
+		add(body, capsule(0.12, 0.2), toon(o.get("legs", 0x2b2a3d)), Vector3(0.16 * s, 0.24, 0))
+		add(body, sphere(0.15, 12), toon(o.get("shoes", 0x3a2b2b)), Vector3(0.16 * s, 0.06, 0.05), Vector3.ZERO, Vector3(1, 0.62, 1.35))
 	if o.has("skirt"):
-		outfit_parts.append(add(body, cyl(0.36, 0.66, 0.52, 18), toon(o["skirt"]), Vector3(0, 0.52, 0)))
-	outfit_parts.append(add(body, cyl(0.34, 0.48, 0.78, 16), toon(outfit), Vector3(0, 0.86, 0)))
+		outfit_parts.append(add(body, cyl(0.34, 0.62, 0.5, 28), toon(o["skirt"]), Vector3(0, 0.52, 0)))
+	outfit_parts.append(add(body, cyl(0.3, 0.46, 0.78, 28), toon(outfit), Vector3(0, 0.86, 0)))
 	if o.has("trim"):
-		add(body, cyl(0.47, 0.47, 0.12, 16), toon(o["trim"], 1.0, false), Vector3(0, 0.62, 0))
-		add(body, torus(0.3, 0.07), toon(o["trim"], 1.0, false), Vector3(0, 1.24, 0))
+		add(body, cyl(0.455, 0.455, 0.1, 28), toon(o["trim"], 1.0, false), Vector3(0, 0.62, 0))
+		add(body, torus(0.27, 0.06), toon(o["trim"], 1.0, false), Vector3(0, 1.24, 0))
 
 	var head := Node3D.new()
 	head.position.y = 1.78
 	body.add_child(head)
-	add(head, sphere(0.6, 26), toon(SKIN))
+	add(head, sphere(0.6, 32), toon(SKIN))
 
-	# Hair
+	# Hair: a cap tilted back off the forehead, a fuller back, three soft bangs and two side locks.
 	var hair := toon(o["hair"])
-	add(head, sphere(0.67, 24, true), hair, Vector3(0, 0.05, 0), Vector3(-0.32, 0, 0))
-	add(head, sphere(0.64, 20), hair, Vector3(0, -0.03, -0.17), Vector3.ZERO, Vector3(1.03, 1.0, 0.86))
-	for i in range(-2, 3):
-		var ai := absf(i)
-		add(head, cone(0.17, 0.44, 6), hair, Vector3(i * 0.2, 0.32 - ai * 0.05, 0.5 - ai * 0.09), Vector3(PI - 0.4, 0, i * 0.22))
+	var hair_plain := toon(o["hair"], 1.0, false)
+	add(head, sphere(0.66, 32, true), hair, Vector3(0, 0.05, 0), Vector3(-0.32, 0, 0))
+	add(head, sphere(0.635, 28), hair, Vector3(0, -0.02, -0.16), Vector3.ZERO, Vector3(1.03, 1.0, 0.86))
+	for i in range(-1, 2):
+		add(head, sphere(0.2, 14), hair_plain, Vector3(i * 0.27, 0.3 - absf(i) * 0.05, 0.47 - absf(i) * 0.07), Vector3(0.5, i * 0.5, 0), Vector3(1.0, 0.72, 0.5))
 	for s in [-1.0, 1.0]:
-		add(head, cone(0.15, 0.7, 6), hair, Vector3(0.55 * s, -0.18, 0.18), Vector3(PI - 0.1, 0, -0.12 * s))
+		add(head, capsule(0.1, 0.3), hair, Vector3(0.56 * s, -0.12, 0.12), Vector3(0.08, 0, -0.08 * s), Vector3(0.8, 1, 1))
 	var accent: int = o.get("accent", 0xffffff)
 	match o.get("style", ""):
 		"ponytail":
-			add(head, sphere(0.13, 10), toon(accent), Vector3(0, 0.25, -0.63))
-			add(head, capsule(0.18, 0.75), hair, Vector3(0, -0.2, -0.85), Vector3(0.55, 0, 0))
+			add(head, sphere(0.12, 12), toon(accent), Vector3(0, 0.25, -0.63))
+			add(head, capsule(0.17, 0.72), hair, Vector3(0, -0.2, -0.85), Vector3(0.55, 0, 0))
 		"long":
-			add(head, capsule(0.42, 1.0), hair, Vector3(0, -0.72, -0.26), Vector3.ZERO, Vector3(1.18, 1, 0.55))
+			add(head, capsule(0.42, 1.0), hair, Vector3(0, -0.72, -0.26), Vector3.ZERO, Vector3(1.16, 1, 0.52))
 		"twintails":
 			for s in [-1.0, 1.0]:
-				add(head, sphere(0.14, 10), toon(accent), Vector3(0.62 * s, 0.28, -0.12))
-				add(head, capsule(0.2, 0.95), hair, Vector3(0.82 * s, -0.42, -0.18), Vector3(0, 0, 0.28 * s))
+				add(head, sphere(0.13, 12), toon(accent), Vector3(0.62 * s, 0.28, -0.12))
+				add(head, capsule(0.19, 0.92), hair, Vector3(0.82 * s, -0.42, -0.18), Vector3(0, 0, 0.28 * s))
 		"buns":
 			for s in [-1.0, 1.0]:
-				add(head, sphere(0.26, 14), hair, Vector3(0.45 * s, 0.5, -0.1))
+				add(head, sphere(0.25, 16), hair, Vector3(0.45 * s, 0.5, -0.1))
 		"topknot":
-			add(head, cyl(0.1, 0.16, 0.4, 10), hair, Vector3(0, 0.68, -0.25), Vector3(-0.6, 0, 0))
-			add(head, sphere(0.16, 10), hair, Vector3(0, 0.82, -0.38))
+			add(head, cyl(0.1, 0.15, 0.36, 12), hair, Vector3(0, 0.68, -0.25), Vector3(-0.6, 0, 0))
+			add(head, sphere(0.16, 12), hair, Vector3(0, 0.82, -0.38))
 		"spiky":
-			for i in range(6):
-				var a := -1.2 + i * 0.48
-				add(head, cone(0.2, 0.6, 6), hair, Vector3(sin(a) * 0.45, 0.45, -0.3 - cos(a) * 0.15), Vector3(-0.7, 0, -sin(a) * 0.8))
+			for i in range(5):
+				var a := -1.0 + i * 0.5
+				add(head, cone(0.2, 0.5, 10), hair, Vector3(sin(a) * 0.42, 0.5, -0.28 - cos(a) * 0.12), Vector3(-0.6, 0, -sin(a) * 0.8))
 
-	# Big anime eyes
+	# Eyes: a dark oval, the eye colour in its lower half, and one highlight.
 	for s in [-1.0, 1.0]:
-		add(head, sphere(0.13, 14), flat(o["eye"]), Vector3(0.22 * s, -0.05, 0.535), Vector3(0, 0.38 * s, 0), Vector3(0.85, 1.3, 0.4))
-		add(head, sphere(0.075, 10), flat(0x1b0f24), Vector3(0.225 * s, -0.08, 0.565), Vector3(0, 0.38 * s, 0), Vector3(0.9, 1.3, 0.4))
-		add(head, sphere(0.045, 8), flat(0xffffff), Vector3(0.25 * s + 0.02, 0.03, 0.585))
-		add(head, box(0.26, 0.05, 0.05), flat(0x1b0f24), Vector3(0.23 * s, 0.13, 0.545), Vector3(0, 0.38 * s, -0.18 * s))
-		add(head, sphere(0.09, 10), flat(0xff9ebd, 0.7), Vector3(0.36 * s, -0.22, 0.47), Vector3(0, 0.6 * s, 0), Vector3(1.2, 0.5, 0.3))
-	add(head, sphere(0.05, 8), flat(0x9b2c48), Vector3(0, -0.29, 0.56), Vector3.ZERO, Vector3(1.2, 0.6, 0.4))
+		add(head, sphere(0.115, 16), flat(0x2a2038), Vector3(0.21 * s, -0.04, 0.545), Vector3(0, 0.36 * s, 0), Vector3(0.82, 1.28, 0.36))
+		add(head, sphere(0.085, 14), flat(o["eye"]), Vector3(0.212 * s, -0.09, 0.563), Vector3(0, 0.36 * s, 0), Vector3(0.84, 0.86, 0.36))
+		add(head, sphere(0.042, 10), flat(0xffffff), Vector3(0.21 * s + 0.035, 0.03, 0.592), Vector3.ZERO, Vector3(1, 1, 0.5))
+		add(head, sphere(0.085, 10), flat(0xff8fb0, 0.5), Vector3(0.37 * s, -0.21, 0.455), Vector3(0, 0.62 * s, 0), Vector3(1.15, 0.5, 0.25))
+	add(head, sphere(0.036, 8), flat(0xb8405c), Vector3(0, -0.27, 0.568), Vector3.ZERO, Vector3(1.4, 0.55, 0.4))
 
 	# Arms. The right arm (-X) holds the weapon.
 	var arms := []
 	for s in [-1.0, 1.0]:
 		var arm := Node3D.new()
-		arm.position = Vector3(0.47 * s, 1.15, 0)
+		arm.position = Vector3(0.45 * s, 1.15, 0)
 		arm.rotation.z = 0.25 * s
 		body.add_child(arm)
-		outfit_parts.append(add(arm, capsule(0.1, 0.32), toon(o.get("sleeve", outfit)), Vector3(0, -0.24, 0)))
-		add(arm, sphere(0.11, 10), toon(SKIN), Vector3(0, -0.48, 0))
+		outfit_parts.append(add(arm, capsule(0.095, 0.3), toon(o.get("sleeve", outfit)), Vector3(0, -0.24, 0)))
+		add(arm, sphere(0.105, 12), toon(SKIN), Vector3(0, -0.47, 0))
 		arms.append(arm)
 	var rarm: Node3D = arms[0]
 	rarm.rotation.x = -0.9
@@ -355,7 +361,7 @@ static func make_chibi(o: Dictionary) -> Dictionary:
 	holder.position.y = -0.5
 	holder.rotation.x = 0.9
 	rarm.add_child(holder)
-	return {"root": root, "body": body, "head": head, "rarm": rarm, "larm": arms[1], "holder": holder, "ring": ring, "ring_mat": ring_mat, "outfit_parts": outfit_parts, "spinners": []}
+	return {"root": root, "rig": rig, "body": body, "head": head, "rarm": rarm, "larm": arms[1], "holder": holder, "ring": ring, "ring_mat": ring_mat, "outfit_parts": outfit_parts, "spinners": []}
 
 # ---------------------------------------------------------------------
 # Upgrade looks: every tier on every path visibly changes the hero.
@@ -425,11 +431,11 @@ static func apply_upgrade_look(m: Dictionary, path: int, tier: int) -> void:
 					add(pivot, sphere(0.28, 12), glow, Vector3(0.95, 0.2 if tier == 2 else -0.1, 0))
 					(m["spinners"] as Array).append(pivot)
 					if tier == 3:
-						var root: Node3D = m["root"]
-						add(root, torus(1.25, 0.05), flat(col, 0.8), Vector3(0, 0.4, 0))
+						var root: Node3D = m["rig"]
+						add(root, torus(1.22, 0.035), flat(col, 0.85), Vector3(0, 0.27, 0))
 						for i in range(6):
 							var a2 := i * TAU / 6.0
-							add(root, box(0.18, 0.02, 0.18), flat(0xffffff, 0.9), Vector3(cos(a2) * 1.25, 0.41, sin(a2) * 1.25), Vector3(0, a2, 0))
+							add(root, sphere(0.07, 8), flat(0xffffff, 0.95), Vector3(cos(a2) * 1.22, 0.27, sin(a2) * 1.22))
 						_tint_outfit(m, col)
 				4:
 					var halo := Node3D.new()
@@ -534,7 +540,7 @@ static func build_hero(key: String) -> Dictionary:
 				add(c.body, box(0.18, 0.32, 0.02), flat(0xfff3c4), Vector3(-0.35 + i * 0.35, 0.95, 0.47), Vector3(0, 0, (i - 1) * 0.25))
 			add(c.holder, box(0.22, 0.36, 0.02), flat(0xfff3c4), Vector3(0, 0.15, 0.08))
 			add(c.holder, box(0.12, 0.04, 0.03), flat(0xd81b60), Vector3(0, 0.2, 0.1))
-			add(c.root, torus(1.15, 0.04), flat(0xd81b60, 0.8), Vector3(0, 0.4, 0))
+			add(c.rig, torus(1.15, 0.04), flat(0xd81b60, 0.8), Vector3(0, 0.4, 0))
 			return c
 		"gen":
 			var c := make_chibi({"outfit": 0x2e7d6b, "legs": 0x2b2a3d, "hair": 0x3a8a3a, "style": "short", "eye": 0xffd34d, "trim": 0xffd34d, "sleeve": 0x2e7d6b})
@@ -594,7 +600,7 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, box(0.35, 0.22, 0.12), toon(0x4a4a55), Vector3(0, 0.0, 0.05))
 			var drone := Node3D.new()
 			drone.position = Vector3(0, 3.0, 0)
-			c.root.add_child(drone)
+			c.rig.add_child(drone)
 			add(drone, box(0.5, 0.15, 0.5), toon(0x4a4a55), Vector3.ZERO)
 			for dx in [-1.0, 1.0]:
 				for dz in [-1.0, 1.0]:
@@ -608,7 +614,7 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, box(0.08, 0.5, 0.08), toon(0x9aa7b4), Vector3(0, 0.2, 0.05), Vector3(0, 0, 0.6))
 			var turret := Node3D.new()
 			turret.position = Vector3(0.95, 0.36, 0.25)
-			c.root.add_child(turret)
+			c.rig.add_child(turret)
 			add(turret, cyl(0.25, 0.32, 0.5, 10), toon(0x4a4a55), Vector3(0, 0.25, 0))
 			add(turret, box(0.35, 0.28, 0.45), toon(0xffb02e), Vector3(0, 0.6, 0))
 			add(turret, cyl(0.06, 0.06, 0.6, 8), toon(0x2b2a3d), Vector3(0, 0.62, 0.45), Vector3(PI / 2, 0, 0))
@@ -619,8 +625,8 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.head, cone(0.55, 0.5, 18), toon(0xd9b36a), Vector3(0, 0.82, 0))
 			add(c.holder, sphere(0.22, 10), toon(0x9b6a3a), Vector3(0, 0.05, 0.05), Vector3.ZERO, Vector3(1, 1.2, 1))
 			for i in range(3):
-				add(c.root, cyl(0.16, 0.16, 0.06, 12), toon(0xffd34d), Vector3(0.8, 0.4 + i * 0.07, 0.4))
-			add(c.root, box(0.7, 0.5, 0.5), toon(0x9b6a3a), Vector3(-0.85, 0.6, 0.3))
+				add(c.rig, cyl(0.16, 0.16, 0.06, 12), toon(0xffd34d), Vector3(0.8, 0.4 + i * 0.07, 0.4))
+			add(c.rig, box(0.7, 0.5, 0.5), toon(0x9b6a3a), Vector3(-0.85, 0.6, 0.3))
 			return c
 		"nao":
 			var c := make_chibi({"outfit": 0xfdfdfd, "skirt": 0x7fd3a0, "legs": 0x7fd3a0, "hair": 0x3a8a6b, "style": "long", "eye": 0x3a8a6b, "trim": 0x7fd3a0, "sleeve": 0xfdfdfd})
@@ -639,13 +645,13 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, cyl(0.04, 0.04, 1.1, 6), toon(0x8b5a2b), Vector3(0, 0.25, 0))
 			add(c.holder, box(0.42, 0.06, 0.12), toon(0xb8c2cc), Vector3(0.15, 0.8, 0))
 			# Rice paddy on the base, with sprouts
-			add(c.root, cyl(0.86, 0.86, 0.04, 20), toon(0x5aa7c8, 1.0, false), Vector3(0, 0.37, 0))
+			add(c.rig, cyl(0.86, 0.86, 0.04, 20), toon(0x5aa7c8, 1.0, false), Vector3(0, 0.37, 0))
 			for i in range(10):
 				var a := i / 10.0 * TAU
-				var sp := add(c.root, cone(0.06, 0.36, 5), toon(0x7ccf52, 1.0, false), Vector3(cos(a) * 0.72, 0.52, sin(a) * 0.72))
+				var sp := add(c.rig, cone(0.06, 0.36, 5), toon(0x7ccf52, 1.0, false), Vector3(cos(a) * 0.72, 0.52, sin(a) * 0.72))
 				sp.rotation.z = sin(a * 3.0) * 0.25
 			# Sack of rice
-			add(c.root, sphere(0.26, 10), toon(0xf3e4c0), Vector3(-0.72, 0.58, 0.45), Vector3.ZERO, Vector3(1, 1.15, 1))
+			add(c.rig, sphere(0.26, 10), toon(0xf3e4c0), Vector3(-0.72, 0.58, 0.45), Vector3.ZERO, Vector3(1, 1.15, 1))
 			return c
 		_:
 			var c := make_chibi({"outfit": 0xff7ac8, "skirt": 0xffffff, "legs": 0xffffff, "hair": 0x9b6bff, "style": "twintails", "eye": 0xff3d8b, "trim": 0xffd34d, "accent": 0xffd34d, "base": 0xffc6e4})

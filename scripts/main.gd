@@ -286,7 +286,9 @@ func _setup_env() -> void:
 	sun = DirectionalLight3D.new()
 	sun.light_color = Defs.col(0xfff1dc)
 	sun.light_energy = 0.8
-	sun.shadow_blur = 1.5
+	sun.shadow_blur = 1.0
+	sun.shadow_bias = 0.06
+	sun.shadow_normal_bias = 3.0
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
 	sun.rotation_degrees = Vector3(-62, -28, 0)
@@ -802,8 +804,8 @@ func place_hero(k: String, x: float, z: float, free: bool = false) -> Hero:
 	(h.model["body"] as Node3D).rotation.y = atan2(-x, 20.0 - z)
 	add_child(root)
 	if progress.mastered(k):
-		Models.add(root, Models.torus(1.12, 0.07), Models.flat(0xffcc33), Vector3(0, 0.42, 0))
-		Models.add(root, Models.sphere(0.12, 4), Models.flat(0xffcc33), Vector3(0, 3.3, 0))
+		Models.add(root, Models.torus(1.1, 0.05), Models.flat(0xffcc33), Vector3(0, 0.06, 0))
+		Models.add(root, Models.sphere(0.12, 4), Models.flat(0xffcc33), Vector3(0, 3.1, 0))
 	heroes.append(h)
 	if mode == "one_class" and locked_class == "":
 		locked_class = String(Defs.hero_class(k)["id"])
@@ -1194,10 +1196,11 @@ func _refresh_hero_look(h: Hero) -> void:
 	(h.model["body"] as Node3D).scale = Vector3.ONE * (1.0 + total * 0.025)
 	var root: Node3D = h.model["root"]
 	if mx >= 3 and h.aura == null:
-		h.aura = Models.add(root, Models.cyl(1.1, 1.1, 2.8, 24), Models.fx_mat(Color(col, 0.18), true), Vector3(0, 1.6, 0))
+		# A soft glowing disc on the ground marks a tier 3+ hero
+		h.aura = Models.add(root, Models.cyl(1.45, 1.45, 0.02, 40), Models.fx_mat(Color(col, 0.3), true), Vector3(0, 0.03, 0))
 		h.aura.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if h.aura:
-		(h.aura.material_override as StandardMaterial3D).albedo_color = Color(col, 0.18)
+		(h.aura.material_override as StandardMaterial3D).albedo_color = Color(col, 0.3)
 
 func recalc_buffs() -> void:
 	for t in heroes:

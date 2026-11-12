@@ -28,7 +28,7 @@ const PLAY_MAX := Vector2(34.0, 21.0)
 ## Visual themes: ground and water colours, stone tint, vegetation and lighting.
 const THEMES := {
 	"meadow": {
-		"grass": 0x86d040, "lip": 0x9ccf55, "patches": [0x74c234, 0x97da4f, 0x7cc83a, 0xa3e05a],
+		"grass": 0x7fc956, "lip": 0x92cf66, "patches": [0x72bf4b, 0x8fd465, 0x78c450, 0x99da6f],
 		"sand": 0xf5df9e, "sea": 0x1f9ad6, "shallow": 0x5fd0ef, "foam": 0xeafcff, "stone": [1.0, 1.0, 1.0],
 		"flowers": [0xffffff, 0xfff3a0, 0xffb3d1, 0xffffff, 0xc9a6ff], "tufts": [0x4fa82a, 0x5fbb33, 0x3f9a24],
 		"trees": ["round", "round", "round", "round", "sakura", "bush"], "inner": ["bush", "rock", "lantern", "crates"],
@@ -331,10 +331,14 @@ func _build_ground_details() -> void:
 	var patch_items: Array = []
 	var fl: Array = []
 	var tf: Array = []
+	# Soft tone-on-tone patches: each patch colour is pulled halfway back to the grass colour
 	var greens := _cols("patches")
+	var grass_col: Color = Defs.col(theme["grass"])
+	for gi in range(greens.size()):
+		greens[gi] = (greens[gi] as Color).lerp(grass_col, 0.5)
 	var flower_cols := _cols("flowers")
 	var tuft_cols := _cols("tufts")
-	for i in range(70):
+	for i in range(44):
 		var x := _rng.randf_range(-40, 46)
 		var z := _rng.randf_range(-30, 30)
 		if not is_land(x, z, 2.0) or track_distance(x, z) < 0.5:
@@ -342,12 +346,12 @@ func _build_ground_details() -> void:
 		var r := _rng.randf_range(2.0, 5.5)
 		var b := Basis(Vector3.UP, _rng.randf() * TAU) * Basis.from_scale(Vector3(r, 1.0, r * _rng.randf_range(0.45, 0.9)))
 		patch_items.append([Transform3D(b, Vector3(x, 0.01, z)), greens[i % greens.size()]])
-	for i in range(2400):
+	for i in range(1100):
 		var x := _rng.randf_range(-42, 50)
 		var z := _rng.randf_range(-32, 32)
 		if not is_land(x, z, 0.8) or track_distance(x, z) < 0.35:
 			continue
-		if i % 3 == 0:
+		if i % 4 == 0:
 			var s := _rng.randf_range(0.7, 1.3)
 			fl.append([Transform3D(Basis.from_scale(Vector3(s, 0.5 * s, s)), Vector3(x, 0.06, z)), flower_cols[i % flower_cols.size()]])
 		else:

@@ -9,9 +9,9 @@ const BarrierScene = preload("res://scenes/track/stone_barrier.tscn")
 const CELL := 4.0
 const WALL := 0.6            # barrier thickness
 const STONE_ROW := 1.0       # depth of one row of floor stones
-const GAP := 0.08            # visible joint between stones
-const GRAYS := [0xa3a29e, 0xb2b0ab, 0xbdbbb5, 0x96958f, 0xc8c6c0, 0xaaa8a1]
-const GROUT := 0x5f5c57
+const GAP := 0.07            # visible joint between stones
+const GRAYS := [0xc4bdae, 0xbcb5a5, 0xcac4b6, 0xc0b9aa]   # close shades of warm stone
+const GROUT := 0x8d8678
 
 @export_enum("straight", "corner") var piece := "straight"
 @export var stone_seed := 0
@@ -39,25 +39,34 @@ func _ready() -> void:
 	var gb := Basis.from_scale(Vector3(CELL, 0.14, CELL))
 	grout.append([Transform3D(gb, Vector3(0, 0.07, 0)), Models.toon(GROUT).albedo_color])
 
-	# Floor: rows of chunky rectangular stones with random widths (running bond).
+	# Floor: even pavers in a running bond (every other row is shifted half a stone).
 	var z := -half
+	var row := 0
 	while z < half - 0.001:
 		var z0 := maxf(z, z_min)
 		var z1 := minf(z + STONE_ROW, z_max)
 		z += STONE_ROW
+		row += 1
 		if z1 - z0 < 0.2:
 			continue
-		var x := x_min
-		while x < x_max - 0.05:
-			var w := rng.randf_range(0.7, 1.35)
-			if x_max - (x + w) < 0.4:
-				w = x_max - x
-			var hgt := rng.randf_range(0.14, 0.19)
-			var size := Vector3(w - GAP, hgt, (z1 - z0) - GAP)
-			var b := Basis(Vector3.UP, rng.randf_range(-0.025, 0.025)) * Basis(Vector3.RIGHT, rng.randf_range(-0.015, 0.015)) * Basis.from_scale(size)
-			var pos := Vector3(x + w / 2.0, 0.13 + hgt / 2.0 - 0.02, (z0 + z1) / 2.0)
-			stones.append([Transform3D(b, pos), Models.toon(GRAYS[rng.randi() % GRAYS.size()]).albedo_color])
-			x += w
+		var span := x_max - x_min
+		var n := maxi(1, int(round(span / 0.95)))
+		var w := span / n
+		# Stone edges for this row; odd rows start with a half stone
+		var edges: Array = [x_min]
+		var shift := (row % 2 == 1)
+		for k in range(n):
+			edges.append(x_min + w * (k + (0.5 if shift else 1.0)))
+		if shift:
+			edges.append(x_max)
+		for k in range(edges.size() - 1):
+			var x0: float = edges[k]
+			var x1: float = minf(edges[k + 1], x_max)
+			if x1 - x0 < 0.05:
+				continue
+			var size := Vector3((x1 - x0) - GAP, 0.16, (z1 - z0) - GAP)
+			var pos := Vector3((x0 + x1) / 2.0, 0.13 + 0.08 - 0.02, (z0 + z1) / 2.0)
+			stones.append([Transform3D(Basis.from_scale(size), pos), Models.toon(GRAYS[rng.randi() % GRAYS.size()]).albedo_color])
 
 	# Barriers on closed sides. Side walls (E/W) run full length; N/S walls stop where they meet them.
 	var body := StaticBody3D.new()
@@ -86,9 +95,9 @@ func _ready() -> void:
 	# Inner corner post closes the gap where the two neighbouring walls meet.
 	if piece == "corner":
 		var post_pos := Vector3(inner + WALL / 2.0, 0, -inner - WALL / 2.0)
-		var ph := 0.62
+		var ph := 0.52
 		var pb := Basis.from_scale(Vector3(WALL + 0.04, ph, WALL + 0.04))
-		stones.append([Transform3D(pb, post_pos + Vector3(0, 0.12 + ph / 2.0, 0)), Models.toon(0x8b8a86).albedo_color])
+		stones.append([Transform3D(pb, post_pos + Vector3(0, 0.12 + ph / 2.0, 0)), Models.toon(0x9d968a).albedo_color])
 		var post_shape := CollisionShape3D.new()
 		var pbox := BoxShape3D.new()
 		pbox.size = Vector3(WALL, 0.7, WALL)
@@ -105,5 +114,5 @@ func _ready() -> void:
 	body.add_child(floor_shape)
 
 	if standalone:
-		add_child(Models.batch(Models.chamfer_box(0.12), stones))
+		add_child(Models.batch(Models.chamfer_box(0.08), stones))
 		add_child(Models.batch(Models.box(1, 1, 1), grout, false, false))

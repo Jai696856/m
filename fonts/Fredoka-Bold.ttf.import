@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dee10pwpq2kwo"
-path="res://.godot/imported/LuckiestGuy-Regular.ttf-b789a1aa0a67388e0f080e3a0b767747.fontdata"
+uid="uid://wx2i1uyaavd6"
+path="res://.godot/imported/Fredoka-Bold.ttf-982956071f36f4f46b4c1917b3d91565.fontdata"
 
 [deps]
 
-source_file="res://fonts/LuckiestGuy-Regular.ttf"
-dest_files=["res://.godot/imported/LuckiestGuy-Regular.ttf-b789a1aa0a67388e0f080e3a0b767747.fontdata"]
+source_file="res://fonts/Fredoka-Bold.ttf"
+dest_files=["res://.godot/imported/Fredoka-Bold.ttf-982956071f36f4f46b4c1917b3d91565.fontdata"]
 
 [params]
 
@@ -23,6 +23,7 @@ allow_system_fallback=true
 force_autohinter=false
 hinting=1
 subpixel_positioning=1
+keep_rounding_remainders=true
 oversampling=0.0
 Fallbacks=null
 fallbacks=[]

@@ -108,16 +108,14 @@ func _build_home() -> void:
 	xp_bar = ProgressBar.new()
 	xp_bar.show_percentage = false
 	xp_bar.custom_minimum_size = Vector2(220, 18)
-	xp_bar.add_theme_stylebox_override("background", ui.sb(Color(0.15, 0.2, 0.35), 9, 3, false, 0))
-	xp_bar.add_theme_stylebox_override("fill", ui.sb(Color(0.3, 0.75, 1.0), 9, 3, false, 0))
+	xp_bar.add_theme_stylebox_override("background", ui.sb(Color(0.03, 0.05, 0.12, 0.6), 9, 0, false, 0))
+	xp_bar.add_theme_stylebox_override("fill", ui.sb(Color(0.35, 0.72, 1.0), 9, 0, false, 0))
 	bv.add_child(xp_bar)
 	xp_lbl = ui.lbl("", 13, Color.WHITE, 5)
 	bv.add_child(xp_lbl)
 
 	# Top-centre: small logo
 	var logo: Label = ui.lbl("SAKURA SPIRIT DEFENSE", 30, Color.WHITE, 12)
-	logo.add_theme_color_override("font_shadow_color", ui.PINK)
-	logo.add_theme_constant_override("shadow_offset_y", 4)
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	logo.anchor_left = 0.5
 	logo.anchor_right = 0.5
@@ -140,12 +138,12 @@ func _build_home() -> void:
 
 	# Left column: small round buttons
 	var left := _icon_column(true)
-	_icon_button(left, "gear", "SETTINGS", Color(0.35, 0.5, 0.75), func() -> void: _open("settings"))
-	_icon_button(left, "book", "HOW TO PLAY", Color(0.35, 0.5, 0.75), func() -> void: _open("howto"))
-	_icon_button(left, "star", "BLESSINGS", Color(0.95, 0.6, 0.2), func() -> void: _open("blessings"))
-	_icon_button(left, "ghost", "ALMANAC", Color(0.55, 0.4, 0.85), func() -> void: _open("almanac"))
+	_icon_button(left, "gear", "SETTINGS", ui.BLUE, func() -> void: _open("settings"))
+	_icon_button(left, "book", "HOW TO PLAY", ui.BLUE, func() -> void: _open("howto"))
+	_icon_button(left, "star", "BLESSINGS", ui.ORANGE, func() -> void: _open("blessings"))
+	_icon_button(left, "ghost", "ALMANAC", ui.VIOLET, func() -> void: _open("almanac"))
 	if OS.has_feature("pc") and not OS.has_feature("web"):
-		_icon_button(left, "door", "QUIT", Color(0.92, 0.3, 0.3), func() -> void: get_tree().quit())
+		_icon_button(left, "door", "QUIT", ui.RED, func() -> void: get_tree().quit())
 
 	# Bottom row: big round buttons, PLAY in the middle
 	var row := HBoxContainer.new()
@@ -161,13 +159,13 @@ func _build_home() -> void:
 	add_child(row)
 	_big_button(row, "", "HEROES", ui.PINK, 96, func() -> void: _open("heroes"), "ninja")
 	_big_button(row, "trophy", "TROPHIES", ui.VIOLET, 96, func() -> void: _open("achievements"))
-	_big_button(row, "bag", "STORE", Color(0.2, 0.7, 0.85), 96, func() -> void: _open("store"))
+	_big_button(row, "bag", "STORE", Color(0.16, 0.68, 0.86), 96, func() -> void: _open("store"))
 	_big_button(row, "play", "PLAY", ui.GREEN, 128, func() -> void: ui.show_map_select())
 	daily_btn = _big_button(row, "calendar", "DAILY", ui.ORANGE, 96, func() -> void: game.start_daily())
-	_big_button(row, "chart", "STATS", Color(0.35, 0.5, 0.75), 96, func() -> void: _open("stats"))
+	_big_button(row, "chart", "STATS", ui.BLUE, 96, func() -> void: _open("stats"))
 
 	# Right side: today's quests
-	var qp: PanelContainer = ui.panel_of(Color(0.1, 0.17, 0.29, 0.88), 18)
+	var qp: PanelContainer = ui.panel_of(Color(0.075, 0.1, 0.19, 0.9), 18)
 	qp.anchor_left = 1.0
 	qp.anchor_right = 1.0
 	qp.anchor_top = 0.5
@@ -207,7 +205,7 @@ func _build_home() -> void:
 	_next_tip()
 
 func _pill(parent: Control, icon: String, col: Color) -> Label:
-	var p: PanelContainer = ui.panel_of(Color(0.1, 0.17, 0.29, 0.85), 20)
+	var p: PanelContainer = ui.panel_of(Color(0.075, 0.1, 0.19, 0.9), 20)
 	parent.add_child(p)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
@@ -331,7 +329,7 @@ func _fill_quests() -> void:
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.max_value = q["need"]
 		bar.value = q["have"]
-		bar.add_theme_stylebox_override("background", ui.sb(Color(0.15, 0.2, 0.35), 7, 2, false, 0))
+		bar.add_theme_stylebox_override("background", ui.sb(Color(1, 1, 1, 0.12), 7, 0, false, 0))
 		bar.add_theme_stylebox_override("fill", ui.sb(ui.GREEN if q["done"] else Color(0.3, 0.75, 1.0), 7, 2, false, 0))
 		bot.add_child(bar)
 		if q["claimed"]:
@@ -348,7 +346,7 @@ func _fill_quests() -> void:
 			bot.add_child(b)
 		else:
 			bot.add_child(ui.lbl("%s/%s" % [_num(q["have"]), _num(q["need"])], 13, Color(0.8, 0.88, 1.0), 5))
-	var gift: Button = ui.btn("DAILY GIFT" + ("  - NEW!" if game.progress.login_available() else ""), ui.GREEN if game.progress.login_available() else Color(0.35, 0.5, 0.75), 14, 10)
+	var gift: Button = ui.btn("DAILY GIFT" + ("  - NEW!" if game.progress.login_available() else ""), ui.GREEN if game.progress.login_available() else ui.BLUE, 14, 10)
 	gift.custom_minimum_size = Vector2(0, 32)
 	gift.icon = Icons.tex("gem", Color.WHITE, 32)
 	gift.add_theme_constant_override("icon_max_width", 16)
@@ -379,7 +377,7 @@ func _fill_login(result: Dictionary = {}) -> void:
 	var p = game.progress
 	var today: int = p.login_day() if result.is_empty() else int(result["day"])
 	var claimed: bool = not p.login_available()
-	var info: Label = ui.lbl("Come back every day for a gift. Keep the streak going for bigger rewards: day 6 and day 7 include a Hero Charm. Missing a day starts the streak again.", 15, Color(0.85, 0.8, 1.0), 0)
+	var info: Label = ui.lbl("Come back every day for a gift. Keep the streak going for bigger rewards: day 6 and day 7 include a Hero Charm. Missing a day starts the streak again.", 15, Color(0.76, 0.81, 0.94), 0)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(940, 0)
 	body.add_child(info)
@@ -392,7 +390,7 @@ func _fill_login(result: Dictionary = {}) -> void:
 		var done: bool = i < today or (i == today and claimed)
 		var is_today: bool = i == today
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _glow_box(Color(0.3, 0.2, 0.5) if is_today else Color(0.16, 0.12, 0.34), ui.GOLD if is_today else (ui.GREEN if done else Color(0.3, 0.3, 0.42))))
+		card.add_theme_stylebox_override("panel", _glow_box(ui.SURFACE.lightened(0.12) if is_today else ui.SURFACE, ui.GOLD if is_today else (ui.GREEN if done else Color(1, 1, 1, 0.1))))
 		card.custom_minimum_size = Vector2(124, 190)
 		row.add_child(card)
 		var v := VBoxContainer.new()
@@ -453,14 +451,14 @@ func _fill_blessings() -> void:
 	var pts: Label = ui.lbl("%d BLESSING POINT%s" % [p.blessing_points(), "" if p.blessing_points() == 1 else "S"], 26, Color.WHITE, 8)
 	pts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(pts)
-	var rs: Button = ui.btn("RESET (FREE)", Color(0.45, 0.45, 0.6), 16, 10)
+	var rs: Button = ui.btn("RESET (FREE)", ui.GREY, 16, 10)
 	rs.custom_minimum_size = Vector2(160, 40)
 	rs.pressed.connect(func() -> void:
 		game.progress.reset_blessings()
 		game.save.save(game.SAVE_PATH)
 		_fill_blessings())
 	top.add_child(rs)
-	var info: Label = ui.lbl("You earn a point every time you level up. Blessings last forever and work in every mode except Sandbox.", 14, Color(0.85, 0.8, 1.0), 0)
+	var info: Label = ui.lbl("You earn a point every time you level up. Blessings last forever and work in every mode except Sandbox.", 14, Color(0.76, 0.81, 0.94), 0)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(940, 0)
 	body.add_child(info)
@@ -474,14 +472,14 @@ func _fill_blessings() -> void:
 		var owned: bool = p.has_blessing(id)
 		var block: String = p.blessing_blocker(id)
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34) if not owned else Color(0.3, 0.2, 0.5), ui.GOLD if owned else (ui.GREEN if block == "" else Color(0.3, 0.3, 0.42))))
+		card.add_theme_stylebox_override("panel", _glow_box(ui.SURFACE if not owned else ui.SURFACE.lightened(0.12), ui.GOLD if owned else (ui.GREEN if block == "" else Color(1, 1, 1, 0.1))))
 		card.custom_minimum_size = Vector2(305, 92)
 		grid.add_child(card)
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		card.add_child(h)
 		var disc := PanelContainer.new()
-		disc.add_theme_stylebox_override("panel", ui.sb(ui.GOLD if owned else Color(0.35, 0.3, 0.55), 24, 3, false, 6))
+		disc.add_theme_stylebox_override("panel", ui.sb(ui.GOLD if owned else ui.GREY, 24, 3, false, 6))
 		disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		disc.add_child(_icon_rect(b[5], 34))
 		h.add_child(disc)
@@ -490,14 +488,14 @@ func _fill_blessings() -> void:
 		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(v)
 		v.add_child(ui.lbl(b[1], 17, Color.WHITE, 6))
-		var d: Label = ui.lbl(b[2], 12, Color(0.88, 0.85, 1.0), 0)
+		var d: Label = ui.lbl(b[2], 12, Color(0.76, 0.81, 0.94), 0)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(170, 0)
 		v.add_child(d)
 		if owned:
 			v.add_child(ui.lbl("BLESSED", 13, ui.GOLD, 4))
 		else:
-			var buy: Button = ui.btn("%d PT" % int(b[3]) if block == "" else block, ui.GREEN if block == "" else Color(0.4, 0.38, 0.5), 13, 8)
+			var buy: Button = ui.btn("%d PT" % int(b[3]) if block == "" else block, ui.GREEN if block == "" else ui.GREY, 13, 8)
 			buy.disabled = block != ""
 			buy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 			buy.pressed.connect(func() -> void:
@@ -511,7 +509,7 @@ func _fill_almanac() -> void:
 	var body := _body("almanac")
 	_clear(body)
 	var p = game.progress
-	var info: Label = ui.lbl("Pop a spirit once to add it to the almanac (%d / %d found)." % [int(p.get_stat("#spirits_seen")), Defs.ORDER.size()], 15, Color(0.85, 0.8, 1.0), 0)
+	var info: Label = ui.lbl("Pop a spirit once to add it to the almanac (%d / %d found)." % [int(p.get_stat("#spirits_seen")), Defs.ORDER.size()], 15, Color(0.76, 0.81, 0.94), 0)
 	body.add_child(info)
 	var grid := GridContainer.new()
 	grid.columns = 3
@@ -525,7 +523,7 @@ func _fill_almanac() -> void:
 		var known: bool = seen.has(key)
 		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34), col if known else Color(0.3, 0.3, 0.4)))
+		card.add_theme_stylebox_override("panel", _glow_box(ui.SURFACE, col if known else Color(1, 1, 1, 0.1)))
 		card.custom_minimum_size = Vector2(305, 130)
 		grid.add_child(card)
 		var h := HBoxContainer.new()
@@ -551,7 +549,7 @@ func _fill_almanac() -> void:
 		if d.get("boss", false):
 			traits.append("BOSS")
 		v.add_child(ui.lbl("Speed %.1f  -  Health %s  -  Layers %s" % [float(d["speed"]), _num(d["hp"]), _num(Defs.rbe(key))], 12, ui.GOLD, 4))
-		var note: Label = ui.lbl(SPIRIT_NOTES.get(key, "") if known else "Not met yet.", 12, Color(0.88, 0.85, 1.0), 0)
+		var note: Label = ui.lbl(SPIRIT_NOTES.get(key, "") if known else "Not met yet.", 12, Color(0.76, 0.81, 0.94), 0)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size = Vector2(185, 0)
 		v.add_child(note)
@@ -567,7 +565,7 @@ func _fill_store() -> void:
 	body.add_child(top)
 	top.add_child(UIScript.HudIcon.new("gem", 34, ui.GEM))
 	top.add_child(ui.lbl("%s Spirit Gems" % _num(p.gems()), 26, Color.WHITE, 8))
-	var info: Label = ui.lbl("Earn gems by winning games, finishing daily quests, unlocking achievements and levelling up. Up to %d powers can be used per game." % game.power_limit(), 14, Color(0.85, 0.8, 1.0), 0)
+	var info: Label = ui.lbl("Earn gems by winning games, finishing daily quests, unlocking achievements and levelling up. Up to %d powers can be used per game." % game.power_limit(), 14, Color(0.76, 0.81, 0.94), 0)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(940, 0)
 	body.add_child(info)
@@ -580,7 +578,7 @@ func _fill_store() -> void:
 		var id: String = pw[0]
 		var col: Color = Defs.col(pw[5])
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34), col))
+		card.add_theme_stylebox_override("panel", _glow_box(ui.SURFACE, col))
 		card.custom_minimum_size = Vector2(305, 190)
 		grid.add_child(card)
 		var v := VBoxContainer.new()
@@ -598,11 +596,11 @@ func _fill_store() -> void:
 		h.add_child(nv)
 		nv.add_child(ui.lbl(pw[1], 22, Color.WHITE, 8))
 		nv.add_child(ui.lbl("Owned: %d" % p.power_count(id), 15, ui.GOLD, 5))
-		var d: Label = ui.lbl(pw[2], 14, Color(0.88, 0.85, 1.0), 0)
+		var d: Label = ui.lbl(pw[2], 14, Color(0.76, 0.81, 0.94), 0)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(280, 40)
 		v.add_child(d)
-		var buy: Button = ui.btn("BUY  %d" % int(pw[4]), ui.GREEN if p.gems() >= int(pw[4]) else Color(0.4, 0.42, 0.5), 18, 10)
+		var buy: Button = ui.btn("BUY  %d" % int(pw[4]), ui.GREEN if p.gems() >= int(pw[4]) else ui.GREY, 18, 10)
 		buy.icon = Icons.tex("gem", Color.WHITE, 40)
 		buy.add_theme_constant_override("icon_max_width", 20)
 		buy.custom_minimum_size = Vector2(0, 40)
@@ -617,7 +615,7 @@ func _fill_store() -> void:
 		v.add_child(buy)
 	# Hero Charms
 	var ch_card := PanelContainer.new()
-	ch_card.add_theme_stylebox_override("panel", _glow_box(Color(0.22, 0.15, 0.32), ui.GOLD))
+	ch_card.add_theme_stylebox_override("panel", _glow_box(ui.SURFACE, ui.GOLD))
 	body.add_child(ch_card)
 	var ch := HBoxContainer.new()
 	ch.add_theme_constant_override("separation", 14)
@@ -631,13 +629,13 @@ func _fill_store() -> void:
 	cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ch.add_child(cv)
 	cv.add_child(ui.lbl("HERO CHARM  (owned: %d)" % p.charm_count(), 22, Color.WHITE, 8))
-	var cd: Label = ui.lbl("A random recruited hero with upgrades already bought (up to tier 4). Place it for free from the charm button in a game. Every win also drops a charm (two on Hard and Nightmare).", 14, Color(0.88, 0.85, 1.0), 0)
+	var cd: Label = ui.lbl("A random recruited hero with upgrades already bought (up to tier 4). Place it for free from the charm button in a game. Every win also drops a charm (two on Hard and Nightmare).", 14, Color(0.76, 0.81, 0.94), 0)
 	cd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cd.custom_minimum_size = Vector2(600, 0)
 	cv.add_child(cd)
 	var last_lbl: Label = ui.lbl("", 15, ui.GOLD, 5)
 	cv.add_child(last_lbl)
-	var cb: Button = ui.btn("BUY  %d" % p.CHARM_PRICE, ui.GREEN if p.gems() >= p.CHARM_PRICE else Color(0.4, 0.42, 0.5), 18, 10)
+	var cb: Button = ui.btn("BUY  %d" % p.CHARM_PRICE, ui.GREEN if p.gems() >= p.CHARM_PRICE else ui.GREY, 18, 10)
 	cb.icon = Icons.tex("gem", Color.WHITE, 40)
 	cb.add_theme_constant_override("icon_max_width", 20)
 	cb.custom_minimum_size = Vector2(170, 46)
@@ -670,14 +668,14 @@ func show_home() -> void:
 # ---------------------------------------------------------------------
 func _screen(title: String) -> Control:
 	var shade := ColorRect.new()
-	shade.color = Color(0.12, 0.05, 0.25, 0.75)
+	shade.color = Color(0.03, 0.05, 0.12, 0.72)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.visible = false
 	add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
-	var card: PanelContainer = ui.panel_of(Color(0.09, 0.05, 0.22), 24)
+	var card: PanelContainer = ui.panel_of(Color(0.075, 0.1, 0.19), 22)
 	card.custom_minimum_size = Vector2(1000, 600)
 	center.add_child(card)
 	card.add_child(_night_bg())
@@ -687,11 +685,9 @@ func _screen(title: String) -> Control:
 	var head := HBoxContainer.new()
 	v.add_child(head)
 	var t: Label = ui.lbl(title, 44, Color.WHITE, 14)
-	t.add_theme_color_override("font_shadow_color", ui.PINK)
-	t.add_theme_constant_override("shadow_offset_y", 5)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
-	var back: Button = ui.btn("BACK", Color(0.35, 0.5, 0.75), 22, 14)
+	var back: Button = ui.btn("BACK", ui.BLUE, 22, 14)
 	back.custom_minimum_size = Vector2(140, 50)
 	back.pressed.connect(show_home)
 	head.add_child(back)
@@ -751,7 +747,7 @@ func _fill_achievements() -> void:
 	for a in Progress.ACHIEVEMENTS:
 		var done: bool = p.is_unlocked(a[0])
 		var row := PanelContainer.new()
-		row.add_theme_stylebox_override("panel", ui.sb(ui.CARD if done else Color(0.55, 0.6, 0.7), 12, 3, false, 8))
+		row.add_theme_stylebox_override("panel", ui.sb(ui.SURFACE if done else Color(0.09, 0.11, 0.2), 12, 2, false, 8))
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.custom_minimum_size = Vector2(470, 0)
 		grid.add_child(row)
@@ -760,7 +756,7 @@ func _fill_achievements() -> void:
 		row.add_child(h)
 		var star := PanelContainer.new()
 		star.custom_minimum_size = Vector2(40, 40)
-		star.add_theme_stylebox_override("panel", ui.sb(ui.GOLD if done else Color(0.35, 0.38, 0.45), 20, 3, false, 0))
+		star.add_theme_stylebox_override("panel", ui.sb(ui.GOLD if done else ui.GREY.darkened(0.3), 20, 3, false, 0))
 		h.add_child(star)
 		var v := VBoxContainer.new()
 		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -824,7 +820,7 @@ func _build_heroes() -> Control:
 	hero_list.add_theme_constant_override("separation", 14)
 	hero_list.alignment = BoxContainer.ALIGNMENT_CENTER
 	body.add_child(hero_list)
-	var hint: Label = ui.lbl("Pick a hero to open their upgrade tree. Pop spirits with a hero to earn their XP.", 15, Color(0.85, 0.8, 1.0), 0)
+	var hint: Label = ui.lbl("Pick a hero to open their upgrade tree. Pop spirits with a hero to earn their XP.", 15, Color(0.76, 0.81, 0.94), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(hint)
 	return sc
@@ -839,7 +835,7 @@ func _pick_hero_class(i: int) -> void:
 		var key: String = k
 		var d: Dictionary = Defs.HEROES[key]
 		var unlocked: bool = game.progress.level() >= int(Defs.UNLOCK_LEVEL[key])
-		var b: Button = ui.btn("", Defs.col(Defs.CLASSES[i]["color"]) if unlocked else Color(0.35, 0.33, 0.48), 14, 18)
+		var b: Button = ui.btn("", ui.SURFACE.lerp(Defs.col(Defs.CLASSES[i]["color"]), 0.22) if unlocked else Color(0.1, 0.12, 0.22), 14, 18)
 		b.custom_minimum_size = Vector2(220 if Defs.CLASSES[i]["heroes"].size() < 5 else 190, 380)
 		var v := VBoxContainer.new()
 		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
@@ -898,7 +894,7 @@ func _build_tree() -> Control:
 	ui.centered(arrow_l, _icon_rect("left", 36))
 	arrow_l.pressed.connect(func() -> void: _step_hero(-1))
 	head.add_child(arrow_l)
-	var banner: PanelContainer = ui.panel_of(Color(0.16, 0.12, 0.42, 0.95), 16)
+	var banner: PanelContainer = ui.panel_of(ui.SURFACE, 16)
 	banner.custom_minimum_size = Vector2(620, 0)
 	head.add_child(banner)
 	var bv := VBoxContainer.new()
@@ -942,14 +938,14 @@ func _build_tree() -> Control:
 	body.add_child(tree_grid)
 	tree_mastery = PanelContainer.new()
 	tree_mastery.custom_minimum_size = Vector2(170, 0)
-	tree_mastery.add_theme_stylebox_override("panel", _glow_box(Color(0.5, 0.25, 0.85), ui.GOLD))
+	tree_mastery.add_theme_stylebox_override("panel", _glow_box(Color(0.2, 0.17, 0.42), ui.GOLD))
 	body.add_child(tree_mastery)
 	return root
 
 func _night_bg() -> TextureRect:
 	var g := Gradient.new()
-	g.set_color(0, Color(0.36, 0.17, 0.62))
-	g.set_color(1, Color(0.09, 0.05, 0.22))
+	g.set_color(0, Color(0.13, 0.17, 0.33))
+	g.set_color(1, Color(0.065, 0.085, 0.17))
 	var gt := GradientTexture2D.new()
 	gt.gradient = g
 	gt.fill_from = Vector2(0.5, 0.0)
@@ -966,11 +962,12 @@ func _glow_box(bg: Color, border: Color) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
 	s.border_color = border
-	s.set_border_width_all(5)
-	s.set_corner_radius_all(18)
-	s.set_content_margin_all(10)
-	s.shadow_color = Color(border, 0.6)
-	s.shadow_size = 12
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(14)
+	s.set_content_margin_all(12)
+	s.anti_aliasing_size = 1.2
+	s.shadow_color = Color(border, 0.22)
+	s.shadow_size = 8
 	return s
 
 func _icon_rect(icon: String, px: int, col: Color = Color.WHITE) -> TextureRect:
@@ -1026,7 +1023,7 @@ func _fill_tree() -> void:
 				var bar := ColorRect.new()
 				bar.custom_minimum_size = Vector2(26, 8)
 				bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				bar.color = ui.GOLD if _node_state(k, p, t) == "owned" else Color(0.2, 0.12, 0.35)
+				bar.color = ui.GOLD if _node_state(k, p, t) == "owned" else Color(1, 1, 1, 0.14)
 				bar.position.y = -14
 				row.add_child(bar)
 			row.add_child(_tree_node(k, p, t, cls_col))
@@ -1040,8 +1037,8 @@ func _fill_tree() -> void:
 	mt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mv.add_child(mt)
 	var mastered: bool = game.progress.mastered(k)
-	var mb: Button = ui.round_btn(ui.GOLD if mastered else Color(0.3, 0.2, 0.5), 120)
-	mb.add_theme_stylebox_override("normal", _glow_box(ui.GOLD if mastered else Color(0.3, 0.2, 0.5), ui.GOLD))
+	var mb: Button = ui.round_btn(ui.GOLD if mastered else ui.SURFACE.lightened(0.12), 120)
+	mb.add_theme_stylebox_override("normal", _glow_box(ui.GOLD if mastered else ui.SURFACE.lightened(0.12), ui.GOLD))
 	(mb.get_theme_stylebox("normal") as StyleBoxFlat).set_corner_radius_all(60)
 	ui.centered(mb, _icon_rect("star", 70, Color.WHITE if mastered else Color(1, 0.85, 0.4)))
 	mb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1065,7 +1062,7 @@ func _tree_node(k: String, p: int, t: int, cls_col: Color) -> Control:
 	var cell := VBoxContainer.new()
 	cell.custom_minimum_size = Vector2(118, 0)
 	cell.add_theme_constant_override("separation", 0)
-	var bg: Color = cls_col if state == "owned" else (Color(0.18, 0.2, 0.42) if state == "available" else Color(0.14, 0.1, 0.28))
+	var bg: Color = cls_col if state == "owned" else (Color(0.18, 0.2, 0.42) if state == "available" else Color(0.1, 0.12, 0.22))
 	var b: Button = ui.round_btn(bg, 84)
 	var st: StyleBoxFlat = ui.sb(bg, 42, 4)
 	if state == "available":
@@ -1131,7 +1128,7 @@ func _fill_preview() -> void:
 	var big := PanelContainer.new()
 	big.custom_minimum_size = Vector2(200, 200)
 	big.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	big.add_theme_stylebox_override("panel", _glow_box(Defs.col(Defs.hero_class(k)["color"]).darkened(0.2), ui.GOLD if mastery else Color(0.12, 0.08, 0.16)))
+	big.add_theme_stylebox_override("panel", _glow_box(Defs.col(Defs.hero_class(k)["color"]).darkened(0.2), ui.GOLD if mastery else Color(1, 1, 1, 0.14)))
 	var stack := Control.new()
 	big.add_child(stack)
 	var pic: TextureRect = ui._portrait_rect(k, 180)
@@ -1145,12 +1142,12 @@ func _fill_preview() -> void:
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tree_preview.add_child(s)
-	var dl: Label = ui.lbl(desc, 14, Color(0.92, 0.9, 1.0), 0)
+	var dl: Label = ui.lbl(desc, 14, Color(0.82, 0.86, 0.96), 0)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tree_preview.add_child(dl)
 	if status not in ["UNLOCKED", "MASTERED"]:
-		var ub: Button = ui.btn("UNLOCK  %s" % cost_txt, ui.GREEN if can else Color(0.4, 0.38, 0.5), 18, 14)
+		var ub: Button = ui.btn("UNLOCK  %s" % cost_txt, ui.GREEN if can else ui.GREY, 18, 14)
 		ub.disabled = not can
 		ub.pressed.connect(_unlock_selected)
 		tree_preview.add_child(ub)
@@ -1229,7 +1226,7 @@ func _fill_settings() -> void:
 		row.add_theme_constant_override("separation", 16)
 		body.add_child(row)
 		var on: bool = game.get_setting(key)
-		var b: Button = ui.btn("ON" if on else "OFF", ui.GREEN if on else Color(0.55, 0.6, 0.7), 22, 14)
+		var b: Button = ui.btn("ON" if on else "OFF", ui.GREEN if on else ui.GREY, 22, 14)
 		b.custom_minimum_size = Vector2(110, 50)
 		b.pressed.connect(_toggle_setting.bind(key))
 		row.add_child(b)
@@ -1241,7 +1238,7 @@ func _fill_settings() -> void:
 	var sep := Control.new()
 	sep.custom_minimum_size = Vector2(0, 30)
 	body.add_child(sep)
-	var reset: Button = ui.btn("RESET ALL PROGRESS", Color(0.92, 0.3, 0.3), 20, 14)
+	var reset: Button = ui.btn("RESET ALL PROGRESS", ui.RED, 20, 14)
 	reset.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	reset.pressed.connect(_on_reset.bind(reset))
 	body.add_child(reset)

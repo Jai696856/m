@@ -14,7 +14,8 @@ project has no imported art or audio assets.
 
 The look is a bright, top-down cartoon style: an island in the sea with a beach, palms and round leafy
 trees, a cobblestone path, chunky outlined HUD numbers, and round play / fast-forward buttons.
-The UI font is [Luckiest Guy](https://fonts.google.com/specimen/Luckiest+Guy) (Apache 2.0, see `fonts/`).
+The UI uses the rounded [Fredoka](https://fonts.google.com/specimen/Fredoka) font (SIL Open Font License) and
+[Phosphor Icons](https://phosphoricons.com) (MIT). Both licences are in `licenses/`.
 
 It uses the **Compatibility** renderer, so it can also be exported to Web, Android and iOS from
 **Project → Export**.
