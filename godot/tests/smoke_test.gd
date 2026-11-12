@@ -20,7 +20,9 @@ func _initialize() -> void:
 	main.sfx.muted = true
 	main.SAVE_PATH  # constant exists
 	main.save = ConfigFile.new()  # don't touch the player's real save
+	main.progress.save = main.save
 
+	await _test_menu_and_progress(main)
 	await _test_all_maps(main)
 	await _test_modes(main)
 	await _test_modifiers(main)
@@ -40,6 +42,90 @@ func _initialize() -> void:
 		for f in failures:
 			print("  - ", f)
 		quit(1)
+
+# Main menu, attract demo, daily challenge, settings, XP, achievements, sandbox tools.
+func _test_menu_and_progress(main) -> void:
+	main.to_home()
+	check(main.attract and main.menu.visible, "starts in the main menu over the demo game")
+	check(not main.ui.hud_box.visible and not main.ui.shop.visible, "HUD is hidden behind the menu")
+	check(main.heroes.size() >= 4, "demo game has heroes (%d)" % main.heroes.size())
+	var pops_before: float = main.progress.get_stat("pops")
+	for i in range(900):
+		main._step(1.0 / 60.0)
+	check(main.game_pops > 0, "demo heroes pop spirits (%d)" % main.game_pops)
+	check(main.progress.get_stat("pops") == pops_before, "the demo does not count toward stats")
+	main.menu.refresh()
+	check(main.menu.level_lbl.text == "1", "fresh save is level 1")
+	main.menu._open("heroes")
+	main.menu._open("achievements")
+	main.menu._open("stats")
+	main.menu._open("settings")
+	main.menu._open("howto")
+	main.menu.show_home()
+	main.ui.show_map_select()
+	check(main.ui.start_screen.visible and not main.menu.visible, "PLAY opens map select")
+	main.ui._on_back_home()
+	check(main.menu.visible and not main.ui.start_screen.visible, "BACK returns to the main menu")
+	# Settings
+	main.set_setting("shake", false)
+	check(main.shake_mul() == 0.0, "camera shake can be turned off")
+	main.set_setting("shake", true)
+	main.set_setting("shadows", false)
+	check(not main.sun.shadow_enabled, "shadows can be turned off")
+	main.set_setting("shadows", true)
+	main.set_setting("sound", false)
+	check(main.sfx.muted, "sound setting mutes")
+	main.set_setting("sound", true)
+	main.sfx.muted = true
+	# Daily challenge
+	var d: Dictionary = main.progress.daily()
+	check(d["map"] >= 0 and d["map"] < main.Maps.MAPS.size(), "daily challenge picks a map")
+	check(d == main.progress.daily(), "daily challenge is stable within a day")
+	main.start_daily()
+	check(main.daily_active and not main.attract and main.map_index == d["map"] and main.mode == d["mode"], "daily challenge starts its game")
+	check(main.ui.hud_box.visible, "HUD is shown in a real game")
+	# Progress during a real game
+	main.cash = 1.0e6
+	var spots := _find_spots(main, 7)
+	for i in range(mini(7, spots.size())):
+		var h = main.place_hero(main.Defs.HERO_ORDER[i], spots[i].x, spots[i].y)
+		for t in range(4):
+			main.buy_upgrade(h, 0)
+		main.use_ability(h)
+	check(main.progress.get_stat("heroes_placed") >= 7, "heroes placed are counted")
+	check(main.progress.get_stat("tier4") >= 7, "tier 4 upgrades are counted")
+	check(main.progress.is_unlocked("full_squad"), "Full Squad achievement unlocks")
+	check(main.progress.is_unlocked("ability_1"), "Special Move achievement unlocks")
+	var lv: int = main.progress.level()
+	await _run_rounds(main, 3)
+	check(main.progress.get_stat("pops") > 0 and main.progress.is_unlocked("first_pop"), "pops count and First Pop unlocks")
+	check(main.progress.xp() > 0.0, "XP is earned (%.0f)" % main.progress.xp())
+	main.round_num = 40
+	main.victory()
+	check(main.progress.get_stat("wins") == 1 and main.progress.is_unlocked("first_win"), "a win is recorded")
+	check(main.progress.get_stat("daily_wins") == 1, "the daily challenge win is recorded")
+	check(main.progress.daily()["done"], "daily challenge marked done")
+	check(main.progress.level() > lv, "winning levels you up (%d -> %d)" % [lv, main.progress.level()])
+	print("progress: level %d, %d xp, %d/%d achievements" % [main.progress.level(), main.progress.xp(), main.progress.unlocked_count(), main.progress.ACHIEVEMENTS.size()])
+	# Next-round preview
+	var prev: Array = main.preview_round(25)
+	check(not prev.is_empty() and prev[0][0] == "oni", "round 25 preview leads with the boss")
+	# Sandbox tools
+	main.new_game("normal", 0, "sandbox")
+	check(main.ui.sandbox_panel.visible, "sandbox panel shows in sandbox mode")
+	main.sandbox_spawn("prism", true, true, false)
+	check(main.enemies.size() == 1 and main.enemies[0].camo and main.enemies[0].fortified, "sandbox spawns spirits with modifiers")
+	main.sandbox_clear()
+	check(main.enemies.is_empty(), "sandbox clear removes spirits")
+	var wins_before: float = main.progress.get_stat("wins")
+	main.round_num = 40
+	main.victory()
+	check(main.progress.get_stat("wins") == wins_before, "sandbox wins do not count")
+	# Home from a game, and reset
+	main.to_home()
+	check(main.attract and main.menu.visible, "HOME returns to the main menu")
+	main.reset_progress()
+	check(main.progress.xp() == 0.0 and main.progress.unlocked_count() == 0, "progress reset clears XP and achievements")
 
 func _run_rounds(main, n: int) -> void:
 	for r in range(n):
@@ -217,7 +303,7 @@ func _test_pause(main) -> void:
 	main.toggle_pause()
 	check(not main.paused, "game resumes")
 	main.to_menu()
-	check(main.over, "returning to the menu ends the game")
+	check(main.attract and main.ui.start_screen.visible, "MAPS leaves the game for map select over the demo")
 
 func _test_full_game(main) -> void:
 	main.new_game("easy", 0, "standard")

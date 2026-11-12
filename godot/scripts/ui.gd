@@ -170,6 +170,15 @@ var pause_screen: Control
 var ability_bar: HBoxContainer
 var ability_buttons: Array = []
 var map_info_lbl: Label
+var hud_box: HBoxContainer
+var controls_box: HBoxContainer
+var next_box: HBoxContainer
+var sandbox_panel: PanelContainer
+var sb_camo := false
+var sb_fort := false
+var sb_regrow := false
+var sb_toggles := {}
+var toast_box: VBoxContainer
 var diff_buttons := {}
 var portraits := {}
 var portrait_vps: Array = []
@@ -200,6 +209,8 @@ func _ready() -> void:
 	_build_start()
 	_build_end()
 	_build_pause()
+	_build_sandbox()
+	_build_toasts()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	update_hud()
@@ -326,6 +337,7 @@ func _portrait_rect(k: String, px: float) -> TextureRect:
 # ---------------------------------------------------------------------
 func _build_hud() -> void:
 	var hud := HBoxContainer.new()
+	hud_box = hud
 	hud.add_theme_constant_override("separation", 18)
 	hud.position = Vector2(14, 10)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -361,6 +373,12 @@ func _build_hud() -> void:
 	map_info_lbl = lbl("", 13, Color.WHITE, 6)
 	map_info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	round_box.add_child(map_info_lbl)
+	# Next-round preview: coloured dots with counts
+	next_box = HBoxContainer.new()
+	next_box.alignment = BoxContainer.ALIGNMENT_END
+	next_box.add_theme_constant_override("separation", 4)
+	next_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	round_box.add_child(next_box)
 
 func _build_shop() -> void:
 	shop = panel_of(NAVY)
@@ -425,6 +443,7 @@ func rebuild_shop() -> void:
 
 func _build_controls() -> void:
 	var h := HBoxContainer.new()
+	controls_box = h
 	h.add_theme_constant_override("separation", 10)
 	h.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(h)
@@ -603,11 +622,18 @@ func _build_start() -> void:
 	mode_lbl = lbl("", 14, Color(0.8, 0.9, 1.0), 0)
 	mode_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(mode_lbl)
+	var bottom := HBoxContainer.new()
+	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom.add_theme_constant_override("separation", 14)
+	v.add_child(bottom)
+	var back := btn("BACK", Color(0.35, 0.5, 0.75), 26, 18)
+	back.custom_minimum_size = Vector2(150, 58)
+	back.pressed.connect(_on_back_home)
+	bottom.add_child(back)
 	var start := btn("START!", GREEN, 34, 18)
 	start.custom_minimum_size = Vector2(220, 58)
-	start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	start.pressed.connect(_on_start)
-	v.add_child(start)
+	bottom.add_child(start)
 	sel_map = game.map_index
 	_pick_diff("normal")
 	_pick_mode("standard")
@@ -726,6 +752,9 @@ func _build_end() -> void:
 	var maps_btn := btn("MAPS", Color(0.35, 0.5, 0.75), 28, 16)
 	maps_btn.pressed.connect(_on_maps)
 	row.add_child(maps_btn)
+	var home_btn := btn("HOME", Color(0.35, 0.5, 0.75), 28, 16)
+	home_btn.pressed.connect(_on_home)
+	row.add_child(home_btn)
 
 func _build_pause() -> void:
 	var o := _overlay()
@@ -733,7 +762,7 @@ func _build_pause() -> void:
 	pause_screen.visible = false
 	var v: VBoxContainer = o["box"]
 	_title(v, "PAUSED", "")
-	for item in [["RESUME", GREEN, "_on_resume"], ["RESTART", GOLD, "_on_retry"], ["MAPS", Color(0.35, 0.5, 0.75), "_on_maps"], ["SOUND ON / OFF", Color(0.35, 0.5, 0.75), "_on_sound"]]:
+	for item in [["RESUME", GREEN, "_on_resume"], ["RESTART", GOLD, "_on_retry"], ["MAPS", Color(0.35, 0.5, 0.75), "_on_maps"], ["HOME", Color(0.35, 0.5, 0.75), "_on_home"], ["SOUND ON / OFF", Color(0.35, 0.5, 0.75), "_on_sound"]]:
 		var b := btn(item[0], item[1], 26, 16)
 		b.custom_minimum_size = Vector2(300, 54)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -757,6 +786,155 @@ func _on_retry() -> void:
 
 func _on_maps() -> void:
 	game.to_menu()
+
+func _on_home() -> void:
+	end_screen.visible = false
+	game.to_home()
+
+func _on_back_home() -> void:
+	start_screen.visible = false
+	game.menu.show_home()
+
+## Map select over the menu demo.
+func show_map_select() -> void:
+	game.menu.visible = false
+	end_screen.visible = false
+	pause_screen.visible = false
+	_pick_tier(sel_tier)
+	start_screen.visible = true
+
+func set_hud_visible(on: bool) -> void:
+	for c in [hud_box, round_box, shop, controls_box, ability_bar]:
+		(c as Control).visible = on
+	if not on:
+		panel.visible = false
+		boss_box.visible = false
+		if sandbox_panel:
+			sandbox_panel.visible = false
+
+# ---------------------------------------------------------------------
+# Next-round preview
+# ---------------------------------------------------------------------
+func update_next_round() -> void:
+	for c in next_box.get_children():
+		c.queue_free()
+	if game.attract or game.over:
+		return
+	var nxt: int = game.round_num + 1
+	next_box.add_child(lbl("NEXT", 12, Color.WHITE, 5))
+	var list: Array = game.preview_round(nxt)
+	for i in range(mini(list.size(), 5)):
+		var type: String = list[i][0]
+		var d: Dictionary = Defs.ENEMIES[type]
+		var dot := Panel.new()
+		var px := 22 if d.get("boss", false) else 16
+		dot.custom_minimum_size = Vector2(px, px)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
+		dot.add_theme_stylebox_override("panel", sb(col, px / 2, 2, false, 0))
+		dot.tooltip_text = d["name"]
+		next_box.add_child(dot)
+		next_box.add_child(lbl("x%d" % int(list[i][1]), 13, Color.WHITE, 5))
+
+# ---------------------------------------------------------------------
+# Sandbox panel: spawn any spirit with any modifier
+# ---------------------------------------------------------------------
+func _build_sandbox() -> void:
+	sandbox_panel = panel_of(NAVY, 14)
+	sandbox_panel.visible = false
+	sandbox_panel.position = Vector2(12, 64)
+	root.add_child(sandbox_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	sandbox_panel.add_child(v)
+	v.add_child(lbl("SANDBOX", 18, GOLD, 6))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	v.add_child(grid)
+	for k in Defs.ORDER:
+		var key: String = k
+		var d: Dictionary = Defs.ENEMIES[key]
+		var col: Color = Color(1, 0.6, 0.9) if d.get("rainbow", false) else Defs.col(d["color"])
+		var b := btn(String(d["name"]).split(" ")[0].to_upper(), col.darkened(0.15), 12, 8)
+		b.custom_minimum_size = Vector2(70, 30)
+		b.tooltip_text = "Spawn a %s" % d["name"]
+		b.pressed.connect(func() -> void: game.sandbox_spawn(key, sb_camo, sb_fort, sb_regrow))
+		grid.add_child(b)
+	var toggles := HBoxContainer.new()
+	toggles.add_theme_constant_override("separation", 4)
+	v.add_child(toggles)
+	for t in ["camo", "fort", "regrow"]:
+		var key2: String = t
+		var tb := btn({"camo": "VEILED", "fort": "FORTIFIED", "regrow": "REGROW"}[key2], Color(0.35, 0.5, 0.75), 11, 8)
+		tb.custom_minimum_size = Vector2(70, 28)
+		tb.pressed.connect(_toggle_sandbox.bind(key2))
+		toggles.add_child(tb)
+		sb_toggles[key2] = tb
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	v.add_child(row)
+	var clear := btn("CLEAR", Color(0.92, 0.3, 0.3), 12, 8)
+	clear.custom_minimum_size = Vector2(70, 28)
+	clear.pressed.connect(func() -> void: game.sandbox_clear())
+	row.add_child(clear)
+	var skip := btn("ROUND +5", GOLD, 12, 8)
+	skip.custom_minimum_size = Vector2(144, 28)
+	skip.pressed.connect(func() -> void:
+		game.round_num += 5
+		update_hud()
+		update_next_round())
+	row.add_child(skip)
+
+func _toggle_sandbox(key: String) -> void:
+	match key:
+		"camo":
+			sb_camo = not sb_camo
+		"fort":
+			sb_fort = not sb_fort
+		"regrow":
+			sb_regrow = not sb_regrow
+	var on: bool = {"camo": sb_camo, "fort": sb_fort, "regrow": sb_regrow}[key]
+	_set_btn_bg(sb_toggles[key], PINK if on else Color(0.35, 0.5, 0.75), 8)
+
+func show_sandbox(on: bool) -> void:
+	sandbox_panel.visible = on
+
+# ---------------------------------------------------------------------
+# Toasts: achievements and level-ups slide in at the top
+# ---------------------------------------------------------------------
+func _build_toasts() -> void:
+	toast_box = VBoxContainer.new()
+	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast_box.anchor_left = 0.5
+	toast_box.anchor_right = 0.5
+	toast_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	toast_box.offset_top = 90
+	toast_box.add_theme_constant_override("separation", 6)
+	root.add_child(toast_box)
+
+func toast(title: String, text: String) -> void:
+	var p := panel_of(Color(0.12, 0.2, 0.35, 0.95), 14)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.custom_minimum_size = Vector2(380, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	p.add_child(v)
+	var t := lbl(title, 16, GOLD, 6)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var b := lbl(text, 22, Color.WHITE, 8)
+	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(b)
+	toast_box.add_child(p)
+	p.modulate.a = 0.0
+	var tw := p.create_tween()
+	tw.tween_property(p, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(2.6)
+	tw.tween_property(p, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(p.queue_free)
+	game.sfx.play("win" if title.begins_with("LEVEL") else "upgrade")
 
 func _on_resume() -> void:
 	game.toggle_pause()
@@ -827,6 +1005,8 @@ func _layout() -> void:
 	if win.content_scale_size != want:
 		win.content_scale_size = want
 	var hint: Control = shop.find_child("Hint", true, false)
+	if game and game.menu:
+		game.menu.layout(portrait)
 	if menu_card:
 		menu_card.custom_minimum_size = Vector2(690, 0) if portrait else Vector2(1180, 0)
 		map_grid.columns = 3 if portrait else 5

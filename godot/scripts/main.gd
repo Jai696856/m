@@ -8,6 +8,8 @@ const GameUI = preload("res://scripts/ui.gd")
 const Sfx = preload("res://scripts/sfx.gd")
 const LevelScene = preload("res://scenes/level/level.tscn")
 const Maps = preload("res://scripts/maps.gd")
+const Progress = preload("res://scripts/progress.gd")
+const MainMenu = preload("res://scripts/main_menu.gd")
 const SAVE_PATH := "user://save.cfg"
 
 ## Game modes. Medals are earned per map, difficulty and mode (never in sandbox).
@@ -138,6 +140,13 @@ var save := ConfigFile.new()
 var env: Environment
 var sun: DirectionalLight3D
 var sky_mat: ProceduralSkyMaterial
+var progress
+var menu
+## Attract mode: a self-playing sandbox game behind the main menu.
+var attract := false
+var daily_active := false
+var start_lives := 0.0
+var squad := {}
 
 var enemies: Array = []
 var heroes: Array = []
@@ -199,15 +208,23 @@ func _ready() -> void:
 	seg_mats = [Models.toon(0x26a69a), Models.toon(0x4dd0b8)]
 	_setup_env()
 	save.load(SAVE_PATH)
-	sfx.muted = bool(save.get_value("settings", "muted", false))
 	load_map(int(save.get_value("settings", "last_map", 0)))
 	_setup_particles()
 	_setup_range()
 	ui = GameUI.new()
 	ui.game = self
 	add_child(ui)
+	progress = Progress.new(save)
+	progress.on_unlock = func(a: Array) -> void: ui.toast("ACHIEVEMENT UNLOCKED", a[1])
+	progress.on_level = func(lv: int) -> void: ui.toast("LEVEL UP!", "You reached level %d" % lv)
+	_apply_settings()
+	menu = MainMenu.new()
+	menu.ui = ui
+	menu.game = self
+	ui.root.add_child(menu)
 	_fit_camera()
 	get_viewport().size_changed.connect(_fit_camera)
+	to_home()
 
 func _setup_env() -> void:
 	var we := WorldEnvironment.new()
@@ -433,7 +450,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_key(event as InputEventKey)
 
 func _on_key(k: InputEventKey) -> void:
-	if over:
+	if over or attract:
 		return
 	var code := k.keycode
 	if code >= KEY_1 and code <= KEY_7:
@@ -466,6 +483,8 @@ func _ground_point(screen: Vector2):
 	return Plane(Vector3.UP, 0.0).intersects_ray(from, dir)
 
 func _on_click(screen: Vector2, button: int, shift: bool) -> void:
+	if attract:
+		return
 	if button == MOUSE_BUTTON_RIGHT:
 		cancel_placing()
 		select_hero(null)
@@ -598,6 +617,10 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 	(h.model["body"] as Node3D).rotation.y = atan2(-x, 20.0 - z)
 	add_child(root)
 	heroes.append(h)
+	if _tracking():
+		progress.add("heroes_placed")
+		squad[k] = true
+		progress.set_max("squad", squad.size())
 	recalc_buffs()
 	burst(Vector3(x, 0.4, z), Color.WHITE, 14, 4.0)
 	sfx.play("place")
@@ -612,6 +635,8 @@ func sell_hero(h: Hero) -> void:
 	recalc_buffs()
 	burst(Vector3(h.x, 1, h.z), Defs.col(0xffd34d), 16, 5.0)
 	sfx.play("sell")
+	if _tracking():
+		progress.add("sold")
 	select_hero(null)
 	ui.refresh_abilities()
 
@@ -643,6 +668,10 @@ func buy_upgrade(h: Hero, p: int) -> void:
 	Defs.apply_upgrade(h.stats, up[3])
 	h.tiers[p] += 1
 	h.spent += cost
+	if _tracking():
+		progress.add("upgrades", 1.0, false)
+		if h.tiers[p] == 4:
+			progress.add("tier4")
 	_refresh_hero_look(h)
 	recalc_buffs()
 	if h.ability_cd < 0.0 and h.tiers.max() >= ABILITY_TIER:
@@ -720,13 +749,15 @@ func use_ability(h: Hero) -> void:
 				add_effect(beam, Vector3(t.pos.x, 30.0, t.pos.z), 0.5, "beam", 1.0, bm)
 				hit_enemy(t, opt_from(s, h, {"dmg": 2000.0, "type": "magic", "boss_mul": 1.0}))
 				explode(t.pos.x, t.pos.z, {"r": 3.5, "pierce": 30}, opt_from(s, h, {"dmg": 10.0, "type": "magic"}), false)
-				shake = 0.6
+				shake = 0.6 * shake_mul()
 		"idol":
 			encore_t = 10.0
 			for o in heroes:
 				burst(Vector3(o.x, 2.5, o.z), Defs.col(0xffd34d), 10, 4.0)
 	float_text(String(ABILITIES[h.key]["name"]).to_upper(), Vector3(h.x, 4.0, h.z), false)
 	sfx.play("upgrade")
+	if _tracking():
+		progress.add("abilities")
 	ui.refresh_abilities()
 
 func cycle_priority(h: Hero) -> void:
@@ -917,13 +948,18 @@ func pop_enemy(e: Enemy, hero) -> Array:
 	_remove_enemy(e)
 	earn(0.5 if round_num > 30 else 1.0)
 	game_pops += 1
+	if _tracking():
+		progress.add("pops", 1.0, false)
+		progress.add_xp(0.25)
+		if e.boss:
+			progress.add(e.type + "_pops")
 	if hero != null:
 		hero.pops += 1
 	var col := Color.from_hsv(randf(), 0.7, 1.0) if e.def.get("rainbow", false) else Defs.col(e.def["color"])
 	burst(where, col, 40 if e.boss else 7, 9.0 if e.boss else 5.0)
 	if e.boss:
 		sfx.play("boom")
-		shake = 0.5
+		shake = 0.5 * shake_mul()
 	else:
 		sfx.play("pop")
 	var kids: Array = []
@@ -941,7 +977,7 @@ func _leak(e: Enemy) -> void:
 	lives -= lost
 	float_text("-%d" % lost, e.pos + Vector3(0, 2, 0), true)
 	sfx.play("leak")
-	shake = minf(0.6, 0.15 + lost * 0.01)
+	shake = minf(0.6, 0.15 + lost * 0.01) * shake_mul()
 	if lives <= 0:
 		lives = 0
 		game_over()
@@ -1295,6 +1331,8 @@ func _update_particles(dt: float) -> void:
 		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ONE * sc), p))
 
 func float_text(text: String, pos: Vector3, bad: bool) -> void:
+	if attract:
+		return
 	var l := Label3D.new()
 	l.text = text
 	if ui and ui.font:
@@ -1410,12 +1448,17 @@ func start_round() -> void:
 	elif round_num == 1:
 		sub = "Protect the shrine!"
 	ui.banner("ROUND %d" % round_num, sub)
+	ui.update_next_round()
 	sfx.play("boss" if has_boss else "round")
 	ui.update_hud()
 
 func _end_round() -> void:
 	running = false
 	var bonus := 100 + round_num
+	if _tracking():
+		progress.add("rounds", 1.0, false)
+		progress.add_xp(10.0 + round_num)
+		progress.set_max("best_round", round_num)
 	var income := 0
 	var interest := 0
 	for h in heroes:
@@ -1436,6 +1479,7 @@ func _end_round() -> void:
 	elif auto_start:
 		auto_timer = 1.0
 	ui.update_hud()
+	ui.update_next_round()
 
 ## Money earned from pops and rounds goes through the game mode's rules.
 func earn(n: float) -> void:
@@ -1445,6 +1489,8 @@ func earn(n: float) -> void:
 		"deflation":
 			n = 0.0
 	cash_earned += n
+	if _tracking() and n > 0.0:
+		progress.add("cash_earned", n, false)
 	add_cash(n)
 
 func add_cash(n: float) -> void:
@@ -1471,12 +1517,17 @@ func toggle_auto() -> void:
 	ui.update_hud()
 
 func toggle_mute() -> void:
-	sfx.muted = not sfx.muted
-	save.set_value("settings", "muted", sfx.muted)
-	save.save(SAVE_PATH)
+	set_setting("sound", not get_setting("sound"))
 	ui.update_hud()
 
-func new_game(diff: String, map_i: int = -1, game_mode: String = "") -> void:
+func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool = false) -> void:
+	attract = demo
+	sfx.suppressed = demo
+	if not demo:
+		daily_active = daily_active and game_mode != "" and map_i >= 0
+	menu.visible = demo
+	ui.set_hud_visible(not demo)
+	squad = {}
 	difficulty = diff
 	if game_mode != "":
 		mode = game_mode
@@ -1486,8 +1537,9 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "") -> void:
 	cash_earned = 0.0
 	if map_i >= 0 and map_i != map_index:
 		load_map(map_i)
-	save.set_value("settings", "last_map", map_index)
-	save.save(SAVE_PATH)
+	if not demo:
+		save.set_value("settings", "last_map", map_index)
+		save.save(SAVE_PATH)
 	for e in enemies:
 		_remove_enemy(e)
 	enemies.clear()
@@ -1516,20 +1568,116 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "") -> void:
 	freeplay = false
 	queue = []
 	auto_timer = -1.0
+	auto_start = get_setting("autostart") and not demo
+	start_lives = lives
 	ui.rebuild_shop()
+	ui.refresh_abilities()
 	ui.update_hud()
+	ui.update_next_round()
 	ui.show_pause(false)
-	ui.banner(String(current_map()["name"]).to_upper(), "%s - %s" % [diff.capitalize(), MODES[mode]["name"]])
+	ui.show_sandbox(mode == "sandbox" and not demo)
+	if not demo:
+		if _tracking():
+			progress.add("games")
+			progress.add_to_set("themes_played", String(current_map()["theme"]))
+		ui.banner(String(current_map()["name"]).to_upper(), "%s - %s%s" % [diff.capitalize(), MODES[mode]["name"], "  (DAILY)" if daily_active else ""])
 
 func restart() -> void:
 	new_game(difficulty, map_index, mode)
 
+## Map select, with the attract game running behind it.
 func to_menu() -> void:
-	over = true
-	running = false
 	paused = false
+	daily_active = false
 	ui.show_pause(false)
+	start_attract()
+	menu.visible = false
 	ui.show_menu()
+
+## Main menu over a self-playing demo game.
+func to_home() -> void:
+	paused = false
+	daily_active = false
+	ui.show_pause(false)
+	ui.end_screen.visible = false
+	ui.start_screen.visible = false
+	start_attract()
+	menu.show_home()
+
+func start_attract() -> void:
+	new_game("easy", map_index, "sandbox", true)
+	var picks := ["ninja", "mage", "miko", "samurai", "ice", "mecha"]
+	var n := 0
+	for x in range(-30, 26, 3):
+		for z in range(-17, 18, 3):
+			if n < picks.size() and valid_spot(float(x), float(z)) and dist_to_path(float(x), float(z)) < 4.5:
+				var h := place_hero(picks[n], float(x), float(z))
+				for t in range(2):
+					buy_upgrade(h, 0)
+				n += 1
+	round_num = 12
+	auto_start = true
+	auto_timer = 0.8
+
+func start_daily() -> void:
+	var d: Dictionary = progress.daily()
+	daily_active = true
+	menu.visible = false
+	new_game(d["diff"], d["map"], d["mode"])
+
+func reset_progress() -> void:
+	progress.reset()
+	save.save(SAVE_PATH)
+
+## Progress only counts in real games (not the menu demo or sandbox).
+func _tracking() -> bool:
+	return not attract and mode != "sandbox"
+
+# ---------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------
+const SETTING_DEFAULTS := {"sound": true, "shake": true, "shadows": true, "autostart": false}
+
+func get_setting(key: String) -> bool:
+	return bool(save.get_value("settings", key, SETTING_DEFAULTS.get(key, true)))
+
+func set_setting(key: String, value: bool) -> void:
+	save.set_value("settings", key, value)
+	save.save(SAVE_PATH)
+	_apply_settings()
+
+func _apply_settings() -> void:
+	sfx.muted = not get_setting("sound")
+	sun.shadow_enabled = get_setting("shadows")
+	if ui:
+		ui.update_hud()
+
+func shake_mul() -> float:
+	return 1.0 if get_setting("shake") else 0.0
+
+# ---------------------------------------------------------------------
+# Sandbox tools and next-round preview
+# ---------------------------------------------------------------------
+func sandbox_spawn(type: String, camo: bool, fort: bool, regrow: bool) -> void:
+	if mode != "sandbox" or over:
+		return
+	spawn_enemy(type, 0.0, camo, fort, regrow, type)
+
+func sandbox_clear() -> void:
+	for e in enemies.duplicate():
+		_remove_enemy(e)
+	enemies.clear()
+
+## Spirit counts of round `r`, strongest first: [[type, count], ...].
+func preview_round(r: int) -> Array:
+	var counts := {}
+	for s in build_round(r):
+		counts[s["type"]] = int(counts.get(s["type"], 0)) + 1
+	var out: Array = []
+	for k in counts:
+		out.append([k, counts[k]])
+	out.sort_custom(func(a, b): return Defs.rank(a[0]) > Defs.rank(b[0]))
+	return out
 
 func toggle_pause() -> void:
 	if over:
@@ -1558,6 +1706,20 @@ func victory() -> void:
 	var medal := mode != "sandbox"
 	if medal:
 		save.set_value("medals", _save_key(), true)
+	if _tracking():
+		var m := current_map()
+		progress.add("wins", 1.0, false)
+		if difficulty == "hard":
+			progress.add("hard_wins", 1.0, false)
+		if lives >= start_lives:
+			progress.add("perfect_wins", 1.0, false)
+		progress.add("won_tier_" + String(m["tier"]), 1.0, false)
+		progress.add_to_set("modes_won", mode)
+		progress.add_to_set("maps_won", String(m["id"]))
+		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0}[difficulty])
+		if daily_active:
+			progress.complete_daily()
+		progress.check()
 	_record_best()
 	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), "\nMedal earned!" if medal else ""])
 
@@ -1700,5 +1862,9 @@ func _process(delta: float) -> void:
 	else:
 		ui.hide_boss()
 
+	if attract:
+		cam_yaw = sin(time * 0.06) * 0.35
+		if round_num > 30 or over:
+			start_attract()
 	shake = maxf(0.0, shake - dt)
 	_update_camera()

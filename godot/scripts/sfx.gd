@@ -5,6 +5,8 @@ extends Node
 const RATE := 22050
 
 var muted := false
+## True while the menu demo runs, so the title screen stays quiet.
+var suppressed := false
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
@@ -38,7 +40,7 @@ func _ready() -> void:
 	_streams["error"] = _make([[200.0, 0.0, 0.12, "square", 0.2, 0.0]])
 
 func play(id: String) -> void:
-	if muted or not _streams.has(id):
+	if muted or suppressed or not _streams.has(id):
 		return
 	var now := Time.get_ticks_msec()
 	var gap: int = GAPS.get(id, 0)
