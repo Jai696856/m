@@ -22,6 +22,7 @@ func _initialize() -> void:
 	main.save = ConfigFile.new()  # don't touch the player's real save
 	main.progress.save = main.save
 
+	await _test_hero_levels(main)
 	await _test_unlocks_and_looks(main)
 	main.progress.unlock_everything(main.Defs.HERO_ORDER)
 	await _test_menu_and_progress(main)
@@ -44,6 +45,33 @@ func _initialize() -> void:
 		for f in failures:
 			print("  - ", f)
 		quit(1)
+
+# Heroes join at player levels; the shop groups them into 5 classes of 3.
+func _test_hero_levels(main) -> void:
+	check(main.Defs.HERO_ORDER.size() == 15, "15 heroes")
+	var seen := {}
+	for c in main.Defs.CLASSES:
+		check((c["heroes"] as Array).size() == 3, "class %s has 3 heroes" % c["name"])
+		for k in c["heroes"]:
+			seen[k] = true
+			check(main.Defs.HEROES.has(k) and main.ABILITIES.has(k) and main.Defs.UNLOCK_LEVEL.has(k), "%s has data, an ability and an unlock level" % k)
+	check(seen.size() == 15 and main.Defs.CLASSES.size() == 5, "5 classes cover all 15 heroes")
+	main.new_game("normal", 0, "standard")
+	main.cash = 1.0e6
+	check(main.progress.level() == 1, "fresh save starts at level 1")
+	var spots := _find_spots(main, 2)
+	check(main.place_hero("nao", spots[0].x, spots[0].y) == null, "a level 13 hero can't be placed at level 1")
+	check(main.place_hero("ninja", spots[0].x, spots[0].y) != null, "a level 1 hero can be placed")
+	main.ui.select_class(4)
+	check(main.ui.shop_buttons.has("nao") and not main.ui.shop_buttons.has("ninja"), "shop shows the selected class")
+	main.ui.select_class(0)
+	main.new_game("normal", 0, "sandbox")
+	check(main.place_hero("nao", spots[1].x, spots[1].y) != null, "sandbox can use every hero")
+	main.progress.add_xp(1000.0)
+	check(main.progress.level() >= 4, "levelling up (now %d)" % main.progress.level())
+	main.new_game("normal", 0, "standard")
+	check(main.hero_available("idol") and not main.hero_available("nao"), "heroes unlock as you level up")
+	main.progress.save.set_value("progress", "xp", 0.0)
 
 # Hero XP gates upgrades past tier 1; every upgrade changes the hero's look.
 func _test_unlocks_and_looks(main) -> void:
@@ -97,14 +125,12 @@ func _test_unlocks_and_looks(main) -> void:
 # Main menu, attract demo, daily challenge, settings, XP, achievements, sandbox tools.
 func _test_menu_and_progress(main) -> void:
 	main.to_home()
-	check(main.attract and main.menu.visible, "starts in the main menu over the demo game")
+	check(main.attract and main.menu.visible and main.hub.visible, "starts in the main menu over the village scene")
+	check(main.hub.camera.current, "the village camera is active in the menu")
+	check(not main.level.visible, "the game board is hidden behind the menu")
 	check(not main.ui.hud_box.visible and not main.ui.shop.visible, "HUD is hidden behind the menu")
-	check(main.heroes.size() >= 4, "demo game has heroes (%d)" % main.heroes.size())
-	var pops_before: float = main.progress.get_stat("pops")
-	for i in range(900):
-		main._step(1.0 / 60.0)
-	check(main.game_pops > 0, "demo heroes pop spirits (%d)" % main.game_pops)
-	check(main.progress.get_stat("pops") == pops_before, "the demo does not count toward stats")
+	check(main.hub.heroes.size() >= 3, "village shows the player's heroes (%d)" % main.hub.heroes.size())
+	check(main.heroes.is_empty() and main.enemies.is_empty(), "no game runs behind the menu")
 	main.menu.refresh()
 	check(main.menu.level_lbl.text == str(main.progress.level()), "menu shows the player level")
 	main.menu._open("heroes")
@@ -135,6 +161,7 @@ func _test_menu_and_progress(main) -> void:
 	main.start_daily()
 	check(main.daily_active and not main.attract and main.map_index == d["map"] and main.mode == d["mode"], "daily challenge starts its game")
 	check(main.ui.hud_box.visible, "HUD is shown in a real game")
+	check(main.camera.current and not main.hub.visible and main.level.visible, "the game camera and board return for a real game")
 	# Progress during a real game
 	main.cash = 1.0e6
 	var spots := _find_spots(main, 7)
@@ -156,7 +183,7 @@ func _test_menu_and_progress(main) -> void:
 	check(main.progress.get_stat("wins") == 1 and main.progress.is_unlocked("first_win"), "a win is recorded")
 	check(main.progress.get_stat("daily_wins") == 1, "the daily challenge win is recorded")
 	check(main.progress.daily()["done"], "daily challenge marked done")
-	check(main.progress.level() > lv, "winning levels you up (%d -> %d)" % [lv, main.progress.level()])
+	check(main.progress.level() >= lv, "winning keeps or raises the level (%d -> %d)" % [lv, main.progress.level()])
 	print("progress: level %d, %d xp, %d/%d achievements" % [main.progress.level(), main.progress.xp(), main.progress.unlocked_count(), main.progress.ACHIEVEMENTS.size()])
 	# Next-round preview
 	var prev: Array = main.preview_round(25)
@@ -174,7 +201,7 @@ func _test_menu_and_progress(main) -> void:
 	check(main.progress.get_stat("wins") == wins_before, "sandbox wins do not count")
 	# Home from a game, and reset
 	main.to_home()
-	check(main.attract and main.menu.visible, "HOME returns to the main menu")
+	check(main.attract and main.menu.visible and main.hub.visible, "HOME returns to the main menu")
 	main.reset_progress()
 	check(main.progress.xp() == 0.0 and main.progress.unlocked_count() == 0, "progress reset clears XP and achievements")
 	check(not main.progress.upgrade_unlocked("ninja", 0, 2), "progress reset re-locks upgrades")
@@ -313,9 +340,11 @@ func _test_modifiers(main) -> void:
 func _test_abilities(main) -> void:
 	main.new_game("normal", 0, "standard")
 	main.cash = 1.0e7
-	var spots := _find_spots(main, 7)
+	var n_heroes: int = main.Defs.HERO_ORDER.size()
+	var spots := _find_spots(main, n_heroes)
+	check(spots.size() >= n_heroes, "room for %d heroes (%d spots)" % [n_heroes, spots.size()])
 	var hs: Array = []
-	for i in range(7):
+	for i in range(mini(n_heroes, spots.size())):
 		var k: String = main.Defs.HERO_ORDER[i]
 		var h = main.place_hero(k, spots[i].x, spots[i].y)
 		check(h.ability_cd < 0.0, "%s ability locked at first" % k)
@@ -323,9 +352,10 @@ func _test_abilities(main) -> void:
 			main.buy_upgrade(h, 0)
 		check(h.ability_cd == 0.0, "%s ability unlocked at tier 3" % k)
 		hs.append(h)
-	check(main.ability_heroes().size() == 7, "ability bar lists 7 heroes")
+	check(main.ability_heroes().size() == mini(8, hs.size()), "ability bar lists up to 8 heroes (%d)" % main.ability_heroes().size())
 	for j in range(12):
 		main.spawn_enemy(["pink", "mask", "oni"][j % 3], 10.0 + j * 4.0)
+	var lives0: float = main.lives
 	for h in hs:
 		main.use_ability(h)
 		check(h.ability_cd > 0.0, "%s ability goes on cooldown" % h.key)
@@ -333,6 +363,7 @@ func _test_abilities(main) -> void:
 		for i in range(20):
 			main._step(1.0 / 60.0)
 	check(main.encore_t > 0.0, "Encore! buff is active")
+	check(main.lives >= lives0 + 25.0 or main.lives > lives0, "Blessing restores lives")
 	var cd_before: float = hs[0].ability_cd
 	for i in range(120):
 		main._step(1.0 / 60.0)

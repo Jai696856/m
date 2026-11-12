@@ -45,7 +45,28 @@ static func rank(k: String) -> int:
 # Heroes. Upgrade effects are data: {"key": add, "key*": multiply, "key=": set}.
 # Dotted keys reach into nested dictionaries (e.g. "explode.r").
 # ---------------------------------------------------------------------
-const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol"]
+const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao"]
+
+## Five classes of three heroes each (the shop shows one class per tab).
+const CLASSES := [
+	{"id": "primary", "name": "STRIKERS", "color": 0xff6b5b, "heroes": ["ninja", "samurai", "ren"]},
+	{"id": "ranged", "name": "MARKSMEN", "color": 0x5bc0ff, "heroes": ["miko", "kenta", "saya"]},
+	{"id": "magic", "name": "MYSTICS", "color": 0xb37bff, "heroes": ["mage", "ice", "sora"]},
+	{"id": "tech", "name": "ENGINEERS", "color": 0xffb02e, "heroes": ["mecha", "riku", "hina"]},
+	{"id": "support", "name": "SUPPORT", "color": 0x5fd36b, "heroes": ["idol", "hiro", "nao"]},
+]
+
+## Player level needed before a hero can be recruited.
+const UNLOCK_LEVEL := {
+	"ninja": 1, "miko": 1, "mage": 1, "samurai": 2, "ice": 3, "idol": 4, "kenta": 5, "mecha": 6,
+	"ren": 7, "saya": 8, "sora": 9, "riku": 10, "hiro": 11, "hina": 12, "nao": 13,
+}
+
+static func hero_class(k: String) -> Dictionary:
+	for c in CLASSES:
+		if (c["heroes"] as Array).has(k):
+			return c
+	return CLASSES[0]
 
 const HEROES := {
 	"ninja": {
@@ -186,6 +207,166 @@ const HEROES := {
 			["Bass Drop", 900, "Sound waves +2 damage.", {"pulse_dmg": 2.0}],
 			["Savings Account", 2000, "Earns 5% interest on your money each round (max 800).", {"interest=": true}],
 			["Fever Time", 12000, "Waves +5 damage, twice as fast, 3x boss damage.", {"pulse_dmg": 5.0, "rate*": 0.5, "boss_mul=": 3.0, "pierce": 20}]],
+		],
+	},
+	"ren": {
+		"name": "Ren", "role": "Brawler", "cost": 380,
+		"desc": "Lightning-fast punches at very close range.",
+		"base": {"kind": "slash", "range": 3.4, "rate": 0.42, "dmg": 1.0, "pierce": 3, "type": "sharp", "camo": false},
+		"path_names": ["Iron Fists", "Footwork", "Chi"],
+		"paths": [
+			[["Knuckle Wraps", 250, "+1 damage.", {"dmg": 1.0}],
+			 ["Combo Strikes", 600, "+2 pierce, 15% faster.", {"pierce": 2, "rate*": 0.85}],
+			 ["Tiger Claw", 2200, "+3 damage, +3 vs masks.", {"dmg": 3.0, "mask_bonus": 3.0}],
+			 ["Dragon Fist", 9500, "+10 damage, +6 pierce, 3x boss damage.", {"dmg": 10.0, "pierce": 6, "boss_mul=": 3.0}]],
+			[["Light Feet", 200, "Punches 20% faster.", {"rate*": 0.8}],
+			 ["Long Reach", 300, "+1 range.", {"range": 1.0}],
+			 ["Whirlwind Kicks", 1800, "Twice as fast, +4 pierce.", {"rate*": 0.5, "pierce": 4}],
+			 ["Hundred Fists", 8500, "Blinding speed, +3 damage.", {"rate*": 0.33, "dmg": 3.0}]],
+			[["Inner Sight", 250, "Can see veiled spirits.", {"camo=": true}],
+			 ["Stunning Blow", 700, "Punches briefly stun spirits.", {"stun=": 0.25}],
+			 ["Shockwave Palm", 2000, "Each punch sends a shockwave down the track.", {"wave=": {"dmg": 1.0, "pierce": 10, "speed": 16.0}}],
+			 ["Inner Storm", 11000, "Shockwaves +4 damage, +20 pierce, 4x boss damage.", {"wave.dmg": 4.0, "wave.pierce": 20, "boss_mul=": 4.0}]],
+		],
+	},
+	"kenta": {
+		"name": "Kenta", "role": "Spear Thrower", "cost": 450,
+		"desc": "Hurls spears that skewer long lines of spirits.",
+		"base": {"kind": "proj", "range": 10.0, "rate": 1.2, "dmg": 2.0, "pierce": 6, "type": "sharp", "proj_speed": 34.0, "count": 1, "spread": 0.15, "camo": false, "proj": "arrow"},
+		"path_names": ["Long Spears", "Volley", "Hunter"],
+		"paths": [
+			[["Barbed Tips", 200, "+4 pierce.", {"pierce": 4}],
+			 ["Heavy Spears", 550, "+1 damage, +4 pierce.", {"dmg": 1.0, "pierce": 4}],
+			 ["Impaler", 2600, "+4 damage, +3 vs masks, +10 pierce.", {"dmg": 4.0, "mask_bonus": 3.0, "pierce": 10}],
+			 ["Sky Piercer", 10500, "+12 damage, +30 pierce, 3x boss damage.", {"dmg": 12.0, "pierce": 30, "boss_mul=": 3.0}]],
+			[["Quick Throw", 250, "Throws 20% faster.", {"rate*": 0.8}],
+			 ["Double Throw", 700, "Throws 2 spears.", {"count=": 2, "spread=": 0.2}],
+			 ["Spear Storm", 2400, "Throws 4 spears, faster.", {"count=": 4, "rate*": 0.7}],
+			 ["Legion Volley", 9000, "Throws 8 spears twice as fast.", {"count=": 8, "spread=": 0.6, "rate*": 0.5}]],
+			[["Keen Eyes", 150, "+3 range.", {"range": 3.0}],
+			 ["Tracker", 350, "Can see veiled spirits.", {"camo=": true}],
+			 ["Pinning Throw", 1500, "Spears slow and briefly stun spirits.", {"slow=": 0.4, "slow_dur=": 2.0, "stun=": 0.3}],
+			 ["Monster Hunter", 8000, "4x boss damage, +6 damage.", {"boss_mul=": 4.0, "dmg": 6.0}]],
+		],
+	},
+	"saya": {
+		"name": "Saya", "role": "Cannoneer", "cost": 700,
+		"desc": "Lobs huge cannonballs from very long range. Can't harm Shadow Wisps.",
+		"base": {"kind": "proj", "range": 14.0, "rate": 2.2, "dmg": 2.0, "pierce": 1, "type": "blast", "proj_speed": 20.0, "count": 1, "spread": 0.2, "camo": false, "proj": "fireball", "explode": {"r": 2.6, "pierce": 22, "cluster": 0}},
+		"path_names": ["Heavy Shells", "Reload", "Special Ammo"],
+		"paths": [
+			[["Bigger Shells", 400, "Bigger blasts that hit more spirits.", {"explode.r": 0.8, "explode.pierce": 10}],
+			 ["Packed Powder", 900, "+2 damage.", {"dmg": 2.0}],
+			 ["Siege Shell", 3200, "+5 damage, huge blasts, 3x boss damage.", {"dmg": 5.0, "explode.r": 1.5, "boss_mul=": 3.0}],
+			 ["Doomsday Gun", 14000, "+15 damage, +60 blast pierce, 6x boss damage.", {"dmg": 15.0, "explode.pierce": 60, "boss_mul=": 6.0}]],
+			[["Oiled Breech", 300, "Fires 25% faster.", {"rate*": 0.75}],
+			 ["Crew Drill", 800, "Fires 25% faster again.", {"rate*": 0.75}],
+			 ["Twin Barrels", 2800, "Fires 2 shells.", {"count=": 2}],
+			 ["Carpet Barrage", 11000, "Fires 4 shells, much faster.", {"rate*": 0.4, "count=": 4, "spread=": 0.5}]],
+			[["Spotter", 250, "+3 range.", {"range": 3.0}],
+			 ["Shrapnel", 1200, "Blasts burst into 5 bomblets.", {"explode.cluster=": 5}],
+			 ["Shock Shells", 2500, "Blasts stun spirits.", {"stun=": 0.6}],
+			 ["Purifying Blast", 9500, "Shells become magic, +4 damage.", {"type=": "magic", "dmg": 4.0}]],
+		],
+	},
+	"sora": {
+		"name": "Sora", "role": "Storm Caller", "cost": 750,
+		"desc": "Calls down lightning that arcs through a line of spirits.",
+		"base": {"kind": "beam", "range": 9.5, "rate": 0.9, "dmg": 2.0, "pierce": 5, "type": "magic", "count": 1, "width": 0.7, "camo": false, "beam_color": 0xfff36b},
+		"path_names": ["High Voltage", "Tempest", "Clouds"],
+		"paths": [
+			[["Charged Air", 350, "+1 damage.", {"dmg": 1.0}],
+			 ["Forked Bolts", 800, "+5 pierce.", {"pierce": 5}],
+			 ["Thunderclap", 3000, "+4 damage, bolts stun briefly.", {"dmg": 4.0, "stun=": 0.3}],
+			 ["Raijin's Wrath", 12500, "+12 damage, +15 pierce, 3x boss damage.", {"dmg": 12.0, "pierce": 15, "boss_mul=": 3.0}]],
+			[["Gale", 300, "Strikes 20% faster.", {"rate*": 0.8}],
+			 ["Wide Sky", 450, "+2 range.", {"range": 2.0}],
+			 ["Chain Storm", 2600, "Two bolts at different targets.", {"count=": 2}],
+			 ["Endless Storm", 10000, "Four bolts, twice as fast.", {"count=": 4, "rate*": 0.5}]],
+			[["Storm Eye", 300, "Can see veiled spirits.", {"camo=": true}],
+			 ["Heavy Rain", 700, "Bolts slow spirits.", {"slow=": 0.6, "slow_dur=": 1.5}],
+			 ["Static Field", 2200, "Constantly slows everything in range.", {"aura_slow=": 0.7}],
+			 ["Eye of the Storm", 9000, "+4 range, +6 damage.", {"range": 4.0, "dmg": 6.0}]],
+		],
+	},
+	"riku": {
+		"name": "Riku", "role": "Drone Pilot", "cost": 650,
+		"desc": "Sends homing drones after spirits. Can see veiled spirits.",
+		"base": {"kind": "proj", "range": 12.0, "rate": 0.55, "dmg": 1.0, "pierce": 2, "type": "sharp", "proj_speed": 24.0, "count": 1, "spread": 0.3, "camo": true, "proj": "missile", "homing": true},
+		"path_names": ["Payload", "Swarm", "Sensors"],
+		"paths": [
+			[["Sharper Props", 250, "+2 pierce.", {"pierce": 2}],
+			 ["Heavier Drones", 600, "+1 damage.", {"dmg": 1.0}],
+			 ["Micro Rockets", 2400, "Drones explode on impact.", {"explode=": {"r": 1.5, "pierce": 10, "cluster": 0}, "type=": "blast"}],
+			 ["Hellfire Drones", 10000, "+6 damage, bigger blasts, 3x boss damage.", {"dmg": 6.0, "explode.r": 1.0, "boss_mul=": 3.0}]],
+			[["Fast Charge", 300, "Launches 20% faster.", {"rate*": 0.8}],
+			 ["Wingman", 900, "Launches 2 drones.", {"count=": 2}],
+			 ["Drone Swarm", 3000, "Launches 4 drones.", {"count=": 4}],
+			 ["Hive Mind", 11500, "Launches 7 drones, much faster.", {"count=": 7, "rate*": 0.6}]],
+			[["Long-Range Antenna", 200, "+3 range.", {"range": 3.0}],
+			 ["Marked Target", 700, "+3 damage vs Clay Masks.", {"mask_bonus": 3.0}],
+			 ["Boss Tracker", 2600, "4x boss damage.", {"boss_mul=": 4.0}],
+			 ["Satellite Uplink", 9500, "Unlimited range, +3 damage.", {"range=": 120.0, "dmg": 3.0}]],
+		],
+	},
+	"hina": {
+		"name": "Hina", "role": "Turret Engineer", "cost": 850,
+		"desc": "Builds a rapid-fire turret that never stops shooting.",
+		"base": {"kind": "proj", "range": 9.0, "rate": 0.16, "dmg": 1.0, "pierce": 1, "type": "sharp", "proj_speed": 40.0, "count": 1, "spread": 0.08, "camo": false, "proj": "frag"},
+		"path_names": ["Caliber", "Fire Rate", "Targeting"],
+		"paths": [
+			[["Hollow Points", 300, "+1 pierce.", {"pierce": 1}],
+			 ["Heavy Rounds", 800, "+1 damage.", {"dmg": 1.0}],
+			 ["Armor Piercing", 2800, "+2 damage, +2 pierce, +3 vs masks.", {"dmg": 2.0, "pierce": 2, "mask_bonus": 3.0}],
+			 ["Rail Turret", 12000, "+10 damage, +10 pierce, 3x boss damage.", {"dmg": 10.0, "pierce": 10, "boss_mul=": 3.0}]],
+			[["Greased Gears", 400, "Fires 20% faster.", {"rate*": 0.8}],
+			 ["Faster Motors", 900, "Fires 20% faster again.", {"rate*": 0.8}],
+			 ["Twin Guns", 2800, "Fires 2 bullets.", {"count=": 2, "spread=": 0.12}],
+			 ["Bullet Hell", 11000, "Fires 4 bullets, even faster.", {"count=": 4, "rate*": 0.6, "spread=": 0.3}]],
+			[["Scope", 250, "+2 range.", {"range": 2.0}],
+			 ["Thermal Sights", 400, "Can see veiled spirits.", {"camo=": true}],
+			 ["Incendiary Rounds", 2000, "Bullets become magic, +1 damage.", {"type=": "magic", "dmg": 1.0}],
+			 ["Sentry Network", 8500, "+4 range, faster, 2x boss damage.", {"range": 4.0, "rate*": 0.7, "boss_mul=": 2.0}]],
+		],
+	},
+	"hiro": {
+		"name": "Hiro", "role": "Merchant", "cost": 1000,
+		"desc": "Runs a stall that earns lots of money every round.",
+		"base": {"kind": "support", "range": 6.0, "rate": 1.5, "dmg": 0.0, "pierce": 0, "income": 120, "buff_rate": 1.0, "buff_dmg": 0.0, "buff_pierce": 0, "buff_camo": false, "pulse_dmg": 0.0, "pulse_range": 4.0, "camo": true, "type": "magic"},
+		"path_names": ["Trade", "Bank", "Patronage"],
+		"paths": [
+			[["Busy Stall", 600, "+80 income per round.", {"income": 80}],
+			 ["Shop Front", 1500, "+200 income per round.", {"income": 200}],
+			 ["Trade Route", 4000, "+500 income per round.", {"income": 500}],
+			 ["Golden Empire", 14000, "+1500 income per round.", {"income": 1500}]],
+			[["Savings", 1000, "Earns 5% interest on your money each round (max 800).", {"interest=": true}],
+			 ["Investments", 1600, "+100 income per round.", {"income": 100}],
+			 ["Compound Interest", 4500, "+300 income per round.", {"income": 300}],
+			 ["Treasury", 12000, "+1000 income per round.", {"income": 1000}]],
+			[["Good Deals", 500, "Nearby heroes attack 5% faster.", {"buff_rate=": 0.95}],
+			 ["Better Gear", 1200, "Nearby heroes +1 pierce.", {"buff_pierce=": 1}],
+			 ["War Chest", 3500, "Nearby heroes +1 damage.", {"buff_dmg=": 1.0}],
+			 ["Patron of Heroes", 10000, "Nearby heroes +2 damage and 20% faster.", {"buff_dmg=": 2.0, "buff_rate=": 0.8}]],
+		],
+	},
+	"nao": {
+		"name": "Nao", "role": "Shrine Healer", "cost": 750,
+		"desc": "Restores lives every round and protects nearby heroes.",
+		"base": {"kind": "support", "range": 7.0, "rate": 1.5, "dmg": 0.0, "pierce": 0, "income": 0, "lives_regen": 3, "buff_rate": 1.0, "buff_dmg": 0.0, "buff_pierce": 0, "buff_camo": false, "pulse_dmg": 0.0, "pulse_range": 4.0, "camo": true, "type": "magic"},
+		"path_names": ["Blessings", "Wards", "Purify"],
+		"paths": [
+			[["Prayer", 400, "+3 lives per round.", {"lives_regen": 3}],
+			 ["Healing Charm", 900, "+5 lives per round.", {"lives_regen": 5}],
+			 ["Sacred Spring", 3000, "+15 lives per round.", {"lives_regen": 15}],
+			 ["Eternal Shrine", 10000, "+40 lives per round.", {"lives_regen": 40}]],
+			[["Spirit Ward", 350, "Nearby heroes can see veiled spirits.", {"buff_camo=": true}],
+			 ["Calm Mind", 700, "Nearby heroes attack 8% faster.", {"buff_rate=": 0.92}],
+			 ["Guardian Ward", 2500, "Nearby heroes +2 pierce.", {"buff_pierce=": 2}],
+			 ["Divine Ward", 9500, "Nearby heroes +2 damage and 20% faster.", {"buff_dmg=": 2.0, "buff_rate=": 0.8}]],
+			[["Cleansing Bell", 400, "Rings out waves that hurt nearby spirits.", {"pulse_dmg=": 1.0, "pierce=": 15}],
+			 ["Temple Bell", 900, "Waves +2 damage.", {"pulse_dmg": 2.0}],
+			 ["Holy Light", 2800, "Waves +4 damage and reach further.", {"pulse_dmg": 4.0, "pulse_range": 1.5}],
+			 ["Exorcism", 11000, "Waves +10 damage, twice as fast, 4x boss damage.", {"pulse_dmg": 10.0, "rate*": 0.5, "boss_mul=": 4.0, "pierce": 25}]],
 		],
 	},
 }

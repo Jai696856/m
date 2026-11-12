@@ -60,6 +60,59 @@ class HudIcon extends Control:
 				draw_colored_polygon(tri, col)
 				tri.append(tri[0])
 				draw_polyline(tri, ink, 3.0, true)
+			"gear":
+				var pts := PackedVector2Array()
+				for i in range(32):
+					var t := TAU * i / 32.0
+					var r := s.x * (0.42 if (i / 2) % 2 == 0 else 0.32)
+					pts.append(c + Vector2(cos(t), sin(t)) * r)
+				draw_colored_polygon(pts, col)
+				pts.append(pts[0])
+				draw_polyline(pts, ink, 3.0, true)
+				draw_circle(c, s.x * 0.13, ink)
+			"trophy":
+				var cup := PackedVector2Array([c + Vector2(-0.28, -0.32) * s.x, c + Vector2(0.28, -0.32) * s.x, c + Vector2(0.18, 0.05) * s.x, c + Vector2(-0.18, 0.05) * s.x])
+				draw_colored_polygon(cup, col)
+				draw_rect(Rect2(c + Vector2(-0.05, 0.05) * s.x, Vector2(0.1, 0.18) * s.x), col)
+				draw_rect(Rect2(c + Vector2(-0.2, 0.22) * s.x, Vector2(0.4, 0.1) * s.x), col)
+				draw_arc(c + Vector2(-0.3, -0.18) * s.x, s.x * 0.1, PI * 0.5, PI * 1.5, 12, col, 3.0)
+				draw_arc(c + Vector2(0.3, -0.18) * s.x, s.x * 0.1, -PI * 0.5, PI * 0.5, 12, col, 3.0)
+				cup.append(cup[0])
+				draw_polyline(cup, ink, 2.0, true)
+			"calendar":
+				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.6) * s.x), col)
+				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.16) * s.x), Color(1, 0.35, 0.35))
+				for i in range(3):
+					for j in range(2):
+						draw_rect(Rect2(c + Vector2(-0.22 + i * 0.16, -0.02 + j * 0.15) * s.x, Vector2(0.1, 0.09) * s.x), ink)
+				draw_rect(Rect2(c - Vector2(0.32, 0.28) * s.x, Vector2(0.64, 0.6) * s.x), ink, false, 2.0)
+			"chart":
+				for i in range(3):
+					var hgt: float = [0.3, 0.5, 0.65][i]
+					draw_rect(Rect2(c + Vector2(-0.3 + i * 0.22, 0.32 - hgt) * s.x, Vector2(0.16, hgt) * s.x), col)
+					draw_rect(Rect2(c + Vector2(-0.3 + i * 0.22, 0.32 - hgt) * s.x, Vector2(0.16, hgt) * s.x), ink, false, 2.0)
+			"book":
+				var lp := PackedVector2Array([c + Vector2(0, -0.22) * s.x, c + Vector2(-0.36, -0.3) * s.x, c + Vector2(-0.36, 0.26) * s.x, c + Vector2(0, 0.32) * s.x])
+				var rp := PackedVector2Array([c + Vector2(0, -0.22) * s.x, c + Vector2(0.36, -0.3) * s.x, c + Vector2(0.36, 0.26) * s.x, c + Vector2(0, 0.32) * s.x])
+				draw_colored_polygon(lp, col)
+				draw_colored_polygon(rp, col.darkened(0.15))
+				lp.append(lp[0])
+				rp.append(rp[0])
+				draw_polyline(lp, ink, 2.0, true)
+				draw_polyline(rp, ink, 2.0, true)
+			"door":
+				draw_rect(Rect2(c - Vector2(0.22, 0.32) * s.x, Vector2(0.44, 0.64) * s.x), col)
+				draw_rect(Rect2(c - Vector2(0.22, 0.32) * s.x, Vector2(0.44, 0.64) * s.x), ink, false, 2.0)
+				draw_circle(c + Vector2(0.12, 0.02) * s.x, s.x * 0.04, ink)
+			"star":
+				var sp := PackedVector2Array()
+				for i in range(10):
+					var t := -PI / 2 + TAU * i / 10.0
+					var r := s.x * (0.45 if i % 2 == 0 else 0.2)
+					sp.append(c + Vector2(cos(t), sin(t)) * r)
+				draw_colored_polygon(sp, col)
+				sp.append(sp[0])
+				draw_polyline(sp, ink, 3.0, true)
 			"fast":
 				for off in [-0.17, 0.13]:
 					var t2 := PackedVector2Array([c + Vector2(off - 0.12, -0.24) * s.x, c + Vector2(off + 0.17, 0) * s.x, c + Vector2(off - 0.12, 0.24) * s.x])
@@ -179,6 +232,9 @@ var sb_fort := false
 var sb_regrow := false
 var sb_toggles := {}
 var toast_box: VBoxContainer
+var shop_class := 0
+var class_tabs: Array = []
+var class_lbl: Label
 var diff_buttons := {}
 var portraits := {}
 var portrait_vps: Array = []
@@ -389,6 +445,22 @@ func _build_shop() -> void:
 	shop_title = lbl("HEROES", 26, GOLD, 10)
 	shop_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(shop_title)
+	# Class tabs: five classes of three heroes
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 3)
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(tabs)
+	for i in range(Defs.CLASSES.size()):
+		var c: Dictionary = Defs.CLASSES[i]
+		var tb := btn(str(i + 1), Defs.col(c["color"]).darkened(0.25), 14, 8)
+		tb.custom_minimum_size = Vector2(38, 30)
+		tb.tooltip_text = "%s (key %d)" % [c["name"], i + 1]
+		tb.pressed.connect(select_class.bind(i))
+		tabs.add_child(tb)
+		class_tabs.append(tb)
+	class_lbl = lbl("", 16, Color.WHITE, 6)
+	class_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(class_lbl)
 	shop_scroll = ScrollContainer.new()
 	shop_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -398,7 +470,7 @@ func _build_shop() -> void:
 	shop_grid.add_theme_constant_override("h_separation", 6)
 	shop_grid.add_theme_constant_override("v_separation", 6)
 	shop_scroll.add_child(shop_grid)
-	var hint := lbl("Drag: rotate  Wheel: zoom\n1-7: heroes  Space: play", 11, Color(0.8, 0.88, 1.0), 0)
+	var hint := lbl("1-5: class  Z X C: hero\nSpace: play  Drag: rotate", 11, Color(0.8, 0.88, 1.0), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.name = "Hint"
@@ -410,7 +482,12 @@ func rebuild_shop() -> void:
 		c.queue_free()
 	shop_buttons.clear()
 	var i := 0
-	for k in Defs.HERO_ORDER:
+	var cls: Dictionary = Defs.CLASSES[shop_class]
+	class_lbl.text = cls["name"]
+	for j in range(class_tabs.size()):
+		var col: Color = Defs.col(Defs.CLASSES[j]["color"])
+		_set_btn_bg(class_tabs[j], col if j == shop_class else col.darkened(0.45), 8)
+	for k in cls["heroes"]:
 		var h: Dictionary = Defs.HEROES[k]
 		var b := btn("", TILE, 14, 10)
 		b.custom_minimum_size = Vector2(96, 116)
@@ -433,13 +510,23 @@ func rebuild_shop() -> void:
 		var cost := lbl("$%d" % game.price(h["cost"]), 20, CASH, 8)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(cost)
-		var num := lbl(str(i + 1), 13, Color.WHITE, 6)
+		var num := lbl(["Z", "X", "C"][i], 13, Color.WHITE, 6)
 		num.position = Vector2(6, 2)
 		b.add_child(num)
+		if not game.hero_available(k):
+			# Locked until the player reaches the hero's level
+			cost.text = "LV %d" % int(Defs.UNLOCK_LEVEL[k])
+			cost.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95))
+			pic.modulate = Color(0.25, 0.25, 0.35)
+			b.tooltip_text = "%s - %s\nJoins at player level %d" % [h["name"], h["role"], int(Defs.UNLOCK_LEVEL[k])]
 		shop_grid.add_child(b)
 		shop_buttons[k] = b
 		i += 1
 	refresh()
+
+func select_class(i: int) -> void:
+	shop_class = clampi(i, 0, Defs.CLASSES.size() - 1)
+	rebuild_shop()
 
 func _build_controls() -> void:
 	var h := HBoxContainer.new()
@@ -1019,7 +1106,7 @@ func _layout() -> void:
 		shop.offset_right = -10
 		shop.offset_top = -250
 		shop.offset_bottom = -110
-		shop_grid.columns = Defs.HERO_ORDER.size()
+		shop_grid.columns = 3
 		shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		shop_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		shop_title.visible = false
@@ -1084,7 +1171,7 @@ func update_hud() -> void:
 func refresh() -> void:
 	for k in shop_buttons:
 		var b: Button = shop_buttons[k]
-		var poor: bool = game.cash < game.price(Defs.HEROES[k]["cost"])
+		var poor: bool = game.cash < game.price(Defs.HEROES[k]["cost"]) or not game.hero_available(k)
 		b.modulate = Color(0.6, 0.6, 0.66, 0.8) if poor else Color.WHITE
 		_set_btn_bg(b, GOLD if game.placing == k else TILE, 10)
 	for b in buy_buttons:

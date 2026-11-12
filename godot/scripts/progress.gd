@@ -215,6 +215,8 @@ func unlock_upgrade(k: String, path: int, tier: int) -> bool:
 
 ## Test/debug helper: unlock every upgrade of every hero.
 func unlock_everything(hero_keys: Array) -> void:
+	if xp() < 7000.0:
+		save.set_value("progress", "xp", 7000.0)   # player level 13: every hero recruited
 	for k in hero_keys:
 		for p in range(3):
 			for t in range(2, 5):

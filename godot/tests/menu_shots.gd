@@ -1,4 +1,4 @@
-# Renders the main menu and its screens (needs a display, e.g. xvfb-run):
+# Renders the main menu, the Heroes screen and a game with the new heroes (needs a display):
 #   xvfb-run -s "-screen 0 1280x720x24" godot --path . -s tests/menu_shots.gd -- <out_dir>
 extends SceneTree
 
@@ -12,28 +12,36 @@ func _initialize() -> void:
 		await process_frame
 	main.save = ConfigFile.new()
 	main.progress.save = main.save
-	main.progress.add_xp(900.0)
-	main.progress.add("pops", 1500.0)
-	main.progress.add("wins", 2.0)
+	main.progress.add_xp(2600.0)
+	main.sfx.muted = true
 	main.to_home()
-	for i in range(150):
+	for i in range(90):
 		await process_frame
 	_save(out + "/home.png")
-	for s in ["heroes", "achievements"]:
-		main.menu._open(s)
-		for i in range(15):
-			await process_frame
-		_save("%s/%s.png" % [out, s])
+	main.menu._open("heroes")
+	main.menu._pick_hero_class(3)
+	for i in range(10):
+		await process_frame
+	_save(out + "/heroes.png")
 	main.menu.show_home()
-	main.start_daily()
+	main.progress.unlock_everything(main.Defs.HERO_ORDER)
+	main.new_game("normal", 0, "standard")
 	main.cash = 1.0e6
-	for i in range(8):
-		await process_frame
-	main.ui.toast("ACHIEVEMENT UNLOCKED", "Full Squad")
+	var picks := ["ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao"]
+	var n := 0
+	for x in range(-30, 26, 3):
+		for z in range(-17, 18, 3):
+			if n < picks.size() and main.valid_spot(float(x), float(z)) and main.dist_to_path(float(x), float(z)) < 4.5:
+				var h = main.place_hero(picks[n], float(x), float(z))
+				for t in range(3):
+					main.buy_upgrade(h, n % 3)
+				n += 1
+	main.ui.select_class(3)
+	main.round_num = 18
 	main.start_round()
-	for i in range(40):
+	for i in range(80):
 		await process_frame
-	_save(out + "/daily_game.png")
+	_save(out + "/game_new_heroes.png")
 	main.queue_free()
 	await process_frame
 	quit(0)

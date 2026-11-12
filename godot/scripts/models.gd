@@ -501,6 +501,81 @@ static func build_hero(key: String) -> Dictionary:
 			add(c.holder, torus(0.2, 0.05), flat(0x00e5ff), Vector3(0, 0, 0.86), Vector3(PI / 2, 0, 0))
 			add(c.body, box(0.7, 0.7, 0.35), toon(0x6b7385), Vector3(0, 1.0, -0.45))
 			return c
+		"ren":
+			var c := make_chibi({"outfit": 0xf5f5f5, "legs": 0x2b2a3d, "hair": 0xd9452b, "style": "spiky", "eye": 0xffb02e, "trim": 0x2b2a3d, "sleeve": SKIN, "accent": 0xffffff})
+			add(c.head, cyl(0.645, 0.645, 0.1, 22), toon(0xd9452b, 1.0, false), Vector3(0, 0.27, 0), Vector3(-0.18, 0, 0))
+			add(c.body, cyl(0.49, 0.49, 0.1, 16), toon(0x2b2a3d), Vector3(0, 0.64, 0))
+			add(c.holder, sphere(0.17, 10), toon(0xd9452b), Vector3(0, 0.0, 0.05))
+			add(c.body, sphere(0.17, 10), toon(0xd9452b), Vector3(0.56, 0.72, 0.1))
+			return c
+		"kenta":
+			var c := make_chibi({"outfit": 0x6b8f3a, "legs": 0x4a3a2a, "hair": 0x3a2a1a, "style": "short", "eye": 0x4a8a3a, "trim": 0x8a6a3a, "sleeve": 0x6b8f3a})
+			add(c.holder, cyl(0.04, 0.04, 2.0, 6), toon(0x8b5a2b), Vector3(0, 0.5, 0))
+			add(c.holder, cone(0.1, 0.35, 6), toon(0xd0d4e0), Vector3(0, 1.65, 0))
+			add(c.body, box(0.5, 0.6, 0.18), toon(0x8a6a3a), Vector3(0, 0.95, -0.45))
+			for i in range(3):
+				add(c.body, cyl(0.025, 0.025, 1.0, 5), toon(0x8b5a2b), Vector3(-0.12 + i * 0.12, 1.35, -0.48), Vector3(0.2, 0, 0))
+			return c
+		"saya":
+			var c := make_chibi({"outfit": 0x3a4a6b, "skirt": 0x2b2a3d, "legs": 0x2b2a3d, "hair": 0xf2c14e, "style": "ponytail", "eye": 0x2f8cff, "trim": 0xffb02e, "accent": 0xffb02e})
+			add(c.head, box(1.1, 0.12, 0.8), toon(0x2b2a3d), Vector3(0, 0.62, 0), Vector3(-0.1, 0, 0))
+			add(c.head, cyl(0.45, 0.5, 0.35, 12), toon(0x2b2a3d), Vector3(0, 0.78, 0))
+			var cannon := Node3D.new()
+			cannon.position = Vector3(0.75, 0.55, 0.3)
+			c.body.add_child(cannon)
+			add(cannon, cyl(0.22, 0.28, 1.1, 14), toon(0x4a4a55), Vector3(0, 0.25, 0.2), Vector3(PI / 2 - 0.5, 0, 0))
+			add(cannon, cyl(0.3, 0.3, 0.12, 12), toon(0x8b5a2b), Vector3(0.0, -0.1, 0), Vector3(0, 0, PI / 2))
+			return c
+		"sora":
+			var c := make_chibi({"outfit": 0x2f4f9e, "skirt": 0xfdfdfd, "legs": 0xfdfdfd, "hair": 0x7fb6ff, "style": "long", "eye": 0xfff36b, "trim": 0xfff36b, "sleeve": 0xfdfdfd})
+			for i in range(3):
+				add(c.head, cone(0.06, 0.3, 4), flat(0xfff36b), Vector3(-0.2 + i * 0.2, 0.7, 0.2), Vector3(-0.3, 0, (i - 1) * 0.4))
+			add(c.holder, cyl(0.04, 0.04, 1.2, 6), toon(0xfdfdfd), Vector3(0, 0.3, 0))
+			for i in range(3):
+				add(c.holder, box(0.08, 0.25, 0.05), flat(0xfff36b), Vector3((i - 1) * 0.12, 0.98 + i * 0.05, 0), Vector3(0, 0, (i - 1) * 0.6))
+			add(c.body, sphere(0.5, 10), toon(0xdfe8ff, 0.85), Vector3(-0.2, 2.9, -0.2), Vector3.ZERO, Vector3(1.4, 0.6, 1.0))
+			return c
+		"riku":
+			var c := make_chibi({"outfit": 0x2e7d6b, "legs": 0x2b2a3d, "hair": 0x2b2a3d, "style": "short", "eye": 0x7ff6ff, "trim": 0xffb02e, "sleeve": 0x2b2a3d})
+			add(c.head, box(0.8, 0.14, 0.12), flat(0x7ff6ff, 0.8), Vector3(0, 0.05, 0.56))
+			add(c.holder, box(0.35, 0.22, 0.12), toon(0x4a4a55), Vector3(0, 0.0, 0.05))
+			var drone := Node3D.new()
+			drone.position = Vector3(0, 3.0, 0)
+			c.root.add_child(drone)
+			add(drone, box(0.5, 0.15, 0.5), toon(0x4a4a55), Vector3.ZERO)
+			for dx in [-1.0, 1.0]:
+				for dz in [-1.0, 1.0]:
+					add(drone, cyl(0.2, 0.2, 0.03, 10), flat(0xd0d4e0, 0.7), Vector3(dx * 0.35, 0.08, dz * 0.35))
+			add(drone, sphere(0.07, 6), flat(0xff5a3c), Vector3(0, -0.08, 0.25))
+			c["spinners"].append(drone)
+			return c
+		"hina":
+			var c := make_chibi({"outfit": 0xffb02e, "legs": 0x4a4a55, "hair": 0x8a5a3a, "style": "twintails", "eye": 0x2e7d6b, "trim": 0x4a4a55, "accent": 0x4a4a55, "sleeve": 0x4a4a55})
+			add(c.head, torus(0.2, 0.05), toon(0x4a4a55), Vector3(0.3, 0.45, 0.4), Vector3(PI / 2 - 0.4, 0, 0))
+			add(c.holder, box(0.08, 0.5, 0.08), toon(0x9aa7b4), Vector3(0, 0.2, 0.05), Vector3(0, 0, 0.6))
+			var turret := Node3D.new()
+			turret.position = Vector3(0.95, 0.36, 0.25)
+			c.root.add_child(turret)
+			add(turret, cyl(0.25, 0.32, 0.5, 10), toon(0x4a4a55), Vector3(0, 0.25, 0))
+			add(turret, box(0.35, 0.28, 0.45), toon(0xffb02e), Vector3(0, 0.6, 0))
+			add(turret, cyl(0.06, 0.06, 0.6, 8), toon(0x2b2a3d), Vector3(0, 0.62, 0.45), Vector3(PI / 2, 0, 0))
+			return c
+		"hiro":
+			var c := make_chibi({"outfit": 0x7a3b8f, "skirt": 0x4a2a55, "legs": 0x4a2a55, "hair": 0x2b2a3d, "style": "short", "eye": 0xffd34d, "trim": 0xffd34d, "sleeve": 0x7a3b8f})
+			add(c.head, cyl(0.7, 0.75, 0.08, 18), toon(0xd9b36a), Vector3(0, 0.55, 0))
+			add(c.head, cone(0.55, 0.5, 18), toon(0xd9b36a), Vector3(0, 0.82, 0))
+			add(c.holder, sphere(0.22, 10), toon(0x9b6a3a), Vector3(0, 0.05, 0.05), Vector3.ZERO, Vector3(1, 1.2, 1))
+			for i in range(3):
+				add(c.root, cyl(0.16, 0.16, 0.06, 12), toon(0xffd34d), Vector3(0.8, 0.4 + i * 0.07, 0.4))
+			add(c.root, box(0.7, 0.5, 0.5), toon(0x9b6a3a), Vector3(-0.85, 0.6, 0.3))
+			return c
+		"nao":
+			var c := make_chibi({"outfit": 0xfdfdfd, "skirt": 0x7fd3a0, "legs": 0x7fd3a0, "hair": 0x3a8a6b, "style": "long", "eye": 0x3a8a6b, "trim": 0x7fd3a0, "sleeve": 0xfdfdfd})
+			add(c.head, torus(0.18, 0.05), flat(0xfff3a0), Vector3(0, 0.55, -0.4), Vector3(PI / 2 - 0.5, 0, 0))
+			add(c.holder, cyl(0.035, 0.035, 0.9, 6), toon(0x8b5a2b), Vector3(0, 0.2, 0))
+			add(c.holder, cone(0.18, 0.3, 10), toon(0xffd34d), Vector3(0, 0.75, 0), Vector3(PI, 0, 0))
+			add(c.holder, sphere(0.06, 6), toon(0xffd34d), Vector3(0, 0.55, 0))
+			return c
 		_:
 			var c := make_chibi({"outfit": 0xff7ac8, "skirt": 0xffffff, "legs": 0xffffff, "hair": 0x9b6bff, "style": "twintails", "eye": 0xff3d8b, "trim": 0xffd34d, "accent": 0xffd34d, "base": 0xffc6e4})
 			add(c.head, sphere(0.17, 4), toon(0xffd34d), Vector3(0.4, 0.42, 0.35))

@@ -6,6 +6,7 @@ extends Control
 const Defs = preload("res://scripts/defs.gd")
 const Maps = preload("res://scripts/maps.gd")
 const Progress = preload("res://scripts/progress.gd")
+const UIScript = preload("res://scripts/ui.gd")
 
 const TIPS := [
 	"Tip: Heroes on tier 3 of any path unlock an ability. Press Q to Q-I to use them.",
@@ -24,7 +25,11 @@ var level_lbl: Label
 var xp_bar: ProgressBar
 var xp_lbl: Label
 var daily_btn: Button
-var ach_btn: Button
+var medal_pill: Label
+var trophy_pill: Label
+var hero_class_i := 0
+var hero_list: VBoxContainer
+var hero_tabs: Array = []
 var tip_lbl: Label
 var screens := {}
 var hero_detail: VBoxContainer
@@ -49,131 +54,165 @@ func _ready() -> void:
 # Home
 # ---------------------------------------------------------------------
 func _build_home() -> void:
-	# Soft vignette so text reads over the live game
+	# Soft bands top and bottom so buttons read over the village
 	for top in [true, false]:
 		var g := ColorRect.new()
-		g.color = Color(0.05, 0.1, 0.25, 0.45)
+		g.color = Color(0.05, 0.1, 0.25, 0.35)
 		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		g.anchor_right = 1.0
 		g.anchor_top = 0.0 if top else 1.0
 		g.anchor_bottom = 0.0 if top else 1.0
-		g.offset_bottom = 120 if top else 0
-		g.offset_top = 0 if top else -90
+		g.offset_bottom = 84 if top else 0
+		g.offset_top = 0 if top else -150
 		add_child(g)
 
-	# Player level badge
-	var badge: PanelContainer = ui.panel_of(ui.NAVY, 18)
-	badge.position = Vector2(14, 12)
-	badge.custom_minimum_size = Vector2(300, 0)
+	# Top-left: player level badge
+	var badge := HBoxContainer.new()
+	badge.position = Vector2(12, 8)
+	badge.add_theme_constant_override("separation", 8)
 	add_child(badge)
-	var bh := HBoxContainer.new()
-	bh.add_theme_constant_override("separation", 10)
-	badge.add_child(bh)
-	var circle := PanelContainer.new()
-	circle.add_theme_stylebox_override("panel", ui.sb(ui.GOLD, 30, 3, false, 0))
-	circle.custom_minimum_size = Vector2(60, 60)
-	bh.add_child(circle)
-	level_lbl = ui.lbl("1", 30, Color.WHITE, 10)
+	var star := Control.new()
+	star.custom_minimum_size = Vector2(70, 70)
+	badge.add_child(star)
+	var star_icon = UIScript.HudIcon.new("star", 70, ui.GOLD)
+	star.add_child(star_icon)
+	level_lbl = ui.lbl("1", 24, Color.WHITE, 8)
 	level_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	level_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	circle.add_child(level_lbl)
+	level_lbl.size = Vector2(70, 70)
+	star.add_child(level_lbl)
 	var bv := VBoxContainer.new()
-	bv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bh.add_child(bv)
-	bv.add_child(ui.lbl("PLAYER LEVEL", 16, ui.GOLD, 6))
+	bv.add_theme_constant_override("separation", 2)
+	badge.add_child(bv)
+	bv.add_child(ui.lbl("SHRINE KEEPER", 20, Color.WHITE, 8))
 	xp_bar = ProgressBar.new()
 	xp_bar.show_percentage = false
-	xp_bar.custom_minimum_size = Vector2(200, 16)
-	xp_bar.add_theme_stylebox_override("background", ui.sb(Color(0.2, 0.25, 0.4), 8, 2, false, 0))
-	xp_bar.add_theme_stylebox_override("fill", ui.sb(ui.GREEN, 8, 2, false, 0))
+	xp_bar.custom_minimum_size = Vector2(220, 18)
+	xp_bar.add_theme_stylebox_override("background", ui.sb(Color(0.15, 0.2, 0.35), 9, 3, false, 0))
+	xp_bar.add_theme_stylebox_override("fill", ui.sb(Color(0.3, 0.75, 1.0), 9, 3, false, 0))
 	bv.add_child(xp_bar)
-	xp_lbl = ui.lbl("", 12, Color(0.8, 0.9, 1.0), 0)
+	xp_lbl = ui.lbl("", 13, Color.WHITE, 5)
 	bv.add_child(xp_lbl)
 
-	# Logo
-	var logo := VBoxContainer.new()
-	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Top-centre: small logo
+	var logo: Label = ui.lbl("SAKURA SPIRIT DEFENSE", 30, Color.WHITE, 12)
+	logo.add_theme_color_override("font_shadow_color", ui.PINK)
+	logo.add_theme_constant_override("shadow_offset_y", 4)
+	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	logo.anchor_left = 0.5
 	logo.anchor_right = 0.5
 	logo.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	logo.offset_top = 70
-	logo.add_theme_constant_override("separation", -10)
+	logo.offset_top = 18
 	add_child(logo)
-	var t1: Label = ui.lbl("SAKURA", 96, Color.WHITE, 26)
-	t1.add_theme_color_override("font_shadow_color", ui.PINK)
-	t1.add_theme_constant_override("shadow_offset_y", 9)
-	t1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.add_child(t1)
-	var t2: Label = ui.lbl("SPIRIT DEFENSE", 46, ui.GOLD, 16)
-	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.add_child(t2)
 
-	# Centre: PLAY and the daily challenge
-	var center := VBoxContainer.new()
-	center.anchor_left = 0.5
-	center.anchor_right = 0.5
-	center.anchor_top = 0.5
-	center.anchor_bottom = 0.5
-	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	center.grow_vertical = Control.GROW_DIRECTION_BOTH
-	center.offset_top = 40
-	center.add_theme_constant_override("separation", 14)
-	add_child(center)
-	var play: Button = ui.btn("PLAY", ui.GREEN, 64, 30)
-	play.custom_minimum_size = Vector2(340, 110)
-	play.pressed.connect(func() -> void: ui.show_map_select())
-	center.add_child(play)
-	daily_btn = ui.btn("", ui.ORANGE, 18, 16)
-	daily_btn.custom_minimum_size = Vector2(340, 70)
-	daily_btn.pressed.connect(func() -> void: game.start_daily())
-	center.add_child(daily_btn)
+	# Top-right: medals and trophies
+	var pills := HBoxContainer.new()
+	pills.add_theme_constant_override("separation", 10)
+	pills.anchor_left = 1.0
+	pills.anchor_right = 1.0
+	pills.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	pills.offset_right = -14
+	pills.offset_top = 14
+	add_child(pills)
+	medal_pill = _pill(pills, "coin", ui.GOLD)
+	trophy_pill = _pill(pills, "trophy", ui.GOLD)
 
-	# Side buttons
-	var left := _side_column(true)
-	left.add_child(_side_btn("HEROES", ui.PINK, func() -> void: _open("heroes")))
-	ach_btn = _side_btn("ACHIEVEMENTS", ui.VIOLET, func() -> void: _open("achievements"))
-	left.add_child(ach_btn)
-	left.add_child(_side_btn("STATS", Color(0.35, 0.5, 0.75), func() -> void: _open("stats")))
-	var right := _side_column(false)
-	right.add_child(_side_btn("SETTINGS", Color(0.35, 0.5, 0.75), func() -> void: _open("settings")))
-	right.add_child(_side_btn("HOW TO PLAY", Color(0.35, 0.5, 0.75), func() -> void: _open("howto")))
+	# Left column: small round buttons
+	var left := _icon_column(true)
+	_icon_button(left, "gear", "SETTINGS", Color(0.35, 0.5, 0.75), func() -> void: _open("settings"))
+	_icon_button(left, "book", "HOW TO PLAY", Color(0.35, 0.5, 0.75), func() -> void: _open("howto"))
 	if OS.has_feature("pc") and not OS.has_feature("web"):
-		right.add_child(_side_btn("QUIT", Color(0.92, 0.3, 0.3), func() -> void: get_tree().quit()))
+		_icon_button(left, "door", "QUIT", Color(0.92, 0.3, 0.3), func() -> void: get_tree().quit())
 
-	tip_lbl = ui.lbl("", 18, Color.WHITE, 8)
+	# Bottom row: big round buttons, PLAY in the middle
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.anchor_left = 0.5
+	row.anchor_right = 0.5
+	row.anchor_top = 1.0
+	row.anchor_bottom = 1.0
+	row.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	row.offset_bottom = -6
+	add_child(row)
+	_big_button(row, "", "HEROES", ui.PINK, 96, func() -> void: _open("heroes"), "ninja")
+	_big_button(row, "trophy", "TROPHIES", ui.VIOLET, 96, func() -> void: _open("achievements"))
+	_big_button(row, "play", "PLAY", ui.GREEN, 128, func() -> void: ui.show_map_select())
+	daily_btn = _big_button(row, "calendar", "DAILY", ui.ORANGE, 96, func() -> void: game.start_daily())
+	_big_button(row, "chart", "STATS", Color(0.35, 0.5, 0.75), 96, func() -> void: _open("stats"))
+
+	tip_lbl = ui.lbl("", 15, Color.WHITE, 6)
 	tip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tip_lbl.anchor_left = 0.0
 	tip_lbl.anchor_right = 1.0
-	tip_lbl.anchor_top = 1.0
-	tip_lbl.anchor_bottom = 1.0
-	tip_lbl.offset_top = -50
-	tip_lbl.offset_bottom = -16
+	tip_lbl.offset_top = 92
+	tip_lbl.offset_bottom = 116
 	add_child(tip_lbl)
 	_next_tip()
 
-func _side_column(left_side: bool) -> VBoxContainer:
+func _pill(parent: Control, icon: String, col: Color) -> Label:
+	var p: PanelContainer = ui.panel_of(Color(0.1, 0.17, 0.29, 0.85), 20)
+	parent.add_child(p)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	p.add_child(h)
+	h.add_child(UIScript.HudIcon.new(icon, 30, col))
+	var l: Label = ui.lbl("0", 22, Color.WHITE, 8)
+	h.add_child(l)
+	return l
+
+func _icon_column(left_side: bool) -> VBoxContainer:
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
+	v.add_theme_constant_override("separation", 10)
 	v.anchor_top = 0.5
 	v.anchor_bottom = 0.5
 	v.grow_vertical = Control.GROW_DIRECTION_BOTH
-	v.offset_top = 40
+	v.offset_top = -20
 	if left_side:
-		v.anchor_left = 0.0
-		v.anchor_right = 0.0
-		v.offset_left = 30
+		v.offset_left = 16
 	else:
 		v.anchor_left = 1.0
 		v.anchor_right = 1.0
 		v.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		v.offset_right = -30
+		v.offset_right = -16
 	add_child(v)
 	return v
 
-func _side_btn(text: String, bg: Color, cb: Callable) -> Button:
-	var b: Button = ui.btn(text, bg, 24, 18)
-	b.custom_minimum_size = Vector2(230, 64)
+func _icon_button(parent: Control, icon: String, text: String, bg: Color, cb: Callable) -> Button:
+	var cell := VBoxContainer.new()
+	cell.add_theme_constant_override("separation", -2)
+	parent.add_child(cell)
+	var b: Button = ui.round_btn(bg, 64)
+	b.tooltip_text = text
+	ui.centered(b, UIScript.HudIcon.new(icon, 42, Color.WHITE))
 	b.pressed.connect(cb)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cell.add_child(b)
+	var l: Label = ui.lbl(text, 13, Color.WHITE, 6)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cell.add_child(l)
+	return b
+
+func _big_button(parent: Control, icon: String, text: String, bg: Color, px: int, cb: Callable, portrait_key: String = "") -> Button:
+	var cell := VBoxContainer.new()
+	cell.add_theme_constant_override("separation", -4)
+	cell.size_flags_vertical = Control.SIZE_SHRINK_END
+	parent.add_child(cell)
+	var b: Button = ui.round_btn(bg, px)
+	b.add_theme_stylebox_override("normal", ui.sb(bg, px / 2, 4))
+	b.add_theme_stylebox_override("hover", ui.sb(bg.lightened(0.15), px / 2, 4))
+	if portrait_key != "":
+		ui.centered(b, ui._portrait_rect(portrait_key, px * 0.85))
+	else:
+		ui.centered(b, UIScript.HudIcon.new(icon, px * 0.62, Color.WHITE))
+	b.pressed.connect(cb)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cell.add_child(b)
+	var l: Label = ui.lbl(text, 22 if px > 100 else 18, Color.WHITE, 9)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cell.add_child(l)
+	b.set_meta("label", l)
 	return b
 
 func _next_tip() -> void:
@@ -190,8 +229,15 @@ func refresh() -> void:
 	xp_lbl.text = "%d / %d XP" % [int(lp.x), int(lp.y)]
 	var d: Dictionary = p.daily()
 	var m: Dictionary = Maps.MAPS[d["map"]]
-	daily_btn.text = "DAILY CHALLENGE%s\n%s - %s - %s" % [" (DONE)" if d["done"] else "", m["name"], String(d["diff"]).capitalize(), game.MODES[d["mode"]]["name"]]
-	ach_btn.text = "ACHIEVEMENTS %d/%d" % [p.unlocked_count(), Progress.ACHIEVEMENTS.size()]
+	daily_btn.tooltip_text = "DAILY CHALLENGE\n%s - %s - %s%s" % [m["name"], String(d["diff"]).capitalize(), game.MODES[d["mode"]]["name"], "\n(completed today)" if d["done"] else ""]
+	(daily_btn.get_meta("label") as Label).text = "DAILY - DONE" if d["done"] else "DAILY - NEW!"
+	trophy_pill.text = "%d/%d" % [p.unlocked_count(), Progress.ACHIEVEMENTS.size()]
+	var medals := 0
+	for i in range(Maps.MAPS.size()):
+		for dd in ["easy", "normal", "hard"]:
+			if game.has_medal(i, dd, "standard"):
+				medals += 1
+	medal_pill.text = str(medals)
 
 func show_home() -> void:
 	for k in screens:
@@ -254,7 +300,7 @@ func _open(which: String) -> void:
 		"stats":
 			_fill_stats()
 		"heroes":
-			_show_hero(Defs.HERO_ORDER[0])
+			_pick_hero_class(hero_class_i)
 		"settings":
 			_fill_settings()
 
@@ -332,26 +378,59 @@ static func _num(v) -> String:
 func _build_heroes() -> Control:
 	var sc := _screen("HEROES")
 	var body: VBoxContainer = sc.get_meta("body")
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	body.add_child(tabs)
+	for i in range(Defs.CLASSES.size()):
+		var c: Dictionary = Defs.CLASSES[i]
+		var tb: Button = ui.btn(c["name"], Defs.col(c["color"]).darkened(0.3), 16, 10)
+		tb.custom_minimum_size = Vector2(150, 40)
+		tb.pressed.connect(_pick_hero_class.bind(i))
+		tabs.add_child(tb)
+		hero_tabs.append(tb)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 14)
 	body.add_child(h)
-	var list := GridContainer.new()
-	list.columns = 2
-	list.add_theme_constant_override("h_separation", 6)
-	list.add_theme_constant_override("v_separation", 6)
-	h.add_child(list)
-	for k in Defs.HERO_ORDER:
-		var key: String = k
-		var b: Button = ui.btn("", ui.TILE, 14, 10)
-		b.custom_minimum_size = Vector2(96, 96)
-		ui.centered(b, ui._portrait_rect(key, 84))
-		b.pressed.connect(func() -> void: _show_hero(key))
-		list.add_child(b)
+	hero_list = VBoxContainer.new()
+	hero_list.add_theme_constant_override("separation", 6)
+	h.add_child(hero_list)
 	hero_detail = VBoxContainer.new()
 	hero_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hero_detail.add_theme_constant_override("separation", 6)
 	h.add_child(hero_detail)
 	return sc
+
+func _pick_hero_class(i: int) -> void:
+	hero_class_i = i
+	for j in range(hero_tabs.size()):
+		var col: Color = Defs.col(Defs.CLASSES[j]["color"])
+		ui._set_btn_bg(hero_tabs[j], col if j == i else col.darkened(0.45), 10)
+	_clear(hero_list)
+	var heroes: Array = Defs.CLASSES[i]["heroes"]
+	for k in heroes:
+		var key: String = k
+		var d: Dictionary = Defs.HEROES[key]
+		var unlocked: bool = game.progress.level() >= int(Defs.UNLOCK_LEVEL[key])
+		var b: Button = ui.btn("", ui.TILE if unlocked else Color(0.5, 0.55, 0.65), 14, 12)
+		b.custom_minimum_size = Vector2(250, 96)
+		var row := HBoxContainer.new()
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 8)
+		b.add_child(row)
+		var pic: TextureRect = ui._portrait_rect(key, 84)
+		if not unlocked:
+			pic.modulate = Color(0.25, 0.25, 0.35)
+		row.add_child(pic)
+		var v := VBoxContainer.new()
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(v)
+		v.add_child(ui.lbl(d["name"], 22, Color.WHITE, 8))
+		v.add_child(ui.lbl(d["role"], 14, Color.WHITE, 5))
+		v.add_child(ui.lbl("UNLOCKED" if unlocked else "LEVEL %d" % int(Defs.UNLOCK_LEVEL[key]), 14, ui.GREEN if unlocked else ui.GOLD, 5))
+		b.pressed.connect(func() -> void: _show_hero(key))
+		hero_list.add_child(b)
+	_show_hero(heroes[0])
 
 func _show_hero(k: String) -> void:
 	_clear(hero_detail)
@@ -367,6 +446,9 @@ func _show_hero(k: String) -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(info)
 	info.add_child(ui.lbl("%s  -  %s" % [d["name"], d["role"]], 34, Color.WHITE, 12))
+	var need := int(Defs.UNLOCK_LEVEL[k])
+	if game.progress.level() < need:
+		info.add_child(ui.lbl("Joins your squad at player level %d (you are level %d)" % [need, game.progress.level()], 16, ui.GOLD, 6))
 	var desc: Label = ui.lbl(d["desc"], 16, Color(0.85, 0.92, 1.0), 0)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_child(desc)

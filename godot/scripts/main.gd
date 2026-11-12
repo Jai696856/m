@@ -10,6 +10,8 @@ const LevelScene = preload("res://scenes/level/level.tscn")
 const Maps = preload("res://scripts/maps.gd")
 const Progress = preload("res://scripts/progress.gd")
 const MainMenu = preload("res://scripts/main_menu.gd")
+const HubScene = preload("res://scenes/menu/hub.tscn")
+const HUB_POS := Vector3(4000, 0, 0)
 const SAVE_PATH := "user://save.cfg"
 
 ## Game modes. Medals are earned per map, difficulty and mode (never in sandbox).
@@ -32,6 +34,14 @@ const ABILITIES := {
 	"samurai": {"name": "Thousand Cuts", "cd": 40.0, "desc": "Slashes the 6 strongest spirits for heavy damage."},
 	"mecha": {"name": "Orbital Strike", "cd": 60.0, "desc": "A huge laser blasts the strongest spirit."},
 	"idol": {"name": "Encore!", "cd": 60.0, "desc": "Every hero attacks twice as fast for 10 seconds."},
+	"ren": {"name": "Hundred Fists", "cd": 40.0, "desc": "A flurry of blows on the 6 strongest spirits."},
+	"kenta": {"name": "Spear Rain", "cd": 45.0, "desc": "30 spears rain down around Kenta."},
+	"saya": {"name": "Big Bang", "cd": 50.0, "desc": "Six huge shells blast the strongest spirits."},
+	"sora": {"name": "Thunderstorm", "cd": 50.0, "desc": "Lightning stuns and strikes the 10 strongest spirits."},
+	"riku": {"name": "Drone Swarm", "cd": 45.0, "desc": "Launches 24 homing explosive drones."},
+	"hina": {"name": "Bullet Storm", "cd": 40.0, "desc": "The turret sprays 60 homing bullets."},
+	"hiro": {"name": "Market Day", "cd": 60.0, "desc": "Instantly earn $400 plus 5% of your money (max $3000)."},
+	"nao": {"name": "Blessing", "cd": 70.0, "desc": "Restores 25 lives."},
 }
 const ABILITY_TIER := 3
 
@@ -145,6 +155,7 @@ var menu
 ## Attract mode: a self-playing sandbox game behind the main menu.
 var attract := false
 var daily_active := false
+var hub
 var start_lives := 0.0
 var squad := {}
 
@@ -208,16 +219,19 @@ func _ready() -> void:
 	seg_mats = [Models.toon(0x26a69a), Models.toon(0x4dd0b8)]
 	_setup_env()
 	save.load(SAVE_PATH)
+	progress = Progress.new(save)
 	load_map(int(save.get_value("settings", "last_map", 0)))
 	_setup_particles()
 	_setup_range()
 	ui = GameUI.new()
 	ui.game = self
 	add_child(ui)
-	progress = Progress.new(save)
 	progress.on_unlock = func(a: Array) -> void: ui.toast("ACHIEVEMENT UNLOCKED", a[1])
-	progress.on_level = func(lv: int) -> void: ui.toast("LEVEL UP!", "You reached level %d" % lv)
+	progress.on_level = _on_level_up
 	_apply_settings()
+	hub = HubScene.instantiate()
+	hub.position = HUB_POS
+	add_child(hub)
 	menu = MainMenu.new()
 	menu.ui = ui
 	menu.game = self
@@ -453,8 +467,11 @@ func _on_key(k: InputEventKey) -> void:
 	if over or attract:
 		return
 	var code := k.keycode
-	if code >= KEY_1 and code <= KEY_7:
-		begin_placing(Defs.HERO_ORDER[code - KEY_1])
+	if code >= KEY_1 and code <= KEY_5:
+		ui.select_class(code - KEY_1)
+	elif code in [KEY_Z, KEY_X, KEY_C]:
+		var cls: Array = Defs.CLASSES[ui.shop_class]["heroes"]
+		begin_placing(cls[[KEY_Z, KEY_X, KEY_C].find(code)])
 	elif code == KEY_ESCAPE:
 		if placing != "" or selected != null:
 			cancel_placing()
@@ -549,6 +566,10 @@ func begin_placing(k: String) -> void:
 		cancel_placing()
 		return
 	cancel_placing()
+	if not hero_available(k):
+		sfx.play("error")
+		ui.toast("LOCKED", "%s joins at player level %d" % [Defs.HEROES[k]["name"], int(Defs.UNLOCK_LEVEL[k])])
+		return
 	if cash < price(Defs.HEROES[k]["cost"]):
 		sfx.play("error")
 		return
@@ -596,7 +617,13 @@ func select_hero(h: Hero) -> void:
 # =====================================================================
 # Heroes
 # =====================================================================
+## Heroes unlock with player level (sandbox ignores this).
+func hero_available(k: String) -> bool:
+	return not _upgrades_need_xp() or progress.level() >= int(Defs.UNLOCK_LEVEL.get(k, 1))
+
 func place_hero(k: String, x: float, z: float) -> Hero:
+	if not hero_available(k):
+		return null
 	var def: Dictionary = Defs.HEROES[k]
 	var cost := price(def["cost"])
 	if cash < cost:
@@ -769,6 +796,50 @@ func use_ability(h: Hero) -> void:
 				hit_enemy(t, opt_from(s, h, {"dmg": 2000.0, "type": "magic", "boss_mul": 1.0}))
 				explode(t.pos.x, t.pos.z, {"r": 3.5, "pierce": 30}, opt_from(s, h, {"dmg": 10.0, "type": "magic"}), false)
 				shake = 0.6 * shake_mul()
+		"ren":
+			var o4 := opt_from(s, h, {"dmg": 120.0, "type": "magic"})
+			for e in _strongest(6):
+				burst(e.node.position, Defs.col(0xffb02e), 8, 5.0)
+				hit_enemy(e, o4)
+		"kenta":
+			var o5 := opt_from(s, h, {"dmg": float(s["dmg"]) + 4.0, "type": "magic"})
+			for i in range(30):
+				fire(hpos, i / 30.0 * TAU, "arrow", o5, 34.0, 12, {"life": 1.4})
+		"saya":
+			var o6 := opt_from(s, h, {"dmg": 40.0, "type": "magic", "boss_mul": 3.0})
+			for e in _strongest(6):
+				explode(e.pos.x, e.pos.z, {"r": 4.5, "pierce": 50}, o6, false)
+			shake = 0.5 * shake_mul()
+		"sora":
+			var o7 := opt_from(s, h, {"dmg": 30.0, "type": "magic"})
+			for e in enemies:
+				if e.alive:
+					e.stun = maxf(e.stun, 0.5 if e.boss else 1.2)
+			for e in _strongest(10):
+				var bolt_m := Models.fx_mat(Defs.col(0xfff36b, 0.95), true)
+				add_effect(Models.mi(Models.cyl(1.0, 1.0, 1.0, 6), bolt_m, Vector3.ZERO, Vector3.ZERO, Vector3(0.35, 40.0, 0.35)), Vector3(e.pos.x, 20.0, e.pos.z), 0.25, "beam", 1.0, bolt_m)
+				hit_enemy(e, o7)
+		"riku":
+			var o8 := opt_from(s, h, {"dmg": float(s["dmg"]) + 3.0, "type": "blast"})
+			var targets := _strongest(24)
+			for i in range(24):
+				var tg = targets[i % targets.size()] if not targets.is_empty() else null
+				fire(hpos, i / 24.0 * TAU, "missile", o8, 18.0, 1, {"homing": true, "target": tg, "explode": {"r": 1.8, "pierce": 12}, "life": 3.0})
+		"hina":
+			var o9 := opt_from(s, h, {"dmg": float(s["dmg"]) + 2.0, "type": "magic"})
+			var tg2 := _strongest(10)
+			for i in range(60):
+				var t2 = tg2[i % tg2.size()] if not tg2.is_empty() else null
+				fire(hpos, randf() * TAU, "frag", o9, 30.0, 2, {"homing": true, "target": t2, "life": 2.0})
+		"hiro":
+			var gain := minf(3000.0, 400.0 + cash * 0.05)
+			earn(gain)
+			float_text("+$%d" % int(gain), Vector3(h.x, 3.0, h.z), false)
+		"nao":
+			if mode != "sandbox":
+				lives += 25
+				float_text("+25 LIVES", Vector3(h.x, 3.0, h.z), false)
+				ui.update_hud()
 		"idol":
 			encore_t = 10.0
 			for o in heroes:
@@ -1251,7 +1322,7 @@ func _hero_update(h: Hero, dt: float) -> void:
 				hit_enemy(hits[i][1], o5)
 			var holder := Node3D.new()
 			holder.rotation.y = ang3
-			var bm := Models.fx_mat(Defs.col(0x66f6ff, 0.9), true)
+			var bm := Models.fx_mat(Defs.col(int(s.get("beam_color", 0x66f6ff)), 0.9), true)
 			var thick := 0.12 + width * 0.2
 			Models.add(holder, Models.cyl(1.0, 1.0, 1.0, 8), bm, Vector3(0, 0, blen / 2.0), Vector3(PI / 2, 0, 0), Vector3(thick, blen, thick))
 			add_effect(holder, Vector3(h.x, 1.6, h.z), 0.12, "beam", 1.0, bm)
@@ -1489,7 +1560,12 @@ func _end_round() -> void:
 		if h.stats["kind"] != "support":
 			continue
 		income += int(h.stats["income"])
-		float_text("+$%d" % int(h.stats["income"]), Vector3(h.x, 3.5, h.z), false)
+		if int(h.stats["income"]) > 0:
+			float_text("+$%d" % int(h.stats["income"]), Vector3(h.x, 3.5, h.z), false)
+		var regen := int(h.stats.get("lives_regen", 0))
+		if regen > 0 and mode != "sandbox":
+			lives += regen
+			float_text("+%d LIVES" % regen, Vector3(h.x, 4.5, h.z), false)
 		h.anim = 0.5
 		if h.stats.get("interest", false):
 			interest = mini(800, int(cash * 0.05))
@@ -1547,6 +1623,7 @@ func toggle_mute() -> void:
 func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool = false) -> void:
 	attract = demo
 	sfx.suppressed = demo
+	_show_hub(false)
 	if not demo:
 		daily_active = daily_active and game_mode != "" and map_i >= 0
 	menu.visible = demo
@@ -1609,39 +1686,55 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 func restart() -> void:
 	new_game(difficulty, map_index, mode)
 
-## Map select, with the attract game running behind it.
+## Map select, shown over the village menu scene.
 func to_menu() -> void:
-	paused = false
-	daily_active = false
-	ui.show_pause(false)
-	start_attract()
+	_enter_menus()
 	menu.visible = false
 	ui.show_menu()
 
-## Main menu over a self-playing demo game.
+## Main menu: the village scene with the player's heroes.
 func to_home() -> void:
-	paused = false
-	daily_active = false
-	ui.show_pause(false)
-	ui.end_screen.visible = false
+	_enter_menus()
 	ui.start_screen.visible = false
-	start_attract()
 	menu.show_home()
 
-func start_attract() -> void:
-	new_game("easy", map_index, "sandbox", true)
-	var picks := ["ninja", "mage", "miko", "samurai", "ice", "mecha"]
-	var n := 0
-	for x in range(-30, 26, 3):
-		for z in range(-17, 18, 3):
-			if n < picks.size() and valid_spot(float(x), float(z)) and dist_to_path(float(x), float(z)) < 4.5:
-				var h := place_hero(picks[n], float(x), float(z))
-				for t in range(2):
-					buy_upgrade(h, 0)
-				n += 1
-	round_num = 12
-	auto_start = true
-	auto_timer = 0.8
+# Leave any running game and switch to the menu scene.
+func _enter_menus() -> void:
+	paused = false
+	daily_active = false
+	attract = true
+	over = true
+	running = false
+	sfx.suppressed = false
+	ui.show_pause(false)
+	ui.end_screen.visible = false
+	for e in enemies:
+		_remove_enemy(e)
+	enemies.clear()
+	for p in projectiles:
+		p.node.queue_free()
+	projectiles.clear()
+	for h in heroes:
+		(h.model["root"] as Node3D).queue_free()
+	heroes.clear()
+	cancel_placing()
+	select_hero(null)
+	ui.set_hud_visible(false)
+	ui.hide_boss()
+	_show_hub(true)
+
+func _show_hub(on: bool) -> void:
+	hub.visible = on
+	level.visible = not on
+	if on:
+		var keys: Array = []
+		for k in Defs.HERO_ORDER:
+			if progress.level() >= int(Defs.UNLOCK_LEVEL[k]) and keys.size() < 7:
+				keys.append(k)
+		hub.set_heroes(keys)
+		hub.camera.make_current()
+	else:
+		camera.make_current()
 
 func start_daily() -> void:
 	var d: Dictionary = progress.daily()
@@ -1652,6 +1745,13 @@ func start_daily() -> void:
 func reset_progress() -> void:
 	progress.reset()
 	save.save(SAVE_PATH)
+
+func _on_level_up(lv: int) -> void:
+	ui.toast("LEVEL UP!", "You reached level %d" % lv)
+	for k in Defs.UNLOCK_LEVEL:
+		if int(Defs.UNLOCK_LEVEL[k]) == lv:
+			ui.toast("NEW HERO UNLOCKED", "%s the %s" % [Defs.HEROES[k]["name"], Defs.HEROES[k]["role"]])
+	ui.rebuild_shop()
 
 ## Progress only counts in real games (not the menu demo or sandbox).
 func _tracking() -> bool:
@@ -1888,9 +1988,5 @@ func _process(delta: float) -> void:
 	else:
 		ui.hide_boss()
 
-	if attract:
-		cam_yaw = sin(time * 0.06) * 0.35
-		if round_num > 30 or over:
-			start_attract()
 	shake = maxf(0.0, shake - dt)
 	_update_camera()
