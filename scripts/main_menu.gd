@@ -42,6 +42,9 @@ var tree_grid: VBoxContainer
 var tree_preview: VBoxContainer
 var tree_mastery: PanelContainer
 var tip_i := 0
+var gem_pill: Label
+var quest_box: VBoxContainer
+var skin_row: HBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -53,6 +56,7 @@ func _ready() -> void:
 	screens["stats"] = _screen("STATS")
 	screens["settings"] = _build_settings()
 	screens["howto"] = _build_howto()
+	screens["store"] = _screen("STORE")
 	var t := Timer.new()
 	t.wait_time = 6.0
 	t.autostart = true
@@ -123,6 +127,7 @@ func _build_home() -> void:
 	pills.offset_right = -14
 	pills.offset_top = 14
 	add_child(pills)
+	gem_pill = _pill(pills, "gem", ui.GEM)
 	medal_pill = _pill(pills, "coin", ui.GOLD)
 	trophy_pill = _pill(pills, "trophy", ui.GOLD)
 
@@ -147,9 +152,26 @@ func _build_home() -> void:
 	add_child(row)
 	_big_button(row, "", "HEROES", ui.PINK, 96, func() -> void: _open("heroes"), "ninja")
 	_big_button(row, "trophy", "TROPHIES", ui.VIOLET, 96, func() -> void: _open("achievements"))
+	_big_button(row, "bag", "STORE", Color(0.2, 0.7, 0.85), 96, func() -> void: _open("store"))
 	_big_button(row, "play", "PLAY", ui.GREEN, 128, func() -> void: ui.show_map_select())
 	daily_btn = _big_button(row, "calendar", "DAILY", ui.ORANGE, 96, func() -> void: game.start_daily())
 	_big_button(row, "chart", "STATS", Color(0.35, 0.5, 0.75), 96, func() -> void: _open("stats"))
+
+	# Right side: today's quests
+	var qp: PanelContainer = ui.panel_of(Color(0.1, 0.17, 0.29, 0.88), 18)
+	qp.anchor_left = 1.0
+	qp.anchor_right = 1.0
+	qp.anchor_top = 0.5
+	qp.anchor_bottom = 0.5
+	qp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	qp.grow_vertical = Control.GROW_DIRECTION_BOTH
+	qp.offset_right = -14
+	qp.offset_top = -40
+	qp.custom_minimum_size = Vector2(300, 0)
+	add_child(qp)
+	quest_box = VBoxContainer.new()
+	quest_box.add_theme_constant_override("separation", 6)
+	qp.add_child(quest_box)
 
 	tip_lbl = ui.lbl("", 15, Color.WHITE, 6)
 	tip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -247,6 +269,114 @@ func refresh() -> void:
 			if game.has_medal(i, dd, "standard"):
 				medals += 1
 	medal_pill.text = str(medals)
+	gem_pill.text = _num(p.gems())
+	_fill_quests()
+
+func _fill_quests() -> void:
+	_clear(quest_box)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	quest_box.add_child(head)
+	head.add_child(UIScript.HudIcon.new("scroll", 26, Color(1, 0.93, 0.75)))
+	head.add_child(ui.lbl("DAILY QUESTS", 18, Color.WHITE, 6))
+	var qs: Array = game.progress.quests()
+	for q in qs:
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 1)
+		quest_box.add_child(row)
+		var top := HBoxContainer.new()
+		row.add_child(top)
+		var t: Label = ui.lbl(q["text"], 14, Color.WHITE if not q["claimed"] else Color(0.6, 0.7, 0.8), 5)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(t)
+		var reward: Label = ui.lbl("%d" % int(q["gems"]), 14, ui.GEM, 5)
+		top.add_child(reward)
+		top.add_child(UIScript.HudIcon.new("gem", 18, ui.GEM))
+		var bot := HBoxContainer.new()
+		bot.add_theme_constant_override("separation", 6)
+		row.add_child(bot)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(170, 14)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.max_value = q["need"]
+		bar.value = q["have"]
+		bar.add_theme_stylebox_override("background", ui.sb(Color(0.15, 0.2, 0.35), 7, 2, false, 0))
+		bar.add_theme_stylebox_override("fill", ui.sb(ui.GREEN if q["done"] else Color(0.3, 0.75, 1.0), 7, 2, false, 0))
+		bot.add_child(bar)
+		if q["claimed"]:
+			bot.add_child(ui.lbl("DONE", 14, ui.GREEN, 5))
+		elif q["done"]:
+			var b: Button = ui.btn("CLAIM", ui.GREEN, 14, 8)
+			b.custom_minimum_size = Vector2(70, 26)
+			var idx: int = q["index"]
+			b.pressed.connect(func() -> void:
+				if game.progress.claim_quest(idx):
+					game.sfx.play("quest")
+					game.save.save(game.SAVE_PATH)
+					refresh())
+			bot.add_child(b)
+		else:
+			bot.add_child(ui.lbl("%s/%s" % [_num(q["have"]), _num(q["need"])], 13, Color(0.8, 0.88, 1.0), 5))
+
+func _fill_store() -> void:
+	var body := _body("store")
+	_clear(body)
+	var p = game.progress
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	body.add_child(top)
+	top.add_child(UIScript.HudIcon.new("gem", 34, ui.GEM))
+	top.add_child(ui.lbl("%s Spirit Gems" % _num(p.gems()), 26, Color.WHITE, 8))
+	var info: Label = ui.lbl("Earn gems by winning games, finishing daily quests, unlocking achievements and levelling up. Up to %d powers can be used per game." % game.POWER_LIMIT, 14, Color(0.85, 0.8, 1.0), 0)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(940, 0)
+	body.add_child(info)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	body.add_child(grid)
+	for pw in p.POWERS:
+		var id: String = pw[0]
+		var col: Color = Defs.col(pw[5])
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _glow_box(Color(0.16, 0.12, 0.34), col))
+		card.custom_minimum_size = Vector2(305, 190)
+		grid.add_child(card)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 4)
+		card.add_child(v)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		v.add_child(h)
+		var disc := PanelContainer.new()
+		disc.add_theme_stylebox_override("panel", ui.sb(col.darkened(0.1), 30, 3, false, 6))
+		disc.add_child(_icon_rect(pw[3], 48))
+		h.add_child(disc)
+		var nv := VBoxContainer.new()
+		nv.add_theme_constant_override("separation", 0)
+		h.add_child(nv)
+		nv.add_child(ui.lbl(pw[1], 22, Color.WHITE, 8))
+		nv.add_child(ui.lbl("Owned: %d" % p.power_count(id), 15, ui.GOLD, 5))
+		var d: Label = ui.lbl(pw[2], 14, Color(0.88, 0.85, 1.0), 0)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(280, 40)
+		v.add_child(d)
+		var buy: Button = ui.btn("BUY  %d" % int(pw[4]), ui.GREEN if p.gems() >= int(pw[4]) else Color(0.4, 0.42, 0.5), 18, 10)
+		buy.icon = Icons.tex("gem", Color.WHITE, 40)
+		buy.add_theme_constant_override("icon_max_width", 20)
+		buy.custom_minimum_size = Vector2(0, 40)
+		buy.pressed.connect(func() -> void:
+			if game.progress.buy_power(id):
+				game.sfx.play("upgrade")
+				game.save.save(game.SAVE_PATH)
+				_fill_store()
+				refresh()
+			else:
+				game.sfx.play("error"))
+		v.add_child(buy)
 
 func show_home() -> void:
 	for k in screens:
@@ -313,6 +443,8 @@ func _open(which: String) -> void:
 			_pick_hero_class(hero_class_i)
 		"settings":
 			_fill_settings()
+		"store":
+			_fill_store()
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():
@@ -735,6 +867,51 @@ func _fill_preview() -> void:
 		ub.disabled = not can
 		ub.pressed.connect(_unlock_selected)
 		tree_preview.add_child(ub)
+	_fill_skins(k)
+
+## Skin swatches under the preview: tap an owned one to wear it, or buy one with gems.
+func _fill_skins(k: String) -> void:
+	var p = game.progress
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 6)
+	tree_preview.add_child(head)
+	head.add_child(_icon_rect("shirt", 20))
+	head.add_child(ui.lbl("SKIN: %s" % String(p.SKINS[p.skin(k)][0]).to_upper(), 15, Color.WHITE, 5))
+	skin_row = HBoxContainer.new()
+	skin_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	skin_row.add_theme_constant_override("separation", 8)
+	tree_preview.add_child(skin_row)
+	for i in range(p.SKINS.size()):
+		var sk: Array = p.SKINS[i]
+		var owned: bool = p.skin_owned(k, i)
+		var col: Color = Defs.col(sk[1]) if int(sk[1]) != 0 else Defs.col(Defs.hero_class(k)["color"])
+		var b: Button = ui.round_btn(col, 46)
+		var worn: bool = p.skin(k) == i
+		b.add_theme_stylebox_override("normal", ui.sb(col, 23, 4 if worn else 3))
+		if worn:
+			var st: StyleBoxFlat = ui.sb(col, 23, 4)
+			st.border_color = ui.GOLD
+			b.add_theme_stylebox_override("normal", st)
+		b.tooltip_text = "%s%s" % [sk[0], "" if owned else " - %d gems" % int(sk[2])]
+		if not owned:
+			var lk := _icon_rect("lock", 22)
+			lk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ui.centered(b, lk)
+		var idx := i
+		b.pressed.connect(func() -> void:
+			if game.progress.skin_owned(k, idx):
+				game.progress.select_skin(k, idx)
+				game.sfx.play("place")
+			elif game.progress.buy_skin(k, idx):
+				game.sfx.play("upgrade")
+			else:
+				game.sfx.play("error")
+				return
+			game.save.save(game.SAVE_PATH)
+			_fill_preview()
+			refresh())
+		skin_row.add_child(b)
 
 func _unlock_selected() -> void:
 	var ok := false
@@ -753,7 +930,8 @@ func _fill_settings() -> void:
 	var body := _body("settings")
 	_clear(body)
 	var items := [
-		["sound", "Sound effects", "Pops, explosions and music stings."],
+		["music", "Music", "Background music on the menus and in games."],
+		["sound", "Sound effects", "Pops, explosions and jingles."],
 		["shake", "Camera shake", "Shake the camera on boss pops and leaks."],
 		["shadows", "Shadows", "Turn off for better performance on slow devices."],
 		["autostart", "Auto-start rounds", "Start each new game with AUTO switched on."],
@@ -797,12 +975,15 @@ func _build_howto() -> Control:
 	var body: VBoxContainer = sc.get_meta("body")
 	var lines := [
 		["Goal", "Spirits march along the stone track toward the shrine. Pop them before they arrive. Each one that gets through costs lives."],
-		["Heroes", "Pick a hero from the shop (or press 1-7) and click on grass to place them. Click a hero to upgrade, change targeting or sell."],
+		["Heroes", "Pick a hero from the shop (1-5 picks a class, Z X C V B a hero) and click on grass to place them. Click a hero to upgrade, change targeting or sell."],
 		["Upgrades", "Each hero has 3 upgrade paths with 4 tiers. You can upgrade two paths, and only one of them past tier 2."],
 		["Abilities", "Reaching tier 3 on any path unlocks a hero ability. Use it from the bar at the bottom or with Q W E R T Y U I."],
 		["Spirits", "Spirits are layered: popping one reveals the next. Veiled spirits need detection, fortified spirits have double health and regrowing spirits heal if left alone."],
 		["Rounds", "Press PLAY (or Space) to send the next round. Press it again to speed up. AUTO starts rounds by itself."],
 		["Camera", "Drag to rotate, right-drag to pan, wheel or pinch to zoom. Esc or P pauses."],
+		["Farms", "Komugi the rice farmer grows coin bundles during each round. Tap them to collect, or upgrade her Market path to collect them automatically."],
+		["Spirit Gems", "Gems come from wins, achievements, levelling up and daily quests. Spend them in the Store on powers (up to 3 per game) or on hero skins in the upgrade tree."],
+		["Daily quests", "Three new quests appear every day on the home screen. Claim each one for gems and XP."],
 		["Progress", "Earn XP, medals and achievements. Try a new daily challenge every day."],
 	]
 	for l in lines:
@@ -810,6 +991,12 @@ func _build_howto() -> Control:
 		var t: Label = ui.lbl(l[1], 16, Color.WHITE, 0)
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		body.add_child(t)
+	var tut: Button = ui.btn("PLAY THE TUTORIAL", ui.GREEN, 20, 14)
+	tut.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tut.pressed.connect(func() -> void:
+		game.save.set_value("settings", "tutorial_seen", false)
+		game.new_game("easy", 0, "standard"))
+	body.add_child(tut)
 	return sc
 
 ## Narrower cards on phones held upright.

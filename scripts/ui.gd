@@ -114,6 +114,26 @@ class HudIcon extends Control:
 				draw_colored_polygon(sp, col)
 				sp.append(sp[0])
 				draw_polyline(sp, ink, 3.0, true)
+			"gem":
+				var g := PackedVector2Array([c + Vector2(-0.26, -0.3) * s.x, c + Vector2(0.26, -0.3) * s.x, c + Vector2(0.44, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, c + Vector2(-0.44, -0.08) * s.x])
+				draw_colored_polygon(g, col)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-0.26, -0.3) * s.x, c + Vector2(0.26, -0.3) * s.x, c + Vector2(0.14, -0.08) * s.x, c + Vector2(-0.14, -0.08) * s.x]), col.lightened(0.45))
+				draw_line(c + Vector2(-0.44, -0.08) * s.x, c + Vector2(0.44, -0.08) * s.x, ink, 2.0, true)
+				draw_line(c + Vector2(-0.14, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, ink, 1.5, true)
+				draw_line(c + Vector2(0.14, -0.08) * s.x, c + Vector2(0, 0.42) * s.x, ink, 1.5, true)
+				g.append(g[0])
+				draw_polyline(g, ink, 3.0, true)
+			"bag":
+				draw_circle(c + Vector2(0, 0.08) * s.x, s.x * 0.34, col)
+				draw_arc(c + Vector2(0, 0.08) * s.x, s.x * 0.34, 0, TAU, 32, ink, 3.0, true)
+				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), col)
+				draw_rect(Rect2(c + Vector2(-0.12, -0.4) * s.x, Vector2(0.24, 0.16) * s.x), ink, false, 2.5)
+				draw_line(c + Vector2(-0.18, -0.24) * s.x, c + Vector2(0.18, -0.24) * s.x, ink, 3.0, true)
+			"scroll":
+				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), col)
+				draw_rect(Rect2(c + Vector2(-0.3, -0.36) * s.x, Vector2(0.6, 0.72) * s.x), ink, false, 3.0)
+				for yy in [-0.18, 0.0, 0.18]:
+					draw_line(c + Vector2(-0.18, yy) * s.x, c + Vector2(0.18, yy) * s.x, ink, 2.5, true)
 			"fast":
 				for off in [-0.17, 0.13]:
 					var t2 := PackedVector2Array([c + Vector2(off - 0.12, -0.24) * s.x, c + Vector2(off + 0.17, 0) * s.x, c + Vector2(off - 0.12, 0.24) * s.x])
@@ -220,9 +240,12 @@ var mode_buttons := {}
 var sel_lbl: Label
 var mode_lbl: Label
 var medal_lbl: Label
+const GEM := Color(0.45, 0.9, 1.0)
 var pause_screen: Control
 var ability_bar: HBoxContainer
 var ability_buttons: Array = []
+var power_bar: VBoxContainer
+var power_buttons: Array = []
 var map_info_lbl: Label
 var hud_box: HBoxContainer
 var controls_box: HBoxContainer
@@ -265,6 +288,7 @@ func _ready() -> void:
 	_build_boss()
 	_build_banner()
 	_build_abilities()
+	_build_powers()
 	_build_start()
 	_build_end()
 	_build_pause()
@@ -456,7 +480,7 @@ func _build_shop() -> void:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb := btn(str(i + 1), Defs.col(c["color"]).darkened(0.25), 14, 8)
-		tb.custom_minimum_size = Vector2(44, 30)
+		tb.custom_minimum_size = Vector2(36, 30)
 		tb.text = ""
 		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 40)
 		tb.expand_icon = true
@@ -939,6 +963,7 @@ func show_map_select() -> void:
 func set_hud_visible(on: bool) -> void:
 	for c in [hud_box, round_box, shop, controls_box, ability_bar]:
 		(c as Control).visible = on
+	power_bar.visible = on and game.mode != "sandbox"
 	if not on:
 		panel.visible = false
 		boss_box.visible = false
@@ -1069,6 +1094,50 @@ func toast(title: String, text: String) -> void:
 	tw.tween_callback(p.queue_free)
 	game.sfx.play("win" if title.begins_with("LEVEL") else "upgrade")
 
+# ---------------------------------------------------------------------
+# Tutorial coach: a card at the top of the screen with the current step
+# ---------------------------------------------------------------------
+var tut_box: PanelContainer
+var tut_lbl: Label
+var tut_step_lbl: Label
+
+func show_tutorial(step: int, total: int, text: String) -> void:
+	if tut_box == null:
+		tut_box = panel_of(Color(0.16, 0.1, 0.36, 0.95), 16)
+		tut_box.anchor_left = 0.5
+		tut_box.anchor_right = 0.5
+		tut_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		tut_box.offset_top = 70
+		tut_box.custom_minimum_size = Vector2(520, 0)
+		root.add_child(tut_box)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 12)
+		tut_box.add_child(h)
+		var v := VBoxContainer.new()
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_theme_constant_override("separation", 0)
+		h.add_child(v)
+		tut_step_lbl = lbl("", 14, GOLD, 6)
+		v.add_child(tut_step_lbl)
+		tut_lbl = lbl("", 19, Color.WHITE, 7)
+		tut_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tut_lbl.custom_minimum_size = Vector2(380, 0)
+		v.add_child(tut_lbl)
+		var skip := btn("SKIP", Color(0.45, 0.45, 0.6), 16, 10)
+		skip.custom_minimum_size = Vector2(80, 40)
+		skip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		skip.pressed.connect(func() -> void: game.end_tutorial())
+		h.add_child(skip)
+	tut_box.visible = true
+	tut_step_lbl.text = "TUTORIAL  %d / %d" % [step + 1, total]
+	tut_lbl.text = text
+	tut_box.modulate.a = 0.0
+	tut_box.create_tween().tween_property(tut_box, "modulate:a", 1.0, 0.3)
+
+func hide_tutorial() -> void:
+	if tut_box:
+		tut_box.visible = false
+
 func _on_resume() -> void:
 	game.toggle_pause()
 
@@ -1115,6 +1184,52 @@ func refresh_abilities() -> void:
 		ability_bar.add_child(b)
 		ability_buttons.append([b, cd, h])
 	_update_ability_cooldowns()
+
+# ---------------------------------------------------------------------
+# Power bar: gem-bought one-shot powers, down the left edge
+# ---------------------------------------------------------------------
+func _build_powers() -> void:
+	power_bar = VBoxContainer.new()
+	power_bar.add_theme_constant_override("separation", 4)
+	power_bar.position = Vector2(12, 132)
+	root.add_child(power_bar)
+
+func refresh_powers() -> void:
+	for c in power_bar.get_children():
+		c.queue_free()
+	power_buttons.clear()
+	if game.progress == null:
+		return
+	for pw in game.progress.POWERS:
+		var id: String = pw[0]
+		var n: int = game.progress.power_count(id)
+		if n <= 0:
+			continue
+		var b := round_btn(Defs.col(pw[5]).darkened(0.15), 46)
+		b.tooltip_text = "%s (x%d)\n%s\nUp to %d powers per game." % [pw[1], n, pw[2], game.POWER_LIMIT]
+		var ic := TextureRect.new()
+		ic.texture = Icons.tex(pw[3], Color.WHITE, 64)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.custom_minimum_size = Vector2(28, 28)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		centered(b, ic)
+		var cnt := lbl(str(n), 13, Color.WHITE, 6)
+		cnt.position = Vector2(30, 26)
+		b.add_child(cnt)
+		b.pressed.connect(func() -> void: game.use_power(id))
+		power_bar.add_child(b)
+		power_buttons.append([b, id])
+	_update_power_buttons()
+
+func _update_power_buttons() -> void:
+	for item in power_buttons:
+		var b: Button = item[0]
+		if not is_instance_valid(b):
+			continue
+		var ok: bool = game.can_use_power(item[1])
+		b.disabled = not ok
+		b.modulate = Color.WHITE if ok else Color(0.6, 0.6, 0.7)
 
 func _update_ability_cooldowns() -> void:
 	for item in ability_buttons:
@@ -1194,6 +1309,7 @@ func _process(delta: float) -> void:
 		if h != null and pops_lbl != null and is_instance_valid(pops_lbl) and h.stats["kind"] != "support":
 			pops_lbl.text = "%s - Pops: %d" % [h.def["role"], h.pops]
 		_update_ability_cooldowns()
+		_update_power_buttons()
 
 func update_hud() -> void:
 	if game.mode == "sandbox":

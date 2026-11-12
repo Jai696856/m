@@ -449,6 +449,13 @@ static func _tint_outfit(m: Dictionary, hex: int) -> void:
 		var base := (mi.material_override as StandardMaterial3D).albedo_color
 		mi.material_override = make_toon(base.lerp(Defs.col(hex), 0.4))
 
+## A hero skin: recolours the outfit strongly toward the skin's colour.
+static func apply_skin(m: Dictionary, hex: int) -> void:
+	for part in m["outfit_parts"]:
+		var mi := part as MeshInstance3D
+		var base := (mi.material_override as StandardMaterial3D).albedo_color
+		mi.material_override = make_toon(base.lerp(Defs.col(hex), 0.8))
+
 static func build_hero(key: String) -> Dictionary:
 	match key:
 		"ninja":
@@ -845,6 +852,10 @@ static func crop_bundle() -> Node3D:
 	add(g, torus(0.16, 0.05), toon(0xffc93c, 1.0, false), Vector3(0, 0.6, 0))
 	add(g, cone(0.12, 0.2, 8), toon(0xf3e4c0), Vector3(0, 0.72, 0))
 	add(g, cyl(0.16, 0.16, 0.05, 12), toon(0xffd34d), Vector3(0.18, 0.35, 0.26), Vector3(PI / 2, 0, 0))
+	# Gold glow ring so bundles stand out on the grass
+	var ring := add(g, torus(0.5, 0.06), fx_mat(Color(1.0, 0.85, 0.3, 0.8), true), Vector3(0, 0.05, 0))
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.scale = Vector3.ONE * 1.7
 	return g
 
 static func projectile(kind: String) -> Node3D:

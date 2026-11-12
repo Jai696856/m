@@ -66,7 +66,7 @@ static func for_upgrade(fx: Dictionary) -> String:
 			if String(k).begins_with(prefix):
 				return true
 		return false
-	if has.call("coin_value") or has.call("auto_collect"):
+	if has.call("coin_value") or has.call("auto_collect") or has.call("crop_rate") or has.call("collect_time"):
 		return "sprout"
 	if has.call("income") or has.call("interest"):
 		return "coin"

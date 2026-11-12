@@ -6,6 +6,7 @@ const Defs = preload("res://scripts/defs.gd")
 const Models = preload("res://scripts/models.gd")
 const GameUI = preload("res://scripts/ui.gd")
 const Sfx = preload("res://scripts/sfx.gd")
+const Music = preload("res://scripts/music.gd")
 const LevelScene = preload("res://scenes/level/level.tscn")
 const Maps = preload("res://scripts/maps.gd")
 const Progress = preload("res://scripts/progress.gd")
@@ -151,6 +152,8 @@ var mode := "standard"
 var map_index := 0
 var paused := false
 var encore_t := 0.0
+var golden_t := 0.0  # Golden Touch power: pops pay 5x
+var powers_used_game := 0
 var game_pops := 0
 var cash_earned := 0.0
 var save := ConfigFile.new()
@@ -195,6 +198,7 @@ var cam_dist := 56.0
 var cam_max := 95.0
 var ui
 var sfx
+var music
 var level
 
 var ghost: Dictionary = {}
@@ -227,6 +231,8 @@ func _ready() -> void:
 	randomize()
 	sfx = Sfx.new()
 	add_child(sfx)
+	music = Music.new()
+	add_child(music)
 	rainbow_mat = Models.make_toon(Color.RED)
 	rainbow_camo = Models.make_toon(Color(1, 0, 0, 0.4))
 	ice_mat = Models.make_toon(Defs.col(0xbff4ff, 0.55), false)
@@ -691,6 +697,9 @@ func place_hero(k: String, x: float, z: float) -> Hero:
 	h.x = x
 	h.z = z
 	h.model = Models.build_hero(k)
+	var skin_i: int = progress.skin(k)
+	if skin_i > 0:
+		Models.apply_skin(h.model, int(Progress.SKINS[skin_i][1]))
 	h.stats = (def["base"] as Dictionary).duplicate(true)
 	if progress.mastered(k):
 		# Mastery: a permanent edge for this hero in every game
@@ -971,6 +980,111 @@ func use_ability(h: Hero) -> void:
 		progress.add("abilities")
 	ui.refresh_abilities()
 
+# =====================================================================
+# Powers: one-shot items bought with Spirit Gems in the Store
+# =====================================================================
+const POWER_LIMIT := 3  # per game, so powers help without trivialising a run
+
+func can_use_power(id: String) -> bool:
+	if over or paused or attract:
+		return false
+	if mode != "sandbox" and powers_used_game >= POWER_LIMIT:
+		return false
+	return mode == "sandbox" or progress.power_count(id) > 0
+
+func use_power(id: String) -> bool:
+	if not can_use_power(id):
+		sfx.play("error")
+		return false
+	if mode != "sandbox":
+		progress.take_power(id)
+		powers_used_game += 1
+	var pw: Array = Progress.power_def(id)
+	match id:
+		"time_stop":
+			for e in enemies:
+				if e.alive:
+					e.stun = maxf(e.stun, 2.0 if e.boss else 6.0)
+					e.frozen = true
+			_ring_fx(cam_target + Vector3(0, 0.5, 0), 70.0, 0x7fd6ff, 1.0)
+			sfx.play("freeze")
+		"shrine_bomb":
+			var o := {"dmg": 20.0 + round_num * 1.5, "type": "magic", "boss_mul": 2.0}
+			for e in enemies.duplicate():
+				if e.alive:
+					hit_enemy(e, o)
+			shake = 0.6 * shake_mul()
+			_ring_fx(cam_target + Vector3(0, 0.5, 0), 70.0, 0xff6b5b, 0.8)
+			sfx.play("boom")
+		"cash_drop":
+			add_cash(1500.0)
+			float_text("+$1500", cam_target + Vector3(0, 3, 0), false)
+		"heal":
+			lives += 50.0
+			float_text("+50 LIVES", cam_target + Vector3(0, 3, 0), false)
+		"battle_cry":
+			encore_t = maxf(encore_t, 15.0)
+		"golden_touch":
+			golden_t = 20.0
+	sfx.play("power")
+	ui.banner(String(pw[1]).to_upper(), String(pw[2]))
+	ui.update_hud()
+	ui.refresh_powers()
+	return true
+
+# =====================================================================
+# Tutorial: a short coach for the very first game
+# =====================================================================
+const TUTORIAL := [
+	"Pick a hero from the shop on the right. Kaede, Hana and Rin are ready from the start.",
+	"Now tap on the grass near the stone path to place your hero.",
+	"Press the green PLAY button (or Space) to send the first round of spirits.",
+	"Tap your hero to open their upgrades.",
+	"Buy an upgrade with the money you earn from popping spirits.",
+	"Great job! Hold the gate for 40 rounds. Tier 3 upgrades unlock abilities, and gems from wins buy powers in the Store. Good luck!",
+]
+var tutorial_step := -1
+var tutorial_t := 0.0
+
+func start_tutorial() -> void:
+	tutorial_step = 0
+	tutorial_t = 0.0
+	ui.show_tutorial(0, TUTORIAL.size(), TUTORIAL[0])
+
+func end_tutorial() -> void:
+	if tutorial_step < 0:
+		return
+	tutorial_step = -1
+	ui.hide_tutorial()
+	save.set_value("settings", "tutorial_seen", true)
+	progress.set_max("tutorial_done", 1.0)
+	progress.check()
+	save.save(SAVE_PATH)
+
+func _update_tutorial(dt: float) -> void:
+	if tutorial_step < 0 or attract:
+		return
+	var done := false
+	match tutorial_step:
+		0: done = placing != "" or not heroes.is_empty()
+		1: done = not heroes.is_empty()
+		2: done = running or round_num > 0
+		3: done = selected != null
+		4:
+			for h in heroes:
+				if h.tiers[0] + h.tiers[1] + h.tiers[2] > 0:
+					done = true
+		5:
+			tutorial_t += dt
+			done = tutorial_t > 7.0
+	if done:
+		tutorial_step += 1
+		if tutorial_step >= TUTORIAL.size():
+			end_tutorial()
+		else:
+			sfx.play("place")
+			ui.show_tutorial(tutorial_step, TUTORIAL.size(), TUTORIAL[tutorial_step])
+
 func cycle_priority(h: Hero) -> void:
 	h.priority = PRIORITIES[(PRIORITIES.find(h.priority) + 1) % PRIORITIES.size()]
 	ui.build_panel(h)
@@ -1158,7 +1272,7 @@ func damage_enemy(e: Enemy, dmg: float, o: Dictionary) -> void:
 func pop_enemy(e: Enemy, hero) -> Array:
 	var where := e.node.position
 	_remove_enemy(e)
-	earn(0.5 if round_num > 30 else 1.0)
+	earn((0.5 if round_num > 30 else 1.0) * (5.0 if golden_t > 0.0 else 1.0))
 	game_pops += 1
 	if _tracking():
 		progress.add("pops", 1.0, false)
@@ -1831,6 +1945,8 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 		mode = game_mode
 	paused = false
 	encore_t = 0.0
+	golden_t = 0.0
+	powers_used_game = 0
 	game_pops = 0
 	cash_earned = 0.0
 	if map_i >= 0 and map_i != map_index:
@@ -1871,6 +1987,14 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 	start_lives = lives
 	ui.rebuild_shop()
 	ui.refresh_abilities()
+	ui.refresh_powers()
+	if not demo:
+		music.play_song("game")
+	tutorial_step = -1
+	ui.hide_tutorial()
+	if not demo and mode != "sandbox" and not bool(save.get_value("settings", "tutorial_seen", false)):
+		start_tutorial()
+	ui.set_hud_visible(not demo)
 	ui.update_hud()
 	ui.update_next_round()
 	ui.show_pause(false)
@@ -1898,6 +2022,7 @@ func to_home() -> void:
 
 # Leave any running game and switch to the menu scene.
 func _enter_menus() -> void:
+	music.play_song("menu")
 	paused = false
 	daily_active = false
 	attract = true
@@ -1959,7 +2084,7 @@ func _tracking() -> bool:
 # ---------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------
-const SETTING_DEFAULTS := {"sound": true, "shake": true, "shadows": true, "autostart": false}
+const SETTING_DEFAULTS := {"music": true, "sound": true, "shake": true, "shadows": true, "autostart": false}
 
 func get_setting(key: String) -> bool:
 	return bool(save.get_value("settings", key, SETTING_DEFAULTS.get(key, true)))
@@ -1971,6 +2096,8 @@ func set_setting(key: String, value: bool) -> void:
 
 func _apply_settings() -> void:
 	sfx.muted = not get_setting("sound")
+	if music:
+		music.set_enabled(get_setting("music"))
 	sun.shadow_enabled = get_setting("shadows")
 	if ui:
 		ui.update_hud()
@@ -2020,11 +2147,16 @@ func game_over() -> void:
 	over = true
 	running = false
 	sfx.play("lose")
+	var gems := 0
+	if _tracking():
+		gems = (round_num / 10) * 5
+		progress.add_gems(gems)
 	_record_best()
-	ui.show_end(false, "The spirits reached the shrine on round %d.\n%s" % [round_num, _stats_text()])
+	ui.show_end(false, "The spirits reached the shrine on round %d.\n%s%s" % [round_num, _stats_text(), "\n+%d Spirit Gems" % gems if gems > 0 else ""])
 
 func victory() -> void:
 	over = true
+	var win_gems := 0
 	sfx.play("win")
 	var medal := mode != "sandbox"
 	if medal:
@@ -2040,13 +2172,15 @@ func victory() -> void:
 		progress.add_to_set("modes_won", mode)
 		progress.add_to_set("maps_won", String(m["id"]))
 		progress.add_xp({"easy": 300.0, "normal": 500.0, "hard": 800.0}[difficulty])
+		win_gems = int({"easy": 15, "normal": 25, "hard": 40}[difficulty] * (1.5 if String(current_map()["tier"]) == "expert" else 1.0))
+		progress.add_gems(win_gems)
 		for k in squad:
 			progress.add_hero_xp(k, 200.0)
 		if daily_active:
 			progress.complete_daily()
 		progress.check()
 	_record_best()
-	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), "\nMedal earned!" if medal else ""])
+	ui.show_end(true, "You held the gate for all %d rounds%s.\n%s%s" % [max_round, "" if mode == "sandbox" else " with %d lives left" % int(ceil(lives)), _stats_text(), ("\nMedal earned!" if medal else "") + ("  +%d Spirit Gems" % win_gems if win_gems > 0 else "")])
 
 func _save_key(map_i: int = -1, diff: String = "", m: String = "") -> String:
 	var mi := map_index if map_i < 0 else map_i
@@ -2089,6 +2223,8 @@ func _step(dt: float) -> void:
 
 	if encore_t > 0.0:
 		encore_t -= dt
+	if golden_t > 0.0:
+		golden_t -= dt
 	for h in heroes:
 		if h.ability_cd > 0.0:
 			h.ability_cd = maxf(0.0, h.ability_cd - dt)
@@ -2175,6 +2311,7 @@ func _process(delta: float) -> void:
 
 	_update_effects(sim_dt)
 	_update_crops(sim_dt)
+	_update_tutorial(dt)
 	_update_particles(dt)
 	for fn in animated:
 		fn.call(time, dt)

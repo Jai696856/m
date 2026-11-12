@@ -31,6 +31,8 @@ func _initialize() -> void:
 	await _test_modifiers(main)
 	await _test_abilities(main)
 	await _test_farm(main)
+	await _test_gems_powers_quests(main)
+	await _test_tutorial_and_music(main)
 	await _test_touch(main)
 	await _test_pause(main)
 	await _test_full_game(main)
@@ -434,6 +436,98 @@ func _test_farm(main) -> void:
 	main._end_round()
 	check(main.crops.is_empty(), "round end collects every bundle")
 	print("farm ok")
+
+func _test_gems_powers_quests(main) -> void:
+	var p = main.progress
+	var g0: int = p.gems()
+	p.add_gems(500)
+	check(p.gems() == g0 + 500, "gems are added")
+	check(p.buy_power("time_stop") and p.power_count("time_stop") == 1, "buy Time Stop")
+	for id in ["shrine_bomb", "cash_drop", "heal", "battle_cry", "golden_touch"]:
+		p.buy_power(id)
+	main.new_game("normal", 0, "standard")
+	check(main.ui.power_bar.get_child_count() >= 1, "power bar shows owned powers")
+	for j in range(10):
+		main.spawn_enemy("pink", 10.0 + j * 2.0)
+	main.use_power("time_stop")
+	check(main.enemies[0].stun > 5.0, "Time Stop freezes spirits")
+	var cash0: float = main.cash
+	main.use_power("cash_drop")
+	check(main.cash >= cash0 + 1500.0, "Cash Drop pays $1500")
+	var n0: int = main.enemies.size()
+	main.use_power("shrine_bomb")
+	check(main.enemies.filter(func(e): return e.alive).size() < n0 or n0 == 0, "Shrine Bomb pops spirits")
+	check(not main.use_power("heal"), "power limit of 3 per game")
+	check(p.get_stat("powers_used") >= 3, "powers used are counted")
+	main.new_game("normal", 0, "sandbox")
+	check(not main.ui.power_bar.visible, "power bar hidden in sandbox")
+	# Quests
+	var qs: Array = p.quests()
+	check(qs.size() == 3, "three daily quests")
+	var q: Dictionary = qs[0]
+	var stat: String = ""
+	for qq in p.QUEST_POOL:
+		if qq[0] == q["id"]:
+			stat = qq[2]
+	p.add(stat, float(q["need"]))
+	var g1: int = p.gems()
+	check(p.claim_quest(0) and p.gems() >= g1 + int(q["gems"]), "claiming a finished quest pays gems")
+	check(not p.claim_quest(0), "a quest can only be claimed once")
+	# Skins
+	var g2: int = p.gems()
+	check(p.buy_skin("ninja", 1) and p.gems() < g2 + 25 and p.skin("ninja") == 1, "buy and wear a skin")
+	main.new_game("normal", 0, "standard")
+	main.cash = 1.0e6
+	var spot: Vector2 = _find_spots(main, 1)[0]
+	var h = main.place_hero("ninja", spot.x, spot.y)
+	check(h != null, "skinned hero placed")
+	# Menu screens
+	main.to_home()
+	main.menu._open("store")
+	check(main.menu.screens["store"].visible, "store screen opens")
+	check(main.menu.quest_box.get_child_count() == 4, "home shows the quest board")
+	main.menu.open_tree("ninja")
+	check(main.menu.skin_row.get_child_count() == 4, "tree shows 4 skins")
+	print("gems, powers, quests, skins ok")
+
+func _test_tutorial_and_music(main) -> void:
+	main.save.set_value("settings", "tutorial_seen", false)
+	main.new_game("easy", 0, "standard")
+	check(main.tutorial_step == 0 and main.ui.tut_box.visible, "tutorial starts in the first game")
+	main.begin_placing("ninja")
+	main._update_tutorial(0.016)
+	check(main.tutorial_step == 1, "tutorial: pick a hero")
+	var spot: Vector2 = _find_spots(main, 1)[0]
+	main.place_hero("ninja", spot.x, spot.y)
+	main.cancel_placing()
+	main._update_tutorial(0.016)
+	check(main.tutorial_step == 2, "tutorial: place the hero")
+	main.on_play()
+	main._update_tutorial(0.016)
+	main.select_hero(main.heroes[0])
+	main._update_tutorial(0.016)
+	main.cash = 5000.0
+	main.buy_upgrade(main.heroes[0], 0)
+	main._update_tutorial(0.016)
+	check(main.tutorial_step == 5, "tutorial reaches the last step (%d)" % main.tutorial_step)
+	for i in range(10):
+		main._update_tutorial(1.0)
+	check(main.tutorial_step == -1 and not main.ui.tut_box.visible, "tutorial finishes")
+	check(main.progress.is_unlocked("tutorial"), "tutorial achievement")
+	main.new_game("easy", 0, "standard")
+	check(main.tutorial_step == -1, "tutorial only shows once")
+	# Music loops render on worker threads
+	var t0 := Time.get_ticks_msec()
+	while not (main.music.is_ready("menu") and main.music.is_ready("game")) and Time.get_ticks_msec() - t0 < 10000:
+		await process_frame
+	check(main.music.is_ready("game"), "music loops rendered")
+	check(main.music.song == "game", "game music plays in a game")
+	main.to_home()
+	check(main.music.song == "menu", "menu music plays on the menus")
+	main.set_setting("music", false)
+	check(not main.music.playing, "music can be switched off")
+	main.set_setting("music", true)
+	print("tutorial and music ok")
 
 # Touch controls for iPad/iPhone (Xogot): pinch zooms, two fingers pan, buttons replace keys.
 func _test_touch(main) -> void:

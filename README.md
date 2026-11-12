@@ -48,7 +48,8 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 
 | Action | Mouse / keys | Touch |
 |---|---|---|
-| Pick a hero | Click a portrait, or **1–7** | Tap a portrait |
+| Pick a hero | Click a portrait, or **1–5** for a class then **Z X C V B** | Tap a portrait |
+| Collect a farm's coin bundle | Click it | Tap it |
 | Place it | Click on grass (**Shift**-click places another) | Tap on grass |
 | Select a placed hero | Click it | Tap it |
 | Upgrade paths 1/2/3 | Panel buttons, or **, . /** | Panel buttons |
@@ -73,6 +74,22 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
   a pink halo and grow back a layer if left alone for 2.5 seconds. Both appear in later rounds.
 - **Hero abilities:** every hero unlocks a special ability when any of its upgrade paths reaches tier 3.
   Use it from the ability bar or with **Q W E R T Y U I**.
+- **21 heroes in 5 classes**, including **Komugi the rice farmer** (Support). Her paddy grows coin bundles
+  during each round; tap them to collect, or buy *Farm Hand* to collect them automatically. Her paths are
+  Harvest (bigger, faster bundles), Market (auto-collect, income, interest) and Scarecrow (a damaging pulse,
+  lives and a speed buff). Her ability, *Bumper Crop*, grows 8 bundles worth double.
+- **Spirit Gems** are earned from wins (more on Hard and Expert maps), achievements, level-ups, the daily
+  challenge and daily quests.
+- **Store** with six one-shot **powers** bought with gems: Time Stop, Shrine Bomb, Cash Drop, Healing Charm,
+  Battle Cry and Golden Touch. Owned powers appear down the left edge in a game (up to 3 per game).
+- **Daily quests:** three new goals every day on the home screen, each claimable for gems and XP.
+- **Hero skins:** four colour styles per hero (Classic, Sakura, Midnight, Golden), bought with gems and
+  picked in the upgrade tree.
+- **Music:** a calm menu theme and a bouncier battle theme, synthesized in code. It renders on a worker
+  thread at startup and can be switched off in Settings.
+- **Tutorial:** a six-step coach in your first game (replay it from *How to play*).
+- **Custom icons:** an app icon, class tab icons, and icons for gems, powers, quests, skins and upgrades,
+  all from the shared SVG set in `scripts/icons.gd`.
 - **Pause menu** (**Esc** or **P**) with Resume, Restart, Maps and Sound.
 - The **save file** (`user://save.cfg`) stores best rounds, medals and settings.
 - The **upgrade panel** shows the hero's live stats. The end screen shows spirits popped and money earned.
@@ -82,6 +99,7 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 ```bash
 godot --headless --path . -s tests/smoke_test.gd   # all maps, modes, modifiers, abilities, a full game
 xvfb-run godot --path . -s tests/screenshot.gd -- /tmp/shots   # real screenshots of menu and themes
+xvfb-run godot --path . -s tests/store_shots.gd -- /tmp/shots  # quests, store, skins, a farm game
 ```
 
 ## Level and track
@@ -108,10 +126,14 @@ Spirits follow the centre line with slightly rounded 90° corners.
 |---|---|
 | `main.tscn` | One node running `scripts/main.gd` (instances the Level) |
 | `scripts/main.gd` | Game loop: path, map, spirits, heroes, projectiles, rounds, camera, input |
-| `scripts/defs.gd` | All game data: spirit types, 7 heroes and their 3×4 upgrade trees, balance numbers |
+| `scripts/defs.gd` | All game data: spirit types, 21 heroes in 5 classes and their 3×4 upgrade trees, balance numbers |
 | `scripts/models.gd` | Builds every 3D model from primitive meshes, with toon shading and ink outlines |
 | `scripts/ui.gd` | HUD, hero shop (3D-rendered portraits), upgrade panel, boss bar, menus |
 | `scripts/sfx.gd` | Synthesizes all sound effects in code at startup |
+| `scripts/music.gd` | Step-sequencer music, rendered to looping WAVs on a worker thread |
+| `scripts/progress.gd` | XP, levels, achievements, daily challenge and quests, hero XP and unlocks, gems, powers, skins |
+| `scripts/main_menu.gd` | Village-hub home, quest board, heroes and upgrade tree, store, achievements, stats, settings |
+| `scripts/icons.gd` | SVG icon set (matches the Figma kit) |
 
 To rebalance or add upgrades, edit `scripts/defs.gd`. In each upgrade's effect dictionary, `"key": n` adds,
 `"key*": n` multiplies and `"key=": v` sets. Dotted keys such as `"explode.r"` reach into nested stats.
