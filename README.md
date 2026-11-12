@@ -93,6 +93,9 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 - **Spirit modifiers:** *fortified* spirits have double health and a steel band; *regrowing* spirits have
   a pink halo and grow back a layer if left alone for 2.5 seconds. Both appear in later rounds.
 - **Hero abilities:** every hero unlocks a special ability when any of its upgrade paths reaches tier 3.
+  Abilities have full 3D effects that deal their damage when they land: Meteor Shower drops burning meteors
+  from the sky, Thunderstorm forks lightning onto its targets, Spear Rain and Big Bang fall around the hero,
+  Orbital Strike locks on before a beam comes down, and so on.
   Use it from the ability bar or with **Q W E R T Y U I**.
 - **21 heroes in 5 classes**, including **Komugi the rice farmer** (Support). Her paddy grows coin bundles
   during each round; tap them to collect, or buy *Farm Hand* to collect them automatically. Her paths are
@@ -122,6 +125,7 @@ xvfb-run godot --path . -s tests/screenshot.gd -- /tmp/shots   # real screenshot
 xvfb-run godot --path . -s tests/store_shots.gd -- /tmp/shots  # quests, store, skins, a farm game
 xvfb-run godot --path . -s tests/ui_tour.gd -- /tmp/shots      # every screen, for visual review
 xvfb-run godot --path . -s tests/model_shots.gd -- /tmp/shots  # line-ups of every hero and spirit
+xvfb-run godot --path . -s tests/fx_shots.gd -- /tmp/shots     # hero abilities mid-effect
 ```
 
 ## Level and track

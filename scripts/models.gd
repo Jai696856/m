@@ -895,6 +895,77 @@ static func crop_bundle() -> Node3D:
 	g.scale = Vector3.ONE * 1.7
 	return g
 
+# ---------------------------------------------------------------------
+# Ability effects. Each is built pointing up (+Y); the game aims and animates it.
+# ---------------------------------------------------------------------
+## A burning rock with a glowing shell and a long flame trail behind it (+Y).
+static func meteor(scale: float = 1.0) -> Node3D:
+	var g := Node3D.new()
+	add(g, sphere(0.62, 10), toon(0x5a2a1c), Vector3.ZERO, Vector3(0.4, 0.7, 0.2), Vector3(1, 0.86, 1))
+	for i in range(4):
+		add(g, sphere(0.2, 6), flat(0xffc34a), Vector3(cos(i * 1.7) * 0.42, sin(i * 2.3) * 0.3, sin(i * 1.7) * 0.42))
+	add(g, sphere(0.95, 14), fx_mat(Color(1.0, 0.5, 0.12, 0.5), true))
+	add(g, cone(0.75, 4.6, 12), fx_mat(Color(1.0, 0.45, 0.1, 0.55), true), Vector3(0, 2.5, 0))
+	add(g, cone(0.4, 6.4, 10), fx_mat(Color(1.0, 0.85, 0.4, 0.6), true), Vector3(0, 3.3, 0))
+	g.scale = Vector3.ONE * scale
+	for c in g.get_children():
+		(c as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return g
+
+## A spear that falls point-first (the tip is at -Y).
+static func spear() -> Node3D:
+	var g := Node3D.new()
+	add(g, cyl(0.05, 0.05, 2.2, 6), toon(0x8b5a2b, 1.0, false), Vector3(0, 1.1, 0))
+	add(g, cone(0.16, 0.6, 8), flat(0xe8f4ff), Vector3(0, -0.2, 0), Vector3(PI, 0, 0))
+	add(g, cone(0.3, 2.6, 8), fx_mat(Color(0.7, 0.9, 1.0, 0.35), true), Vector3(0, 1.6, 0))
+	return g
+
+## A heavy cannon shell with a smoke-orange tail.
+static func shell() -> Node3D:
+	var g := Node3D.new()
+	add(g, capsule(0.3, 0.5), toon(0x39404d), Vector3.ZERO)
+	add(g, cyl(0.31, 0.31, 0.12, 12), flat(0xffc93c), Vector3(0, 0.1, 0))
+	add(g, cone(0.4, 3.0, 10), fx_mat(Color(1.0, 0.6, 0.2, 0.45), true), Vector3(0, 1.8, 0))
+	return g
+
+## A jagged lightning bolt from `height` down to the origin.
+static func lightning(height: float, rng_seed: int, hex: int = 0xfff36b) -> Node3D:
+	var g := Node3D.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
+	var core := fx_mat(Color(1, 1, 1, 0.95), true)
+	var glow := fx_mat(Defs.col(hex, 0.55), true)
+	var p := Vector3.ZERO
+	var steps := 7
+	for i in range(steps):
+		var q := Vector3(rng.randf_range(-1.1, 1.1), height * (i + 1) / steps, rng.randf_range(-1.1, 1.1))
+		if i == steps - 1:
+			q.x *= 2.0
+		var mid := (p + q) / 2.0
+		var d := q - p
+		var basis := Basis(Quaternion(Vector3.UP, d.normalized()))
+		for pass_i in range(2):
+			var w := 0.12 if pass_i == 0 else 0.42
+			var seg := mi(cyl(1.0, 1.0, 1.0, 6), core if pass_i == 0 else glow)
+			seg.transform = Transform3D(basis * Basis.from_scale(Vector3(w, d.length() * 1.04, w)), mid)
+			seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			g.add_child(seg)
+		p = q
+	return g
+
+## A glowing magic circle lying on the ground: two rings, spokes and rune dots.
+static func rune_circle(radius: float, hex: int) -> Node3D:
+	var g := Node3D.new()
+	var m := fx_mat(Defs.col(hex, 0.85), true)
+	add(g, torus(radius, 0.07), m)
+	add(g, torus(radius * 0.62, 0.05), m)
+	for i in range(6):
+		var a := i * TAU / 6.0
+		add(g, box(0.07, 0.03, radius * 1.24), m, Vector3.ZERO, Vector3(0, a, 0))
+		add(g, sphere(0.16, 8), fx_mat(Color(1, 1, 1, 0.9), true), Vector3(cos(a) * radius * 0.81, 0.05, sin(a) * radius * 0.81))
+	g.set_meta("mat", m)
+	return g
+
 static func projectile(kind: String) -> Node3D:
 	var g := Node3D.new()
 	var spin: Node3D = null

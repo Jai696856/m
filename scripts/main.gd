@@ -934,96 +934,199 @@ func use_ability(h: Hero) -> void:
 	var s := eff(h)
 	var hpos := Vector2(h.x, h.z)
 	h.anim = 0.4
+	var hp3 := Vector3(h.x, 0, h.z)
 	match h.key:
 		"ninja":
 			var o := opt_from(s, h, {"dmg": float(s["dmg"]) + 2.0, "type": "magic"})
-			for i in range(40):
-				fire(hpos, i / 40.0 * TAU, "shuriken", o, 30.0, 6, {"life": 1.3})
+			h.spin = 0.6
+			shockwave(hp3, 5.0, 0x8a7dff, 0.4)
+			for wave in range(2):
+				after(wave * 0.18, func() -> void:
+					for i in range(20):
+						fire(hpos, (i + wave * 0.5) / 20.0 * TAU, "shuriken", o, 30.0, 6, {"life": 1.3}))
 		"miko":
+			rune_fx(hp3, 5.0, 0xffd34d, 1.4)
+			shockwave(hp3, 70.0, 0xffe9a8, 0.9, 0.25)
 			for e in enemies:
 				if e.alive:
 					e.stun = maxf(e.stun, 0.8 if e.boss else 2.5)
 					e.frozen = false
-			_ring_fx(Vector3(h.x, 0.5, h.z), 70.0, 0xffd34d, 0.9)
+					pillar(e.pos, 0xffd34d, 0.38 if not e.boss else 1.4, 0.55, 14.0)
 		"mage":
+			# Meteors really fall: each one lands where its target will be and explodes there
 			var o2 := opt_from(s, h, {"dmg": 25.0, "type": "magic", "boss_mul": 3.0})
-			for e in _strongest(8):
-				explode(e.pos.x, e.pos.z, {"r": 4.0, "pierce": 40}, o2, false)
+			rune_fx(hp3, 3.2, 0xff7b22, 1.6)
+			var marks := _strongest(8)
+			for i in range(8):
+				var delay := 0.12 * i
+				var fall := 0.62
+				var to: Vector3
+				if i < marks.size():
+					to = predict(marks[i], delay + fall)
+				else:
+					to = pos_at(randf() * path_len)
+				to.y = 0.6
+				var from := to + Vector3(randf_range(7.0, 11.0), 30.0, randf_range(-9.0, -5.0))
+				after(delay, func() -> void:
+					drop(Models.meteor(randf_range(0.9, 1.25)), from, to, fall, func() -> void:
+						explode(to.x, to.z, {"r": 4.0, "pierce": 40}, o2, false)
+						pillar(to, 0xff8a2a, 1.1, 0.35, 9.0)
+						burst(to, Defs.col(0xff7b22), 16, 9.0)
+						shake = maxf(shake, 0.35 * shake_mul())))
 		"ice":
+			rune_fx(hp3, 4.0, 0x9ff3ff, 1.5)
+			shockwave(hp3, 70.0, 0xbff4ff, 1.0, 0.3)
 			for e in enemies:
 				if e.alive:
 					e.stun = maxf(e.stun, 2.0 if e.boss else 3.0)
 					e.frozen = true
 					apply_slow(e, 0.5, 6.0)
-			_ring_fx(Vector3(h.x, 0.5, h.z), 70.0, 0x9ff3ff, 0.9)
+					burst(e.pos + Vector3(0, 1, 0), Color(0.85, 0.97, 1.0), 4, 3.0)
+			# Ice shards rain across the track
+			for i in range(26):
+				var to2 := pos_at(randf() * path_len)
+				after(randf() * 0.7, func() -> void:
+					var shard := Models.mi(Models.cone(0.22, 1.6, 6), Models.fx_mat(Color(0.75, 0.95, 1.0, 0.85), true), Vector3.ZERO, Vector3(PI, 0, 0))
+					var holder_n := Node3D.new()
+					holder_n.add_child(shard)
+					drop(holder_n, to2 + Vector3(2.0, 18.0, -1.0), to2, 0.4, func() -> void:
+						burst(to2 + Vector3(0, 0.5, 0), Color(0.8, 0.96, 1.0), 5, 4.0)))
 		"samurai":
 			var o3 := opt_from(s, h, {"dmg": 150.0, "type": "magic"})
-			for e in _strongest(6):
-				var arc := Models.mi(Models.torus(1.0, 0.09), Models.fx_mat(Defs.col(0xe8f4ff)))
-				add_effect(arc, Vector3(e.pos.x, 1.3, e.pos.z), 0.3, "slash", 3.0, null, randf() * TAU)
-				hit_enemy(e, o3)
+			var cuts := _strongest(6)
+			for i in range(cuts.size()):
+				var e: Enemy = cuts[i]
+				after(i * 0.07, func() -> void:
+					if e.alive:
+						slash_fx(e.pos, 3.4)
+						burst(e.pos + Vector3(0, 1, 0), Color(0.95, 0.98, 1.0), 8, 6.0)
+						hit_enemy(e, o3))
+			after(cuts.size() * 0.07 + 0.05, func() -> void: shockwave(hp3, 6.0, 0xe8f4ff, 0.35))
 		"mecha":
 			var top := _strongest(1)
 			if not top.is_empty():
 				var t: Enemy = top[0]
-				var bm := Models.fx_mat(Defs.col(0x66f6ff, 0.95), true)
-				var beam := Models.mi(Models.cyl(1.0, 1.0, 1.0, 12), bm, Vector3.ZERO, Vector3.ZERO, Vector3(1.6, 60.0, 1.6))
-				add_effect(beam, Vector3(t.pos.x, 30.0, t.pos.z), 0.5, "beam", 1.0, bm)
-				hit_enemy(t, opt_from(s, h, {"dmg": 2000.0, "type": "magic", "boss_mul": 1.0}))
-				explode(t.pos.x, t.pos.z, {"r": 3.5, "pierce": 30}, opt_from(s, h, {"dmg": 10.0, "type": "magic"}), false)
-				shake = 0.6 * shake_mul()
+				var om := opt_from(s, h, {"dmg": 2000.0, "type": "magic", "boss_mul": 1.0})
+				var om2 := opt_from(s, h, {"dmg": 10.0, "type": "magic"})
+				# A targeting circle closes in, then the beam comes down
+				var aim_at := predict(t, 0.55)
+				rune_fx(aim_at, 3.0, 0x66f6ff, 0.6)
+				after(0.55, func() -> void:
+					var at: Vector3 = t.pos if t.alive else aim_at
+					pillar(at, 0x66f6ff, 3.2, 0.7, 60.0)
+					shockwave(at, 7.0, 0x66f6ff, 0.5, 0.6)
+					burst(at + Vector3(0, 1, 0), Color(0.6, 0.97, 1.0), 30, 11.0)
+					if t.alive:
+						hit_enemy(t, om)
+					explode(at.x, at.z, {"r": 3.5, "pierce": 30}, om2, false)
+					shake = 0.7 * shake_mul())
 		"ren":
 			var o4 := opt_from(s, h, {"dmg": 120.0, "type": "magic"})
-			for e in _strongest(6):
-				burst(e.node.position, Defs.col(0xffb02e), 8, 5.0)
-				hit_enemy(e, o4)
+			var marks2 := _strongest(6)
+			for i in range(marks2.size()):
+				var e2: Enemy = marks2[i]
+				# Three quick blows on each target; the last one carries the damage
+				for k in range(3):
+					after(i * 0.06 + k * 0.08, func() -> void:
+						if e2.alive:
+							shockwave(e2.pos, 1.6 + k * 0.5, 0xffb02e, 0.2, 0.7)
+							burst(e2.pos + Vector3(0, 1, 0), Defs.col(0xffb02e), 5, 5.0)
+							if k == 2:
+								hit_enemy(e2, o4))
 		"kenta":
-			var o5 := opt_from(s, h, {"dmg": float(s["dmg"]) + 4.0, "type": "magic"})
+			# Spears fall from the sky around Kenta and pierce what they land on
+			var o5 := opt_from(s, h, {"dmg": (float(s["dmg"]) + 4.0) * 3.0, "type": "magic"})
+			var rng_r: float = float(s["range"]) + 2.0
+			var near_k := enemies_near(h.x, h.z, rng_r, true)
 			for i in range(30):
-				fire(hpos, i / 30.0 * TAU, "arrow", o5, 34.0, 12, {"life": 1.4})
+				var to3: Vector3
+				if i < near_k.size():
+					to3 = predict(near_k[i], 0.1 + i * 0.03 + 0.4)
+				else:
+					var a := randf() * TAU
+					var rr := sqrt(randf()) * rng_r
+					to3 = Vector3(h.x + cos(a) * rr, 0, h.z + sin(a) * rr)
+				to3.y = 0.3
+				after(0.1 + i * 0.03, func() -> void:
+					drop(Models.spear(), to3 + Vector3(1.5, 22.0, -1.0), to3, 0.4, func() -> void:
+						for e in enemies_near(to3.x, to3.z, 1.7, true):
+							hit_enemy(e, o5)
+						shockwave(to3, 1.5, 0xcfe9ff, 0.22, 0.5)))
 		"saya":
 			var o6 := opt_from(s, h, {"dmg": 40.0, "type": "magic", "boss_mul": 3.0})
-			for e in _strongest(6):
-				explode(e.pos.x, e.pos.z, {"r": 4.5, "pierce": 50}, o6, false)
-			shake = 0.5 * shake_mul()
+			var marks3 := _strongest(6)
+			for i in range(6):
+				var to4: Vector3
+				if i < marks3.size():
+					to4 = predict(marks3[i], 0.2 * i + 0.7)
+				else:
+					to4 = pos_at(randf() * path_len)
+				to4.y = 0.5
+				after(0.2 * i, func() -> void:
+					sfx.play("throw")
+					drop(Models.shell(), to4 + Vector3(-6.0, 26.0, 4.0), to4, 0.7, func() -> void:
+						explode(to4.x, to4.z, {"r": 4.5, "pierce": 50}, o6, false)
+						pillar(to4, 0xffa040, 1.6, 0.3, 7.0)
+						shake = maxf(shake, 0.4 * shake_mul())))
 		"sora":
 			var o7 := opt_from(s, h, {"dmg": 30.0, "type": "magic"})
+			shockwave(hp3, 70.0, 0xfff36b, 0.6, 0.18)
 			for e in enemies:
 				if e.alive:
 					e.stun = maxf(e.stun, 0.5 if e.boss else 1.2)
-			for e in _strongest(10):
-				var bolt_m := Models.fx_mat(Defs.col(0xfff36b, 0.95), true)
-				add_effect(Models.mi(Models.cyl(1.0, 1.0, 1.0, 6), bolt_m, Vector3.ZERO, Vector3.ZERO, Vector3(0.35, 40.0, 0.35)), Vector3(e.pos.x, 20.0, e.pos.z), 0.25, "beam", 1.0, bolt_m)
-				hit_enemy(e, o7)
+			var marks4 := _strongest(10)
+			for i in range(marks4.size()):
+				var e3: Enemy = marks4[i]
+				after(i * 0.06, func() -> void:
+					if e3.alive:
+						lightning_strike(e3.pos)
+						sfx.play("beam")
+						hit_enemy(e3, o7))
 		"riku":
 			var o8 := opt_from(s, h, {"dmg": float(s["dmg"]) + 3.0, "type": "blast"})
 			var targets := _strongest(24)
+			shockwave(hp3, 3.5, 0x66f6ff, 0.3)
 			for i in range(24):
 				var tg = targets[i % targets.size()] if not targets.is_empty() else null
-				fire(hpos, i / 24.0 * TAU, "missile", o8, 18.0, 1, {"homing": true, "target": tg, "explode": {"r": 1.8, "pierce": 12}, "life": 3.0})
+				after(i * 0.03, func() -> void:
+					fire(hpos, i / 24.0 * TAU, "missile", o8, 18.0, 1, {"homing": true, "target": tg, "explode": {"r": 1.8, "pierce": 12}, "life": 3.0}))
 		"hina":
 			var o9 := opt_from(s, h, {"dmg": float(s["dmg"]) + 2.0, "type": "magic"})
 			var tg2 := _strongest(10)
 			for i in range(60):
 				var t2 = tg2[i % tg2.size()] if not tg2.is_empty() else null
-				fire(hpos, randf() * TAU, "frag", o9, 30.0, 2, {"homing": true, "target": t2, "life": 2.0})
+				after(i * 0.012, func() -> void:
+					fire(hpos, randf() * TAU, "frag", o9, 30.0, 2, {"homing": true, "target": t2, "life": 2.0}))
 		"hiro":
 			var gain := minf(3000.0, 400.0 + cash * 0.05)
 			earn(gain)
 			float_text("+$%d" % int(gain), Vector3(h.x, 3.0, h.z), false)
+			pillar(hp3, 0xffd34d, 1.2, 0.6, 10.0)
+			for k in range(4):
+				after(k * 0.08, func() -> void: burst(Vector3(h.x, 2.0, h.z), Color(1.0, 0.85, 0.3), 14, 7.0))
 		"komugi":
+			rune_fx(hp3, 3.0, 0x9be15d, 1.0)
 			for i in range(8):
-				_grow_crop(h, s, 2.0)
+				after(i * 0.07, func() -> void: _grow_crop(h, s, 2.0))
 		"nao":
 			if mode != "sandbox":
 				lives += 25
 				float_text("+25 LIVES", Vector3(h.x, 3.0, h.z), false)
 				ui.update_hud()
+			pillar(hp3, 0x7fe0a0, 1.6, 0.9)
+			rune_fx(hp3, 3.5, 0x7fe0a0, 1.2)
+			var gate := pos_at(path_len)
+			pillar(gate, 0x7fe0a0, 2.4, 1.0)
+			shockwave(gate, 6.0, 0x7fe0a0, 0.7)
 		"kaito":
 			var ok := opt_from(s, h, {"dmg": 20.0, "type": "magic"})
-			for i in range(16):
-				fire(hpos, i / 16.0 * TAU, "wave", ok, 22.0, 30, {"r": 0.9, "life": 1.6})
-			shake = 0.3 * shake_mul()
+			for wave in range(2):
+				after(wave * 0.22, func() -> void:
+					shockwave(hp3, 4.0, 0x9ff3ff, 0.3)
+					sfx.play("boom")
+					for i in range(8):
+						fire(hpos, (i + wave * 0.5) / 8.0 * TAU, "wave", ok, 22.0, 30, {"r": 0.9, "life": 1.6})
+					shake = maxf(shake, 0.3 * shake_mul()))
 		"rei":
 			var tops := _strongest(1)
 			var ang := randf() * TAU
@@ -1032,39 +1135,67 @@ func use_ability(h: Hero) -> void:
 			var dx := sin(ang)
 			var dz := cos(ang)
 			var orr := opt_from(s, h, {"dmg": 400.0, "type": "magic"})
-			for e in enemies.duplicate():
-				if not e.alive:
-					continue
-				var rx: float = e.pos.x - h.x
-				var rz: float = e.pos.z - h.z
-				if rx * dx + rz * dz > 0.0 and absf(rx * dz - rz * dx) <= 2.4 + e.r:
-					hit_enemy(e, orr)
-			var holder := Node3D.new()
-			holder.rotation.y = ang
-			var bm2 := Models.fx_mat(Defs.col(0xffb02e, 0.95), true)
-			Models.add(holder, Models.cyl(1.0, 1.0, 1.0, 12), bm2, Vector3(0, 0, 40.0), Vector3(PI / 2, 0, 0), Vector3(2.4, 80.0, 2.4))
-			add_effect(holder, Vector3(h.x, 1.6, h.z), 0.6, "beam", 1.0, bm2)
-			shake = 0.5 * shake_mul()
+			_aim(h, h.x + dx, h.z + dz)
+			# Charge up, then release
+			rune_fx(hp3, 2.6, 0xffb02e, 0.5)
+			after(0.4, func() -> void:
+				for e in enemies.duplicate():
+					if not e.alive:
+						continue
+					var rx: float = e.pos.x - h.x
+					var rz: float = e.pos.z - h.z
+					if rx * dx + rz * dz > 0.0 and absf(rx * dz - rz * dx) <= 2.4 + e.r:
+						hit_enemy(e, orr)
+						burst(e.pos + Vector3(0, 1, 0), Defs.col(0xffd27a), 4, 5.0)
+				for layer in range(2):
+					var holder := Node3D.new()
+					holder.rotation.y = ang
+					var bm2 := Models.fx_mat(Defs.col(0xffb02e, 0.8) if layer == 0 else Color(1, 1, 0.9, 0.95), true)
+					var wdt := 2.6 if layer == 0 else 1.1
+					Models.add(holder, Models.cyl(1.0, 1.0, 1.0, 14), bm2, Vector3(0, 0, 40.0), Vector3(PI / 2, 0, 0), Vector3(wdt, 80.0, wdt))
+					Models.add(holder, Models.sphere(1.0, 14), bm2, Vector3(0, 0, 1.0), Vector3.ZERO, Vector3.ONE * wdt * 1.3)
+					add_effect(holder, Vector3(h.x, 1.6, h.z), 0.7 - layer * 0.15, "beam", 1.0, bm2)
+				for k in range(5):
+					shockwave(Vector3(h.x + dx * (6.0 + k * 9.0), 0, h.z + dz * (6.0 + k * 9.0)), 3.5, 0xffb02e, 0.4 + k * 0.05, 0.35)
+				sfx.play("boom")
+				shake = 0.6 * shake_mul())
 		"ichika":
 			var oi := opt_from(s, h, {"dmg": 30.0, "type": "magic"})
+			rune_fx(hp3, 12.0, 0xd81b60, 2.0)
+			shockwave(hp3, 12.0, 0xd81b60, 0.6, 0.3)
 			for e in enemies_near(h.x, h.z, 12.0, true):
 				e.stun = maxf(e.stun, 1.5 if e.boss else 3.0)
 				hit_enemy(e, oi)
-			_ring_fx(Vector3(h.x, 0.5, h.z), 12.0, 0xd81b60, 0.8)
+				if e.alive:
+					pillar(e.pos, 0xd81b60, 0.6, 0.6, 8.0)
 		"gen":
 			var og := opt_from(s, h, {"dmg": 25.0, "type": "magic", "stun": 1.0, "stun_boss": true})
-			for e in _strongest(12):
-				explode(e.pos.x, e.pos.z, {"r": 3.0, "pierce": 30}, og, false)
+			var marks5 := _strongest(12)
+			for i in range(marks5.size()):
+				var to5 := predict(marks5[i], 0.05 * i + 0.45)
+				to5.y = 0.5
+				after(0.05 * i, func() -> void:
+					var g := Models.mi(Models.sphere(0.28, 8), Models.toon(0x4a5568))
+					var gh := Node3D.new()
+					gh.add_child(g)
+					drop(gh, Vector3(h.x, 9.0, h.z), to5, 0.45, func() -> void:
+						explode(to5.x, to5.z, {"r": 3.0, "pierce": 30}, og, false)
+						shockwave(to5, 3.6, 0xffffff, 0.2, 0.8)))
 		"lumi":
 			encore_t = 8.0
 			if mode != "sandbox":
 				lives += 10
 				ui.update_hud()
+			rune_fx(hp3, 4.0, 0xff6fae, 1.4)
+			shockwave(hp3, 40.0, 0xff9fd0, 0.9, 0.2)
 			for o in heroes:
+				pillar(Vector3(o.x, 0, o.z), 0xff6fae, 0.9, 0.8, 12.0)
 				burst(Vector3(o.x, 2.5, o.z), Defs.col(0xff6fae), 10, 4.0)
 		"idol":
 			encore_t = 10.0
+			shockwave(hp3, 40.0, 0xffd34d, 0.9, 0.2)
 			for o in heroes:
+				pillar(Vector3(o.x, 0, o.z), 0xffd34d, 0.9, 0.8, 12.0)
 				burst(Vector3(o.x, 2.5, o.z), Defs.col(0xffd34d), 10, 4.0)
 	float_text(String(ABILITIES[h.key]["name"]).to_upper(), Vector3(h.x, 4.0, h.z), false)
 	sfx.play("upgrade")
@@ -1099,7 +1230,11 @@ func use_power(id: String) -> bool:
 				if e.alive:
 					e.stun = maxf(e.stun, 2.0 if e.boss else 6.0)
 					e.frozen = true
-			_ring_fx(cam_target + Vector3(0, 0.5, 0), 70.0, 0x7fd6ff, 1.0)
+			shockwave(cam_target, 80.0, 0x7fd6ff, 1.1, 0.3)
+			rune_fx(cam_target, 9.0, 0x7fd6ff, 1.6)
+			for e in enemies:
+				if e.alive:
+					burst(e.pos + Vector3(0, 1, 0), Color(0.8, 0.95, 1.0), 3, 3.0)
 			sfx.play("freeze")
 		"shrine_bomb":
 			var o := {"dmg": 20.0 + round_num * 1.5, "type": "magic", "boss_mul": 2.0}
@@ -1107,7 +1242,11 @@ func use_power(id: String) -> bool:
 				if e.alive:
 					hit_enemy(e, o)
 			shake = 0.6 * shake_mul()
-			_ring_fx(cam_target + Vector3(0, 0.5, 0), 70.0, 0xff6b5b, 0.8)
+			for e in enemies:
+				if e.alive:
+					pillar(e.pos, 0xff6b5b, 0.8, 0.5, 14.0)
+			pillar(pos_at(path_len), 0xff6b5b, 4.0, 0.9, 60.0)
+			shockwave(pos_at(path_len), 90.0, 0xff6b5b, 1.0, 0.3)
 			sfx.play("boom")
 		"cash_drop":
 			add_cash(1500.0)
@@ -1115,10 +1254,15 @@ func use_power(id: String) -> bool:
 		"heal":
 			lives += 50.0
 			float_text("+50 LIVES", cam_target + Vector3(0, 3, 0), false)
+			pillar(pos_at(path_len), 0xff7ac8, 3.0, 1.0)
+			shockwave(pos_at(path_len), 8.0, 0xff7ac8, 0.8)
 		"battle_cry":
 			encore_t = maxf(encore_t, 15.0)
+			for o in heroes:
+				pillar(Vector3(o.x, 0, o.z), 0xffa53c, 0.9, 0.8, 12.0)
 		"golden_touch":
 			golden_t = 20.0
+			shockwave(cam_target, 80.0, 0xffe066, 1.2, 0.25)
 	sfx.play("power")
 	ui.banner(String(pw[1]).to_upper(), String(pw[2]))
 	ui.update_hud()
@@ -1482,7 +1626,10 @@ func explode(x: float, z: float, ex: Dictionary, opt: Dictionary, allow_cluster:
 			break
 		hit_enemy(e, opt)
 		n += 1
-	add_effect(Models.mi(Models.sphere(1.0, 16), Models.fx_mat(Defs.col(0xffa040, 0.8))), Vector3(x, 1, z), 0.28, "blast", ex["r"])
+	add_effect(Models.mi(Models.sphere(1.0, 16), Models.fx_mat(Defs.col(0xffa040, 0.75), true)), Vector3(x, 1, z), 0.3, "blast", ex["r"])
+	add_effect(Models.mi(Models.sphere(1.0, 12), Models.fx_mat(Color(1, 0.97, 0.8, 0.9), true)), Vector3(x, 1, z), 0.16, "blast", float(ex["r"]) * 0.55)
+	if not ex.get("sub", false):
+		shockwave(Vector3(x, 0, z), float(ex["r"]) * 1.25, 0xffb84a, 0.35, 0.4)
 	burst(Vector3(x, 1, z), Defs.col(0xffcc44), 6, 5.0)
 	sfx.play("boom")
 	var cluster := int(ex.get("cluster", 0))
@@ -1490,6 +1637,76 @@ func explode(x: float, z: float, ex: Dictionary, opt: Dictionary, allow_cluster:
 		for i in range(cluster):
 			var a := float(i) / cluster * TAU
 			fire(Vector2(x, z), a, "frag", opt, 14.0, 1, {"explode": {"r": 1.3, "pierce": 8, "sub": true}, "life": 0.25, "r": 0.3})
+
+# =====================================================================
+# Ability effects: things that fall, strike and glow. Timers and falling objects
+# run on game time (in _step), so damage lands when the effect lands.
+# =====================================================================
+var timers: Array = []   # [seconds left, Callable]
+var drops: Array = []    # falling objects {node, from, to, t, dur, hit}
+
+func after(t: float, fn: Callable) -> void:
+	timers.append([t, fn])
+
+## Send `node` from `from` to `to` (speeding up), then call `on_hit`.
+func drop(node: Node3D, from: Vector3, to: Vector3, dur: float, on_hit: Callable) -> void:
+	var dir := (from - to).normalized()
+	node.transform = Transform3D(Basis(Quaternion(Vector3.UP, dir)) * node.transform.basis, from)
+	add_child(node)
+	drops.append({"node": node, "from": from, "to": to, "t": 0.0, "dur": dur, "hit": on_hit})
+
+func _update_fx_sim(dt: float) -> void:
+	for i in range(timers.size() - 1, -1, -1):
+		timers[i][0] -= dt
+		if timers[i][0] <= 0.0:
+			var fn: Callable = timers[i][1]
+			timers.remove_at(i)
+			fn.call()
+	for i in range(drops.size() - 1, -1, -1):
+		var d: Dictionary = drops[i]
+		d["t"] += dt
+		var k := minf(1.0, float(d["t"]) / float(d["dur"]))
+		var node: Node3D = d["node"]
+		node.position = (d["from"] as Vector3).lerp(d["to"], k * (0.35 + 0.65 * k))
+		if k >= 1.0:
+			drops.remove_at(i)
+			node.queue_free()
+			(d["hit"] as Callable).call()
+
+func _clear_fx() -> void:
+	timers.clear()
+	for d in drops:
+		(d["node"] as Node3D).queue_free()
+	drops.clear()
+
+## A flat disc of light that spreads across the ground and fades.
+func shockwave(pos: Vector3, radius: float, hex: int, life: float = 0.45, alpha: float = 0.55) -> void:
+	var m := Models.fx_mat(Defs.col(hex, alpha), true)
+	add_effect(Models.mi(Models.cyl(1.0, 1.0, 0.04, 40), m), Vector3(pos.x, 0.35, pos.z), life, "ring", radius)
+	_ring_fx(Vector3(pos.x, 0.4, pos.z), radius * 1.05, hex, life * 1.1)
+
+## A column of light from the ground into the sky.
+func pillar(pos: Vector3, hex: int, width: float = 1.0, life: float = 0.5, height: float = 26.0) -> void:
+	var m := Models.fx_mat(Defs.col(hex, 0.6), true)
+	add_effect(Models.mi(Models.cyl(1.0, 1.0, 1.0, 16), m, Vector3.ZERO, Vector3.ZERO, Vector3(width, height, width)), Vector3(pos.x, height / 2.0, pos.z), life, "pillar", width)
+	var m2 := Models.fx_mat(Color(1, 1, 1, 0.8), true)
+	add_effect(Models.mi(Models.cyl(1.0, 1.0, 1.0, 10), m2, Vector3.ZERO, Vector3.ZERO, Vector3(width * 0.35, height, width * 0.35)), Vector3(pos.x, height / 2.0, pos.z), life * 0.8, "pillar", width * 0.35)
+
+func lightning_strike(pos: Vector3, hex: int = 0xfff36b) -> void:
+	var bolt := Models.lightning(24.0, randi(), hex)
+	add_effect(bolt, Vector3(pos.x, 0.3, pos.z), 0.22, "flicker")
+	shockwave(pos, 2.6, hex, 0.3, 0.7)
+	burst(Vector3(pos.x, 1.0, pos.z), Defs.col(hex), 10, 6.0)
+
+func rune_fx(pos: Vector3, radius: float, hex: int, life: float) -> void:
+	var node := Models.rune_circle(radius, hex)
+	add_effect(node, Vector3(pos.x, 0.42, pos.z), life, "rune", 1.0, node.get_meta("mat"))
+
+## A slash: two crossing arcs of light.
+func slash_fx(pos: Vector3, size: float, hex: int = 0xe8f4ff) -> void:
+	for i in range(2):
+		var arc := Models.mi(Models.torus(1.0, 0.1), Models.fx_mat(Defs.col(hex, 0.95), true), Vector3.ZERO, Vector3(0.5 if i == 0 else -0.5, 0, 0.3))
+		add_effect(arc, Vector3(pos.x, 1.4, pos.z), 0.28 + i * 0.06, "slash", size, null, randf() * TAU)
 
 func add_effect(node: Node3D, pos: Vector3, life: float, kind: String, size: float = 1.0, mat: StandardMaterial3D = null, rot: float = 0.0) -> Dictionary:
 	node.position = pos
@@ -1521,6 +1738,15 @@ func _update_effects(dt: float) -> void:
 				var sc2 := size * (0.6 + k * 0.5)
 				node.scale = Vector3(sc2, 1, sc2)
 				node.rotation.y = float(f["rot"]) + (k - 0.5) * 1.2
+			"pillar":
+				var w := size * (1.0 - k * 0.75)
+				node.scale = Vector3(w, node.scale.y, w)
+			"rune":
+				node.rotation.y += dt * 1.6
+				var grow := minf(1.0, k * 5.0)
+				node.scale = Vector3(grow, 1, grow)
+			"flicker":
+				node.visible = int(k * 6.0) % 2 == 0 or k < 0.3
 		if m:
 			m.albedo_color.a = float(f["a0"]) * (1.0 - k)
 		if float(f["life"]) <= 0.0:
@@ -2149,6 +2375,7 @@ func new_game(diff: String, map_i: int = -1, game_mode: String = "", demo: bool 
 		(h.model["root"] as Node3D).queue_free()
 	heroes.clear()
 	_clear_crops()
+	_clear_fx()
 	cancel_placing()
 	select_hero(null)
 	var d: Dictionary = DIFFS[diff]
@@ -2411,6 +2638,7 @@ func _stats_text() -> String:
 # Main loop
 # =====================================================================
 func _step(dt: float) -> void:
+	_update_fx_sim(dt)
 	if running:
 		round_time += dt
 		while not queue.is_empty() and queue[0]["t"] <= round_time:
