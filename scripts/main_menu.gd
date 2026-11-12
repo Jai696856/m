@@ -182,13 +182,14 @@ func _build_home() -> void:
 
 	# Continue a saved game, just above PLAY
 	continue_btn = ui.btn("CONTINUE", ui.ORANGE, 18, 16)
-	continue_btn.anchor_left = 0.5
-	continue_btn.anchor_right = 0.5
+	continue_btn.anchor_left = 1.0
+	continue_btn.anchor_right = 1.0
 	continue_btn.anchor_top = 1.0
 	continue_btn.anchor_bottom = 1.0
-	continue_btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	continue_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	continue_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	continue_btn.offset_bottom = -186
+	continue_btn.offset_right = -14
+	continue_btn.offset_bottom = -170
 	continue_btn.custom_minimum_size = Vector2(300, 46)
 	continue_btn.icon = Icons.tex("play", Color.WHITE, 40)
 	continue_btn.add_theme_constant_override("icon_max_width", 20)
@@ -296,7 +297,7 @@ func refresh() -> void:
 	var run: Dictionary = game.saved_run()
 	continue_btn.visible = not run.is_empty()
 	if not run.is_empty():
-		continue_btn.text = "CONTINUE  -  ROUND %d  -  %s" % [int(run["round"]) + 1, String(Maps.MAPS[int(run["map"])]["name"]).to_upper()]
+		continue_btn.text = "CONTINUE  ·  ROUND %d  ·  %s" % [int(run["round"]) + 1, String(Maps.MAPS[int(run["map"])]["name"])]
 	_fill_quests()
 
 func _fill_quests() -> void:

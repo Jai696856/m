@@ -768,24 +768,24 @@ static func shrine() -> Node3D:
 
 static func sakura(s: float, rng: RandomNumberGenerator) -> Node3D:
 	var g := Node3D.new()
-	add(g, cyl(0.63, 1.0, 1.0, 8), toon(0x7a4b36), Vector3(0, 1.1 * s, 0), Vector3.ZERO, Vector3(0.35 * s, 2.2 * s, 0.35 * s))
+	add(g, cyl(0.63, 1.0, 1.0, 12), toon(0x7a4b36), Vector3(0, 1.1 * s, 0), Vector3.ZERO, Vector3(0.35 * s, 2.2 * s, 0.35 * s))
 	var cols := [0xffb7d5, 0xffc9e0, 0xff9fc7]
 	for i in range(4):
 		var r := (1.1 + rng.randf() * 0.4) * s
-		add(g, sphere(1.0, 8), toon(cols[i % 3]), Vector3(cos(i * 2.1) * 0.8 * s, (2.5 + rng.randf() * 0.6) * s, sin(i * 2.1) * 0.8 * s), Vector3.ZERO, Vector3.ONE * r)
+		add(g, sphere(1.0, 16), toon(cols[i % 3]), Vector3(cos(i * 2.1) * 0.8 * s, (2.5 + rng.randf() * 0.6) * s, sin(i * 2.1) * 0.8 * s), Vector3.ZERO, Vector3.ONE * r)
 	g.set_meta("r", 1.6 * s)
 	return g
 
 # Big round leafy tree: a cluster of overlapping canopy balls.
 static func round_tree(s: float, rng: RandomNumberGenerator, greens: Array = [0x2f9a36, 0x3fae3a, 0x52c043], top: int = 0x6fd456) -> Node3D:
 	var g := Node3D.new()
-	add(g, cyl(0.66, 1.0, 1.0, 8), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0), Vector3.ZERO, Vector3(0.38 * s, 1.6 * s, 0.38 * s))
+	add(g, cyl(0.66, 1.0, 1.0, 12), toon(0x7a4f2e), Vector3(0, 0.8 * s, 0), Vector3.ZERO, Vector3(0.38 * s, 1.6 * s, 0.38 * s))
 	for i in range(6):
 		var a := i * 1.05 + rng.randf() * 0.4
 		var r := (0.95 + rng.randf() * 0.35) * s
 		var rad := 0.0 if i == 0 else 0.95 * s
-		add(g, sphere(1.0, 10), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad), Vector3.ZERO, Vector3.ONE * r)
-	add(g, sphere(1.0, 10), toon(top), Vector3(0.2 * s, 3.0 * s, 0.25 * s), Vector3.ZERO, Vector3.ONE * 0.75 * s)
+		add(g, sphere(1.0, 16), toon(greens[mini(i, 2)] if i < 3 else greens[2]), Vector3(cos(a) * rad, (2.2 + (0.6 if i == 0 else rng.randf() * 0.4)) * s, sin(a) * rad), Vector3.ZERO, Vector3.ONE * r)
+	add(g, sphere(1.0, 16), toon(top), Vector3(0.2 * s, 3.0 * s, 0.25 * s), Vector3.ZERO, Vector3.ONE * 0.75 * s)
 	g.set_meta("r", 1.9 * s)
 	return g
 
@@ -796,7 +796,7 @@ static func bush(s: float, rng: RandomNumberGenerator) -> Node3D:
 	for i in range(4):
 		var a := i * 1.6 + rng.randf()
 		var r := (0.55 + rng.randf() * 0.3) * s
-		add(g, sphere(1.0, 10), toon(greens[i % 3]), Vector3(cos(a) * 0.55 * s, r * 0.75, sin(a) * 0.55 * s), Vector3.ZERO, Vector3.ONE * r)
+		add(g, sphere(1.0, 16), toon(greens[i % 3]), Vector3(cos(a) * 0.55 * s, r * 0.75, sin(a) * 0.55 * s), Vector3.ZERO, Vector3.ONE * r)
 	g.set_meta("r", 1.2 * s)
 	return g
 
@@ -807,7 +807,7 @@ static func palm(s: float, rng: RandomNumberGenerator) -> Node3D:
 	var p := Vector3.ZERO
 	for i in range(6):
 		var seg_h := 0.75 * s
-		var c := add(g, cyl(0.77, 1.0, 1.0, 8), toon(0xa8773f if i % 2 == 0 else 0x93652f), p + Vector3(0, seg_h / 2.0, 0), Vector3(0, 0, -lean * i * 0.5), Vector3(0.26 * s, seg_h, 0.26 * s))
+		var c := add(g, cyl(0.77, 1.0, 1.0, 12), toon(0xa8773f if i % 2 == 0 else 0x93652f), p + Vector3(0, seg_h / 2.0, 0), Vector3(0, 0, -lean * i * 0.5), Vector3(0.26 * s, seg_h, 0.26 * s))
 		c.position.x += i * lean * 0.45 * s
 		p.y += seg_h * 0.95
 	var top := Vector3(6 * lean * 0.45 * s, p.y, 0)
@@ -838,8 +838,8 @@ static func snowy_pine(s: float) -> Node3D:
 	add(g, cyl(0.66, 1.0, 1.0, 8), toon(0x6b4430), Vector3(0, 0.5 * s, 0), Vector3.ZERO, Vector3(0.3 * s, 1.0 * s, 0.3 * s))
 	for i in range(3):
 		var r := (1.5 - i * 0.35) * s
-		add(g, cone(1.0, 1.0, 8), toon(0x2f7d55), Vector3(0, (1.3 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r, 1.6 * s, r))
-		add(g, cone(1.0, 1.0, 8), toon(0xf4f8ff), Vector3(0, (1.62 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r * 0.62, 0.95 * s, r * 0.62))
+		add(g, cone(1.0, 1.0, 14), toon(0x2f7d55), Vector3(0, (1.3 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r, 1.6 * s, r))
+		add(g, cone(1.0, 1.0, 14), toon(0xf4f8ff), Vector3(0, (1.62 + i * 0.9) * s, 0), Vector3.ZERO, Vector3(r * 0.62, 0.95 * s, r * 0.62))
 	g.set_meta("r", 1.4 * s)
 	return g
 
@@ -860,14 +860,14 @@ static func pine(s: float) -> Node3D:
 	var g := Node3D.new()
 	add(g, cyl(0.2 * s, 0.3 * s, 1.0 * s, 8), toon(0x6b4430), Vector3(0, 0.5 * s, 0))
 	for i in range(3):
-		add(g, cone((1.5 - i * 0.35) * s, 1.6 * s, 8), toon(0x3f9a5a), Vector3(0, (1.3 + i * 0.9) * s, 0))
+		add(g, cone((1.5 - i * 0.35) * s, 1.6 * s, 14), toon(0x3f9a5a), Vector3(0, (1.3 + i * 0.9) * s, 0))
 	g.set_meta("r", 1.4 * s)
 	return g
 
 static func rock(s: float) -> Node3D:
 	var g := Node3D.new()
-	add(g, sphere(1.0, 6), toon(0xa9a3b5), Vector3(0, s * 0.5, 0), Vector3.ZERO, Vector3(s, 0.7 * s, s))
-	add(g, sphere(1.0, 5), toon(0xbdb7c8), Vector3(s * 0.8, s * 0.3, s * 0.3), Vector3.ZERO, Vector3.ONE * 0.55 * s)
+	add(g, sphere(1.0, 10), toon(0xa9a3b5), Vector3(0, s * 0.5, 0), Vector3.ZERO, Vector3(s, 0.7 * s, s))
+	add(g, sphere(1.0, 8), toon(0xbdb7c8), Vector3(s * 0.8, s * 0.3, s * 0.3), Vector3.ZERO, Vector3.ONE * 0.55 * s)
 	g.set_meta("r", s * 1.3)
 	return g
 

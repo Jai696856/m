@@ -76,9 +76,13 @@ func _initialize() -> void:
 		main.select_hero(null)
 		var h0 = main.heroes[1]
 		main.cam_target = Vector3(h0.x, 0, h0.z)
-		main.cam_dist = 20.0
-		await _wait(20)
+		main.cam_dist = 17.0
+		main.cam_pitch = 0.5
+		for j in range(8):
+			main.spawn_enemy(["mask", "kitsune", "lantern", "crane", "prism", "gold", "shadow", "frost"][j], main.path_len * 0.04 + j * 1.6)
+		await _wait(14)
 		await _shot("game_close")
+		main.cam_pitch = 0.9
 		main._fit_camera()
 	if _want("pause"):
 		main.select_hero(null)

@@ -120,6 +120,8 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 godot --headless --path . -s tests/smoke_test.gd   # all maps, modes, modifiers, abilities, a full game
 xvfb-run godot --path . -s tests/screenshot.gd -- /tmp/shots   # real screenshots of menu and themes
 xvfb-run godot --path . -s tests/store_shots.gd -- /tmp/shots  # quests, store, skins, a farm game
+xvfb-run godot --path . -s tests/ui_tour.gd -- /tmp/shots      # every screen, for visual review
+xvfb-run godot --path . -s tests/model_shots.gd -- /tmp/shots  # line-ups of every hero and spirit
 ```
 
 ## Level and track
