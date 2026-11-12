@@ -227,6 +227,7 @@ func _hub_cam(pos: Vector3, look: Vector3) -> void:
 # Shots
 # ---------------------------------------------------------------------
 func _shot_title() -> void:
+	main.load_map(0)   # the village borrows the current map's daylight
 	main.to_home()
 	main.menu.visible = false
 	main.hub.set_heroes(["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol"])
@@ -247,6 +248,7 @@ func _shot_title() -> void:
 	dim.color.a = 0.0
 
 func _shot_heroes() -> void:
+	main.load_map(0)
 	main.to_home()
 	main.menu.visible = false
 	main.hub.set_heroes(["ren", "kenta", "saya", "sora", "komugi", "hina", "lumi", "kaito", "rei"])
@@ -255,8 +257,8 @@ func _shot_heroes() -> void:
 	var n := 110
 	for i in range(n):
 		var t := float(i) / (n - 1)
-		var x := lerpf(-7.5, 7.5, t)
-		_hub_cam(Vector3(x, 3.6, 12.5), Vector3(x * 0.72, 1.9, 0.5))
+		var x := lerpf(-6.0, 6.0, t)
+		_hub_cam(Vector3(x, 5.2, 15.5), Vector3(x * 0.7, 1.7, 0.5))
 		await _frame()
 
 func _shot_play() -> void:
