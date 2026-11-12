@@ -50,6 +50,7 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 |---|---|---|
 | Pick a hero | Click a portrait, or **1–5** for a class then **Z X C V B** | Tap a portrait |
 | Collect a farm's coin bundle | Click it | Tap it |
+| Use a power | Power bar on the left, or **F G H J K L** | Tap the power bar |
 | Place it | Click on grass (**Shift**-click places another) | Tap on grass |
 | Select a placed hero | Click it | Tap it |
 | Upgrade paths 1/2/3 | Panel buttons, or **, . /** | Panel buttons |
@@ -81,6 +82,9 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 - **Hero Charms:** reward items, each a recruited hero with upgrades already bought (for example Kaede
   3-1-0). Place one for free from the gold charm button in a game. Every win drops one (two on Hard and
   Nightmare), and the Store sells them for 60 gems.
+- **Daily gift:** a 7-day login streak (gems, then a Hero Charm on days 6 and 7). Missing a day restarts it.
+- **Player titles** that change as you level up (Shrine Novice, Spirit Warden, Gate Guardian, ...), and
+  lifetime pops for each hero on the Heroes screen.
 - **Continue:** the game saves at the end of every round. If you leave, a **CONTINUE** button on the home
   screen resumes it with the same heroes, upgrades, targeting, money and lives.
 - **Spirit Almanac** (ghost button on the home screen): a 3D portrait, stats and tips for every spirit,

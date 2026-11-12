@@ -1283,7 +1283,8 @@ func refresh_powers() -> void:
 		if n <= 0:
 			continue
 		var b := round_btn(Defs.col(pw[5]).darkened(0.15), 46)
-		b.tooltip_text = "%s (x%d)\n%s\nUp to %d powers per game." % [pw[1], n, pw[2], game.power_limit()]
+		var hot: String = ["F", "G", "H", "J", "K", "L"][game.progress.POWERS.find(pw)]
+		b.tooltip_text = "%s [%s] (x%d)\n%s\nUp to %d powers per game." % [pw[1], hot, n, pw[2], game.power_limit()]
 		var ic := TextureRect.new()
 		ic.texture = Icons.tex(pw[3], Color.WHITE, 64)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

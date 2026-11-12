@@ -20,9 +20,14 @@ func _initialize() -> void:
 	main.progress.add_xp(6000.0)
 	for id in ["cash_1", "cash_2", "range", "rate", "focus"]:
 		main.progress.buy_blessing(id)
+	main.menu.login_shown = false
 	main.save.set_value("run", "data", {"map": 5, "diff": "normal", "mode": "standard", "round": 17, "cash": 1200.0, "lives": 130.0, "heroes": []})
 	main.to_home()
 	for i in range(30):
+		await process_frame
+	_save(out + "/daily_gift.png")
+	main.menu.show_home()
+	for i in range(5):
 		await process_frame
 	_save(out + "/home_continue.png")
 	main.menu._open("blessings")

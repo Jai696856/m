@@ -29,6 +29,8 @@ const ACHIEVEMENTS := [
 	["maps_all", "Cartographer", "Win on every map.", "#maps_won", 46],
 	["blessing_1", "Blessed", "Choose a Shrine Blessing.", "blessings", 1],
 	["blessing_all", "Chosen One", "Hold every Shrine Blessing at once.", "blessings_held", 15],
+	["login_7", "Faithful", "Claim the day 7 login gift.", "login_streak", 7],
+	["logins_30", "Regular Visitor", "Claim 30 daily login gifts.", "logins", 30],
 	["charm_1", "Lucky Find", "Find a Hero Charm.", "charms_found", 1],
 	["charm_25", "Charm Hoarder", "Find 25 Hero Charms.", "charms_found", 25],
 	["almanac", "Spirit Scholar", "Fill the Spirit Almanac: pop every kind of spirit.", "#spirits_seen", 15],
@@ -560,11 +562,68 @@ func buy_charm(heroes: Array) -> String:
 	add_charm(key)
 	return key
 
+# ---------------------------------------------------------------------
+# Daily login reward: a 7-day streak of gifts. Missing a day restarts it.
+# [gems, charm?]
+# ---------------------------------------------------------------------
+const LOGIN_REWARDS := [[10, false], [15, false], [20, false], [25, false], [30, false], [0, true], [60, true]]
+
+static func _day_number(key: String) -> int:
+	var parts := key.split("-")
+	var t := Time.get_unix_time_from_datetime_dict({"year": int(parts[0]), "month": int(parts[1]), "day": int(parts[2]), "hour": 12, "minute": 0, "second": 0})
+	return int(t / 86400)
+
+func login_available() -> bool:
+	return String(save.get_value("login", "last", "")) != today_key()
+
+## Which day of the streak today's reward is (0..6).
+func login_day() -> int:
+	var last := String(save.get_value("login", "last", ""))
+	var streak := int(save.get_value("login", "streak", 0))
+	if last == "":
+		return 0
+	var gap := _day_number(today_key()) - _day_number(last)
+	if gap == 0:
+		return posmod(streak - 1, LOGIN_REWARDS.size())
+	if gap == 1:
+		return streak % LOGIN_REWARDS.size()
+	return 0
+
+## Claim today's gift. Returns {"gems": n, "charm": key or ""} or {} if already claimed.
+func claim_login(heroes: Array) -> Dictionary:
+	if not login_available():
+		return {}
+	var day := login_day()
+	var r: Array = LOGIN_REWARDS[day]
+	var streak := day + 1
+	save.set_value("login", "last", today_key())
+	save.set_value("login", "streak", streak)
+	set_max("login_streak", float(streak))
+	add("logins")
+	add_gems(int(r[0]))
+	var charm := ""
+	if r[1]:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		charm = roll_charm(heroes, rng)
+		add_charm(charm)
+	return {"gems": int(r[0]), "charm": charm, "day": day}
+
+## Player title shown under the level badge.
+const TITLES := [[1, "SHRINE NOVICE"], [5, "SHRINE KEEPER"], [10, "SPIRIT WARDEN"], [15, "GATE GUARDIAN"], [20, "LANTERN SAGE"], [25, "MOON PROTECTOR"], [30, "LEGEND OF THE SHRINE"], [40, "ETERNAL GUARDIAN"]]
+
+func title() -> String:
+	var t := "SHRINE NOVICE"
+	for tt in TITLES:
+		if level() >= int(tt[0]):
+			t = tt[1]
+	return t
+
 func reset_blessings() -> void:
 	if save.has_section("blessings"):
 		save.erase_section("blessings")
 
 func reset() -> void:
-	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel", "blessings", "charms", "run"]:
+	for section in ["stats", "sets", "progress", "achievements", "daily", "best", "medals", "hero_xp", "unlocks", "mastery", "powers", "quests", "skins", "skin_sel", "blessings", "charms", "run", "login"]:
 		if save.has_section(section):
 			save.erase_section(section)

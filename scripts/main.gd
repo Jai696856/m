@@ -548,6 +548,9 @@ func _on_key(k: InputEventKey) -> void:
 			use_ability(list[slot])
 	elif code == KEY_SPACE:
 		on_play()
+	elif code in POWER_KEYS:
+		var pw: Array = Progress.POWERS[POWER_KEYS.find(code)]
+		use_power(pw[0])
 	elif selected and code in [KEY_COMMA, KEY_PERIOD, KEY_SLASH]:
 		buy_upgrade(selected, [KEY_COMMA, KEY_PERIOD, KEY_SLASH].find(code))
 	elif selected and (code == KEY_BACKSPACE or code == KEY_DELETE):
@@ -1070,6 +1073,7 @@ func use_ability(h: Hero) -> void:
 # =====================================================================
 # Powers: one-shot items bought with Spirit Gems in the Store
 # =====================================================================
+const POWER_KEYS := [KEY_F, KEY_G, KEY_H, KEY_J, KEY_K, KEY_L]
 const POWER_LIMIT := 3  # per game, so powers help without trivialising a run
 
 func can_use_power(id: String) -> bool:
@@ -1371,6 +1375,7 @@ func pop_enemy(e: Enemy, hero) -> Array:
 		progress.add_to_set("spirits_seen", e.type)
 		if hero != null:
 			progress.add_hero_xp(hero.key, 1.0)
+			progress.add("hero_pops_" + hero.key, 1.0, false)
 	if hero != null:
 		hero.pops += 1
 	var col := Color.from_hsv(randf(), 0.7, 1.0) if e.def.get("rainbow", false) else Defs.col(e.def["color"])

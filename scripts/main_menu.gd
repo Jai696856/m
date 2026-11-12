@@ -44,6 +44,8 @@ var tree_mastery: PanelContainer
 var tip_i := 0
 var gem_pill: Label
 var continue_btn: Button
+var title_lbl: Label
+var login_shown := false
 var quest_box: VBoxContainer
 var skin_row: HBoxContainer
 
@@ -60,6 +62,7 @@ func _ready() -> void:
 	screens["store"] = _screen("STORE")
 	screens["almanac"] = _screen("SPIRIT ALMANAC")
 	screens["blessings"] = _screen("SHRINE BLESSINGS")
+	screens["login"] = _screen("DAILY GIFT")
 	var t := Timer.new()
 	t.wait_time = 6.0
 	t.autostart = true
@@ -100,7 +103,8 @@ func _build_home() -> void:
 	var bv := VBoxContainer.new()
 	bv.add_theme_constant_override("separation", 2)
 	badge.add_child(bv)
-	bv.add_child(ui.lbl("SHRINE KEEPER", 20, Color.WHITE, 8))
+	title_lbl = ui.lbl("SHRINE NOVICE", 20, Color.WHITE, 8)
+	bv.add_child(title_lbl)
 	xp_bar = ProgressBar.new()
 	xp_bar.show_percentage = false
 	xp_bar.custom_minimum_size = Vector2(220, 18)
@@ -274,6 +278,7 @@ func _next_tip() -> void:
 func refresh() -> void:
 	var p = game.progress
 	level_lbl.text = str(p.level())
+	title_lbl.text = p.title()
 	var lp: Vector2 = p.level_progress()
 	xp_bar.max_value = lp.y
 	xp_bar.value = lp.x
@@ -343,6 +348,12 @@ func _fill_quests() -> void:
 			bot.add_child(b)
 		else:
 			bot.add_child(ui.lbl("%s/%s" % [_num(q["have"]), _num(q["need"])], 13, Color(0.8, 0.88, 1.0), 5))
+	var gift: Button = ui.btn("DAILY GIFT" + ("  - NEW!" if game.progress.login_available() else ""), ui.GREEN if game.progress.login_available() else Color(0.35, 0.5, 0.75), 14, 10)
+	gift.custom_minimum_size = Vector2(0, 32)
+	gift.icon = Icons.tex("gem", Color.WHITE, 32)
+	gift.add_theme_constant_override("icon_max_width", 16)
+	gift.pressed.connect(func() -> void: _open("login"))
+	quest_box.add_child(gift)
 
 const SPIRIT_NOTES := {
 	"pink": "The weakest spirit. Every bigger spirit hides one inside.",
@@ -361,6 +372,75 @@ const SPIRIT_NOTES := {
 	"shogun": "Boss: an armoured warlord with 650 health. Releases two Oni Lords and two Lanterns.",
 	"dragon": "Final boss: a long storm dragon with 1,100 health that releases four Oni Lords.",
 }
+
+func _fill_login(result: Dictionary = {}) -> void:
+	var body := _body("login")
+	_clear(body)
+	var p = game.progress
+	var today: int = p.login_day() if result.is_empty() else int(result["day"])
+	var claimed: bool = not p.login_available()
+	var info: Label = ui.lbl("Come back every day for a gift. Keep the streak going for bigger rewards: day 6 and day 7 include a Hero Charm. Missing a day starts the streak again.", 15, Color(0.85, 0.8, 1.0), 0)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(940, 0)
+	body.add_child(info)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	body.add_child(row)
+	for i in range(p.LOGIN_REWARDS.size()):
+		var r: Array = p.LOGIN_REWARDS[i]
+		var done: bool = i < today or (i == today and claimed)
+		var is_today: bool = i == today
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _glow_box(Color(0.3, 0.2, 0.5) if is_today else Color(0.16, 0.12, 0.34), ui.GOLD if is_today else (ui.GREEN if done else Color(0.3, 0.3, 0.42))))
+		card.custom_minimum_size = Vector2(124, 190)
+		row.add_child(card)
+		var v := VBoxContainer.new()
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.add_theme_constant_override("separation", 4)
+		card.add_child(v)
+		var d: Label = ui.lbl("DAY %d" % (i + 1), 20, Color.WHITE, 7)
+		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(d)
+		var icon := CenterContainer.new()
+		icon.custom_minimum_size = Vector2(0, 64)
+		icon.add_child(UIScript.HudIcon.new("scroll" if r[1] and int(r[0]) == 0 else "gem", 54, Color(1, 0.95, 0.8) if r[1] and int(r[0]) == 0 else ui.GEM))
+		v.add_child(icon)
+		var parts: Array = []
+		if int(r[0]) > 0:
+			parts.append("%d GEMS" % int(r[0]))
+		if r[1]:
+			parts.append("+ CHARM" if int(r[0]) > 0 else "HERO CHARM")
+		var t: Label = ui.lbl("\n".join(parts), 14, ui.GOLD, 5)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(t)
+		if done:
+			var ok: Label = ui.lbl("CLAIMED", 13, ui.GREEN, 5)
+			ok.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			v.add_child(ok)
+	var bottom := HBoxContainer.new()
+	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_child(bottom)
+	if not result.is_empty():
+		var txt := "You got %d Spirit Gems" % int(result["gems"]) if int(result["gems"]) > 0 else "You got"
+		if String(result["charm"]) != "":
+			var c: Dictionary = p.parse_charm(result["charm"])
+			txt += "%s a Hero Charm: %s %s" % [" and" if int(result["gems"]) > 0 else "", Defs.HEROES[c["hero"]]["name"], game.charm_label(result["charm"])]
+		bottom.add_child(ui.lbl(txt + "!", 22, Color.WHITE, 8))
+	elif claimed:
+		bottom.add_child(ui.lbl("Today's gift is claimed. See you tomorrow!", 20, Color.WHITE, 8))
+	else:
+		var b: Button = ui.btn("CLAIM DAY %d" % (today + 1), ui.GREEN, 26, 16)
+		b.custom_minimum_size = Vector2(280, 60)
+		b.pressed.connect(func() -> void:
+			var res: Dictionary = game.progress.claim_login(Defs.HERO_ORDER)
+			if res.is_empty():
+				return
+			game.sfx.play("quest")
+			game.save.save(game.SAVE_PATH)
+			_fill_login(res)
+			refresh())
+		bottom.add_child(b)
 
 func _fill_blessings() -> void:
 	var body := _body("blessings")
@@ -581,6 +661,9 @@ func show_home() -> void:
 		(screens[k] as Control).visible = false
 	refresh()
 	visible = true
+	if not login_shown and game.progress.login_available():
+		login_shown = true
+		_open("login")
 
 # ---------------------------------------------------------------------
 # Sub-screens
@@ -647,6 +730,8 @@ func _open(which: String) -> void:
 			_fill_almanac()
 		"blessings":
 			_fill_blessings()
+		"login":
+			_fill_login()
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():
@@ -767,7 +852,7 @@ func _pick_hero_class(i: int) -> void:
 		if not unlocked:
 			pic.modulate = Color(0.2, 0.2, 0.3)
 		v.add_child(pic)
-		for line in [[d["name"], 30, Color.WHITE], [d["role"], 16, Color.WHITE], ["LEVEL %d" % int(Defs.UNLOCK_LEVEL[key]) if not unlocked else ("MASTERED" if game.progress.mastered(key) else "XP %s" % _num(game.progress.hero_xp(key))), 16, ui.GOLD]]:
+		for line in [[d["name"], 30, Color.WHITE], [d["role"], 16, Color.WHITE], ["LEVEL %d" % int(Defs.UNLOCK_LEVEL[key]) if not unlocked else ("MASTERED" if game.progress.mastered(key) else "XP %s" % _num(game.progress.hero_xp(key))), 16, ui.GOLD], ["%s pops" % _num(game.progress.get_stat("hero_pops_" + key)) if unlocked else "", 13, Color(0.85, 0.9, 1.0)]]:
 			var l: Label = ui.lbl(line[0], line[1], line[2], 8)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			v.add_child(l)
