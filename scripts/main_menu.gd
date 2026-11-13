@@ -811,7 +811,7 @@ func _build_heroes() -> Control:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb: Button = ui.btn(c["name"], Defs.col(c["color"]).darkened(0.3), 16, 10)
-		tb.custom_minimum_size = Vector2(170, 44)
+		tb.custom_minimum_size = Vector2(170 if Defs.CLASSES.size() <= 5 else 148, 44)
 		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 56)
 		tb.add_theme_constant_override("icon_max_width", 26)
 		tb.pressed.connect(_pick_hero_class.bind(i))
@@ -820,7 +820,12 @@ func _build_heroes() -> Control:
 	hero_list = HBoxContainer.new()
 	hero_list.add_theme_constant_override("separation", 14)
 	hero_list.alignment = BoxContainer.ALIGNMENT_CENTER
-	body.add_child(hero_list)
+	# Classes with many heroes (hero packs) scroll sideways
+	var hero_scroll := ScrollContainer.new()
+	hero_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	hero_scroll.custom_minimum_size = Vector2(960, 400)
+	hero_scroll.add_child(hero_list)
+	body.add_child(hero_scroll)
 	var hint: Label = ui.lbl("Pick a hero to open their upgrade tree. Pop spirits with a hero to earn their XP.", 15, Color(0.76, 0.81, 0.94), 0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(hint)

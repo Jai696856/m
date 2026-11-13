@@ -117,6 +117,12 @@ it in *Project Settings → Rendering → Renderer*. Nothing in the game depends
 - The **save file** (`user://save.cfg`) stores best rounds, medals and settings.
 - The **upgrade panel** shows the hero's live stats. The end screen shows spirits popped and money earned.
 
+## Hero packs (local add-ons)
+
+The game loads extra heroes from `packs/<name>/pack.gd` if that folder exists (see `scripts/packs.gd` for the
+interface). The `packs/` folder is git-ignored and excluded from every export preset, so a pack only exists
+on the device it was copied to and never ships in a build.
+
 ## Tests
 
 ```bash

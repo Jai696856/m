@@ -11,6 +11,7 @@ const LevelScene = preload("res://scenes/level/level.tscn")
 const Maps = preload("res://scripts/maps.gd")
 const Progress = preload("res://scripts/progress.gd")
 const MainMenu = preload("res://scripts/main_menu.gd")
+const Packs = preload("res://scripts/packs.gd")
 const HubScene = preload("res://scenes/menu/hub.tscn")
 const HUB_POS := Vector3(4000, 0, 0)
 const SAVE_PATH := "user://save.cfg"
@@ -29,7 +30,7 @@ const MODES := {
 }
 
 ## Hero abilities unlock when any upgrade path reaches tier 3.
-const ABILITIES := {
+var ABILITIES := {
 	"ninja": {"name": "Shadow Storm", "cd": 40.0, "desc": "Hurls 40 shuriken in every direction."},
 	"miko": {"name": "Divine Seal", "cd": 50.0, "desc": "Stuns every spirit on the map (bosses briefly)."},
 	"mage": {"name": "Meteor Shower", "cd": 45.0, "desc": "Drops 8 meteors on the strongest spirits."},
@@ -243,6 +244,7 @@ func _ready() -> void:
 	_setup_env()
 	save.load(SAVE_PATH)
 	progress = Progress.new(save)
+	Packs.load_all(self)
 	load_map(int(save.get_value("settings", "last_map", 0)))
 	_setup_particles()
 	_setup_range()
@@ -528,7 +530,7 @@ func _on_key(k: InputEventKey) -> void:
 	if over or attract:
 		return
 	var code := k.keycode
-	if code >= KEY_1 and code <= KEY_5:
+	if code >= KEY_1 and code < KEY_1 + Defs.CLASSES.size():
 		ui.select_class(code - KEY_1)
 	elif code in [KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B]:
 		var cls: Array = Defs.CLASSES[ui.shop_class]["heroes"]
@@ -935,6 +937,8 @@ func use_ability(h: Hero) -> void:
 	var hpos := Vector2(h.x, h.z)
 	h.anim = 0.4
 	var hp3 := Vector3(h.x, 0, h.z)
+	if pack_abilities.has(h.key):
+		pack_abilities[h.key].use_ability(self, h, s)
 	match h.key:
 		"ninja":
 			var o := opt_from(s, h, {"dmg": float(s["dmg"]) + 2.0, "type": "magic"})
@@ -1642,6 +1646,7 @@ func explode(x: float, z: float, ex: Dictionary, opt: Dictionary, allow_cluster:
 # Ability effects: things that fall, strike and glow. Timers and falling objects
 # run on game time (in _step), so damage lands when the effect lands.
 # =====================================================================
+var pack_abilities := {}   # hero key -> pack object (scripts/packs.gd)
 var timers: Array = []   # [seconds left, Callable]
 var drops: Array = []    # falling objects {node, from, to, t, dur, hit}
 
@@ -1916,7 +1921,7 @@ func _hero_update(h: Hero, dt: float) -> void:
 		for i in range(mini(list.size(), int(s["pierce"]))):
 			hit_enemy(list[i], o4)
 		var ang2 := atan2(target.pos.x - h.x, target.pos.z - h.z)
-		var arc := Models.mi(Models.torus(1.0, 0.07), Models.fx_mat(Defs.col(0xe8f4ff)))
+		var arc := Models.mi(Models.torus(1.0, 0.07), Models.fx_mat(Defs.col(int(s.get("slash_color", 0xe8f4ff)))))
 		add_effect(arc, Vector3(h.x, 1.3, h.z), 0.2, "slash", rng * 0.9, null, ang2)
 		if s.has("wave"):
 			var w: Dictionary = s["wave"]

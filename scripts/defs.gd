@@ -49,10 +49,10 @@ static func rank(k: String) -> int:
 # Heroes. Upgrade effects are data: {"key": add, "key*": multiply, "key=": set}.
 # Dotted keys reach into nested dictionaries (e.g. "explode.r").
 # ---------------------------------------------------------------------
-const HERO_ORDER := ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao", "kaito", "rei", "ichika", "gen", "lumi", "komugi"]
+static var HERO_ORDER: Array = ["ninja", "miko", "mage", "ice", "samurai", "mecha", "idol", "ren", "kenta", "saya", "sora", "riku", "hina", "hiro", "nao", "kaito", "rei", "ichika", "gen", "lumi", "komugi"]
 
 ## Five classes of four heroes each (the shop shows one class per tab).
-const CLASSES := [
+static var CLASSES: Array = [
 	{"id": "primary", "name": "STRIKERS", "color": 0xff6b5b, "heroes": ["ninja", "samurai", "ren", "kaito"]},
 	{"id": "ranged", "name": "MARKSMEN", "color": 0x5bc0ff, "heroes": ["miko", "kenta", "saya", "rei"]},
 	{"id": "magic", "name": "MYSTICS", "color": 0xb37bff, "heroes": ["mage", "ice", "sora", "ichika"]},
@@ -61,11 +61,25 @@ const CLASSES := [
 ]
 
 ## Player level needed before a hero can be recruited.
-const UNLOCK_LEVEL := {
+static var UNLOCK_LEVEL: Dictionary = {
 	"ninja": 1, "miko": 1, "mage": 1, "samurai": 2, "ice": 3, "idol": 4, "kenta": 5, "mecha": 6,
 	"ren": 7, "saya": 8, "sora": 9, "riku": 10, "hiro": 11, "hina": 12, "nao": 13,
 	"kaito": 14, "rei": 15, "ichika": 16, "gen": 17, "lumi": 18, "komugi": 3,
 }
+
+## Add a hero from a pack (see scripts/packs.gd). `cls` is {"id", "name", "color"}; the
+## class is created if it does not exist yet.
+static func register_hero(key: String, def: Dictionary, cls: Dictionary, level: int = 1) -> void:
+	if HEROES.has(key):
+		return
+	HEROES[key] = def
+	HERO_ORDER.append(key)
+	UNLOCK_LEVEL[key] = level
+	for c in CLASSES:
+		if c["id"] == cls["id"]:
+			(c["heroes"] as Array).append(key)
+			return
+	CLASSES.append({"id": cls["id"], "name": cls["name"], "color": cls["color"], "heroes": [key]})
 
 static func hero_class(k: String) -> Dictionary:
 	for c in CLASSES:
@@ -73,7 +87,7 @@ static func hero_class(k: String) -> Dictionary:
 			return c
 	return CLASSES[0]
 
-const HEROES := {
+static var HEROES: Dictionary = {
 	"ninja": {
 		"name": "Kaede", "role": "Kunoichi", "cost": 340,
 		"desc": "Fast shuriken thrower. Can see veiled spirits.",

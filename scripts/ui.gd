@@ -487,10 +487,10 @@ func _build_shop() -> void:
 	for i in range(Defs.CLASSES.size()):
 		var c: Dictionary = Defs.CLASSES[i]
 		var tb := btn(str(i + 1), Defs.col(c["color"]).darkened(0.25), 14, 8)
-		tb.custom_minimum_size = Vector2(34, 30)
+		tb.custom_minimum_size = Vector2(34 if Defs.CLASSES.size() <= 5 else 28, 30)
 		tb.text = ""
 		tb.icon = Icons.tex(Icons.CLASS_ICONS.get(c["id"], "star"), Color.WHITE, 40)
-		tb.add_theme_constant_override("icon_max_width", 20)
+		tb.add_theme_constant_override("icon_max_width", 20 if Defs.CLASSES.size() <= 5 else 15)
 		tb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		tb.tooltip_text = "%s (key %d)" % [c["name"], i + 1]
 		tb.pressed.connect(select_class.bind(i))
@@ -551,7 +551,7 @@ func rebuild_shop() -> void:
 		var cost := lbl("$%d" % game.hero_price(k), 20, CASH, 8)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(cost)
-		var num := lbl(["Z", "X", "C", "V", "B"][i], 13, Color.WHITE, 6)
+		var num := lbl(["Z", "X", "C", "V", "B"][i] if i < 5 else "", 13, Color.WHITE, 6)
 		num.position = Vector2(6, 2)
 		b.add_child(num)
 		if game.class_blocked(k):

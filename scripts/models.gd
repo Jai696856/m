@@ -462,7 +462,12 @@ static func apply_skin(m: Dictionary, hex: int) -> void:
 		var base := (mi.material_override as StandardMaterial3D).albedo_color
 		mi.material_override = make_toon(base.lerp(Defs.col(hex), 0.8))
 
+## Heroes added by packs (scripts/packs.gd): key -> pack object with build_hero(key).
+static var pack_builders := {}
+
 static func build_hero(key: String) -> Dictionary:
+	if pack_builders.has(key):
+		return pack_builders[key].build_hero(key)
 	match key:
 		"ninja":
 			var c := make_chibi({"outfit": 0x3d2f66, "legs": 0x231b38, "sleeve": 0x2d2350, "hair": 0x22203a, "style": "ponytail", "eye": 0xd81b60, "trim": 0x7e57c2, "accent": 0xff3d6e})
@@ -986,6 +991,12 @@ static func projectile(kind: String) -> Node3D:
 			add(g, torus(0.9, 0.12), flat(0x9ff3ff, 0.85), Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 0.45))
 		"missile":
 			add(g, cone(0.13, 0.5, 8), flat(0xff5252), Vector3.ZERO, Vector3(PI / 2, 0, 0))
+	if kind.begins_with("orb_"):
+		# A glowing energy ball in any colour: "orb_" + hex, e.g. "orb_3fa9f5"
+		var hex := kind.substr(4).hex_to_int()
+		add(g, sphere(0.26, 12), flat(0xffffff))
+		add(g, sphere(0.36, 12), fx_mat(Defs.col(hex, 0.85), true))
+		spin = add(g, torus(0.42, 0.05), fx_mat(Defs.col(hex, 0.7), true), Vector3.ZERO, Vector3(0.5, 0, 0.3))
 	if spin:
 		g.set_meta("spin", spin)
 	return g

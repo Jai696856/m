@@ -2,3 +2,5 @@
 .godot/
 /android/
 build/
+# Local hero packs (personal add-ons, never committed or exported)
+/packs/
