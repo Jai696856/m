@@ -3,8 +3,14 @@
 A browser version of the original game (Three.js) lives in [`web/`](web/README.md).
 
 A 3D anime tower defense game built as a **Godot 4.3+** project in GDScript (also runs on Godot 4.4 and Xogot).
-Everything (map, cel-shaded chibi heroes, spirits, effects, sounds and UI) is generated from code, so the
-project has no imported art or audio assets.
+Everything (map, cel-shaded chibi heroes, spirits, effects, sounds and UI) is generated from code. The only
+image file is the title logo, which `tools/make_logo.py` draws.
+
+![The village hub](docs/screenshots/village.jpg)
+
+| | |
+|---|---|
+| ![A game in progress](docs/screenshots/game.jpg) | ![Heroes fighting on the track](docs/screenshots/battle.jpg) |
 
 ## Opening it
 
@@ -12,8 +18,10 @@ project has no imported art or audio assets.
 2. In the Project Manager, click **Import** and select `project.godot` at the root of this repository.
 3. Press **F5** (Run Project).
 
-The look is a bright, top-down cartoon style: an island in the sea with a beach, palms and round leafy
-trees, a cobblestone path, chunky outlined HUD numbers, and round play / fast-forward buttons.
+The look is a bright, top-down cartoon style: an island in an animated sea with a beach, palms and round
+leafy trees that sway in the wind, painted grass, a pale cobblestone path, and a navy HUD with round
+play / fast-forward buttons. Heroes are chibi figures with drawn anime faces, sculpted hair and tinted
+ink outlines; spirits are soft teardrop wisps.
 The UI uses the rounded [Fredoka](https://fonts.google.com/specimen/Fredoka) font (SIL Open Font License) and
 [Phosphor Icons](https://phosphoricons.com) (MIT). Both licences are in `licenses/`.
 
@@ -132,6 +140,7 @@ xvfb-run godot --path . -s tests/store_shots.gd -- /tmp/shots  # quests, store, 
 xvfb-run godot --path . -s tests/ui_tour.gd -- /tmp/shots      # every screen, for visual review
 xvfb-run godot --path . -s tests/model_shots.gd -- /tmp/shots  # line-ups of every hero and spirit
 xvfb-run godot --path . -s tests/fx_shots.gd -- /tmp/shots     # hero abilities mid-effect
+xvfb-run godot --path . -s tests/art_shots.gd -- /tmp/shots    # camera angles on one map, plus the village
 ```
 
 ## Level and track
@@ -159,13 +168,17 @@ Spirits follow the centre line with slightly rounded 90° corners.
 | `main.tscn` | One node running `scripts/main.gd` (instances the Level) |
 | `scripts/main.gd` | Game loop: path, map, spirits, heroes, projectiles, rounds, camera, input |
 | `scripts/defs.gd` | All game data: spirit types, 21 heroes in 5 classes and their 3×4 upgrade trees, balance numbers |
-| `scripts/models.gd` | Builds every 3D model from primitive meshes, with toon shading and ink outlines |
+| `scripts/models.gd` | Builds every 3D model in code (heroes, spirits, scenery, projectiles), with toon shading and tinted outlines |
+| `scripts/chibi_parts.gd` | Character parts: faces drawn as SVG at runtime, hair shells with fringe styles, lathe-turned bodies, wisp shapes |
+| `scripts/ground.gd` | Grass/sand and water materials, and the small data texture (contact shade, distance to shore) they read |
+| `shaders/` | Ground, water, swaying foliage, tiled roofs and the spirit portal |
 | `scripts/ui.gd` | HUD, hero shop (3D-rendered portraits), upgrade panel, boss bar, menus |
 | `scripts/sfx.gd` | Synthesizes all sound effects in code at startup |
 | `scripts/music.gd` | Step-sequencer music, rendered to looping WAVs on a worker thread |
 | `scripts/progress.gd` | XP, levels, achievements, daily challenge and quests, hero XP and unlocks, gems, powers, skins |
 | `scripts/main_menu.gd` | Village-hub home, quest board, heroes and upgrade tree, store, achievements, stats, settings |
-| `scripts/icons.gd` | SVG icon set (matches the Figma kit) |
+| `scripts/icons.gd` | SVG icon set (Phosphor fill icons) |
+| `tools/` | Not shipped in builds: the trailer recorder (`make_trailer.sh`, `trailer.gd`), logo and store-art scripts (`make_logo.py`, `key_shot.gd`, `make_cover.py`) |
 
 To rebalance or add upgrades, edit `scripts/defs.gd`. In each upgrade's effect dictionary, `"key": n` adds,
 `"key*": n` multiplies and `"key=": v` sets. Dotted keys such as `"explode.r"` reach into nested stats.
