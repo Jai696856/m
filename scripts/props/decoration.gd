@@ -21,11 +21,13 @@ func _ready() -> void:
 			Models.collide_box(self, Vector3(1.2, 2.0, 1.2), Vector3(0, 1.0, 0))
 			set_meta("r", 1.0)
 		"hay":
-			Models.add(self, Models.cyl(0.7, 0.7, 1.1, 14), Models.toon(0xe8c463), Vector3(0, 0.7, 0), Vector3(PI / 2, 0, 0))
+			Models.add(self, Models.cyl(0.7, 0.7, 1.1, 18), Models.soft(0xedcb6a), Vector3(0, 0.7, 0), Vector3(PI / 2, 0, 0))
+			for z in [-0.3, 0.3]:
+				Models.add(self, Models.cyl(0.72, 0.72, 0.07, 18), Models.soft(0xc9a04a), Vector3(0, 0.7, z), Vector3(PI / 2, 0, 0))
 			Models.collide_cyl(self, 0.75, 1.4, Vector3(0, 0.7, 0))
 			set_meta("r", 0.9)
 		"fence":
-			var wood := Models.toon(0x9b6a3a)
+			var wood := Models.soft(0x9b6a3a)
 			for i in range(4):
 				Models.add(self, Models.box(0.18, 0.9, 0.18), wood, Vector3(i * 1.0 - 1.5, 0.45, 0))
 			for y in [0.35, 0.7]:

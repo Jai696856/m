@@ -10,8 +10,8 @@ const CELL := 4.0
 const WALL := 0.6            # barrier thickness
 const STONE_ROW := 1.0       # depth of one row of floor stones
 const GAP := 0.07            # visible joint between stones
-const GRAYS := [0xc4bdae, 0xbcb5a5, 0xcac4b6, 0xc0b9aa]   # close shades of warm stone
-const GROUT := 0x8d8678
+const GRAYS := [0xe6dcc6, 0xdfd4bd, 0xebe2ce, 0xe2d8c2]   # close shades of warm stone
+const GROUT := 0xb3a88f
 
 @export_enum("straight", "corner") var piece := "straight"
 @export var stone_seed := 0
@@ -97,7 +97,7 @@ func _ready() -> void:
 		var post_pos := Vector3(inner + WALL / 2.0, 0, -inner - WALL / 2.0)
 		var ph := 0.52
 		var pb := Basis.from_scale(Vector3(WALL + 0.04, ph, WALL + 0.04))
-		stones.append([Transform3D(pb, post_pos + Vector3(0, 0.12 + ph / 2.0, 0)), Models.toon(0x9d968a).albedo_color])
+		stones.append([Transform3D(pb, post_pos + Vector3(0, 0.12 + ph / 2.0, 0)), Models.toon(0xc2b69c).albedo_color])
 		var post_shape := CollisionShape3D.new()
 		var pbox := BoxShape3D.new()
 		pbox.size = Vector3(WALL, 0.7, WALL)

@@ -62,7 +62,7 @@ func _ready() -> void:
 	screens["store"] = _screen("STORE")
 	screens["almanac"] = _screen("SPIRIT ALMANAC")
 	screens["blessings"] = _screen("SHRINE BLESSINGS")
-	screens["login"] = _screen("DAILY GIFT")
+	screens["login"] = _screen("DAILY GIFT", 420)
 	var t := Timer.new()
 	t.wait_time = 6.0
 	t.autostart = true
@@ -114,13 +114,18 @@ func _build_home() -> void:
 	xp_lbl = ui.lbl("", 13, Color.WHITE, 5)
 	bv.add_child(xp_lbl)
 
-	# Top-centre: small logo
-	var logo: Label = ui.lbl("SAKURA SPIRIT DEFENSE", 30, Color.WHITE, 12)
-	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Top-centre: the logo
+	var logo := TextureRect.new()
+	logo.texture = load("res://art/logo.png")
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	logo.anchor_left = 0.5
 	logo.anchor_right = 0.5
-	logo.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	logo.offset_top = 18
+	logo.offset_left = -165
+	logo.offset_right = 165
+	logo.offset_top = 4
+	logo.offset_bottom = 136
 	add_child(logo)
 
 	# Top-right: medals and trophies
@@ -200,8 +205,8 @@ func _build_home() -> void:
 	tip_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tip_lbl.anchor_left = 0.0
 	tip_lbl.anchor_right = 1.0
-	tip_lbl.offset_top = 92
-	tip_lbl.offset_bottom = 116
+	tip_lbl.offset_top = 138
+	tip_lbl.offset_bottom = 162
 	add_child(tip_lbl)
 	_next_tip()
 
@@ -667,7 +672,7 @@ func show_home() -> void:
 # ---------------------------------------------------------------------
 # Sub-screens
 # ---------------------------------------------------------------------
-func _screen(title: String) -> Control:
+func _screen(title: String, height: int = 600) -> Control:
 	var shade := ColorRect.new()
 	shade.color = Color(0.03, 0.05, 0.12, 0.72)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -677,7 +682,7 @@ func _screen(title: String) -> Control:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
 	var card: PanelContainer = ui.panel_of(Color(0.075, 0.1, 0.19), 22)
-	card.custom_minimum_size = Vector2(1000, 600)
+	card.custom_minimum_size = Vector2(1000, height)
 	center.add_child(card)
 	card.add_child(_night_bg())
 	var v := VBoxContainer.new()
@@ -712,6 +717,7 @@ func _body(which: String) -> VBoxContainer:
 func _open(which: String) -> void:
 	for k in screens:
 		(screens[k] as Control).visible = k == which
+	_pop_in(screens[which])
 	match which:
 		"achievements":
 			_fill_achievements()
@@ -729,6 +735,17 @@ func _open(which: String) -> void:
 			_fill_blessings()
 		"login":
 			_fill_login()
+
+## Fade a screen in while its card settles into place.
+func _pop_in(screen: Control) -> void:
+	screen.modulate.a = 0.0
+	var tw := screen.create_tween().set_parallel(true)
+	tw.tween_property(screen, "modulate:a", 1.0, 0.16)
+	if screen.has_meta("card"):
+		var card: Control = screen.get_meta("card")
+		card.pivot_offset = card.size / 2.0
+		card.scale = Vector2(0.96, 0.96)
+		tw.tween_property(card, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _clear(c: Node) -> void:
 	for ch in c.get_children():
@@ -1214,7 +1231,7 @@ func _unlock_selected() -> void:
 		refresh()
 
 func _build_settings() -> Control:
-	return _screen("SETTINGS")
+	return _screen("SETTINGS", 470)
 
 func _fill_settings() -> void:
 	var body := _body("settings")

@@ -15,8 +15,8 @@ func _ready() -> void:
 		"sakura":
 			t = Models.sakura(size, rng)
 		"autumn":
-			var pal: Array = [[0xd9542b, 0xe8792f, 0xf2a03a], [0xc9a227, 0xe0b93a, 0xf0d257], [0xb8432f, 0xd4612e, 0xe98a3c]][rng.randi() % 3]
-			t = Models.round_tree(size, rng, pal, 0xf7c35a)
+			var pal: Array = [[0xd9603a, 0xe98444, 0xf5ab52], [0xd0a83a, 0xe5c04a, 0xf3d96a], [0xc4523e, 0xdc6f44, 0xee9752]][rng.randi() % 3]
+			t = Models.round_tree(size, rng, pal, pal[2])
 		"pine":
 			t = Models.pine(size)
 		"snowpine":

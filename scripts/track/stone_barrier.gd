@@ -6,7 +6,7 @@ const Models = preload("res://scripts/models.gd")
 
 const THICKNESS := 0.6
 const BASE_Y := 0.12
-const GRAYS := [0x9f988b, 0x979083, 0xa59e91]
+const GRAYS := [0xcabfa6, 0xc2b79e, 0xd0c6ae]
 
 @export var length := 4.0
 @export var stone_seed := 0

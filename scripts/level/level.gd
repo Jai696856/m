@@ -6,6 +6,7 @@ extends Node3D
 const Models = preload("res://scripts/models.gd")
 const Defs = preload("res://scripts/defs.gd")
 const Maps = preload("res://scripts/maps.gd")
+const Ground = preload("res://scripts/ground.gd")
 const TrackScene = preload("res://scenes/track/track.tscn")
 const TrackScript = preload("res://scripts/track/track.gd")
 const HouseScene = preload("res://scenes/props/house.tscn")
@@ -84,6 +85,8 @@ var track
 var blockers: Array = []   # Vector3(x, z, radius) for every prop
 var _vegetation: Node3D
 var _rng := RandomNumberGenerator.new()
+var _ground_mat: ShaderMaterial
+var _water_mat: ShaderMaterial
 
 func _ready() -> void:
 	theme = THEMES.get(map.get("theme", "meadow"), THEMES["meadow"])
@@ -102,6 +105,7 @@ func _ready() -> void:
 	add_child(_vegetation)
 	_build_vegetation()
 	_batch_meshes(_vegetation)
+	_bake_ground()
 	_build_particles()
 
 # ---------------------------------------------------------------------
@@ -195,7 +199,7 @@ func _land_poly(offset: float) -> PackedVector2Array:
 			pts.append(Vector2(-200.0, -150.0))
 	return pts
 
-func _poly_mesh(poly: PackedVector2Array, y: float, hex: int) -> MeshInstance3D:
+func _poly_mesh(poly: PackedVector2Array, y: float, mat: Material) -> MeshInstance3D:
 	var idx := Geometry2D.triangulate_polygon(poly)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -204,27 +208,41 @@ func _poly_mesh(poly: PackedVector2Array, y: float, hex: int) -> MeshInstance3D:
 		st.add_vertex(Vector3(poly[i].x, y, poly[i].y))
 	var m := MeshInstance3D.new()
 	m.mesh = st.commit()
-	m.material_override = _flat(hex)
+	m.material_override = mat
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return m
 
-func _flat(hex: int) -> StandardMaterial3D:
-	var mat := Models.make_toon(Defs.col(hex), false)
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	return mat
-
+# One painted land surface (grass blending into sand) over an animated sea. Both
+# materials read the data texture baked in _bake_ground once everything is placed.
 func _build_terrain() -> void:
-	var sea := PlaneMesh.new()
-	sea.size = Vector2(900, 900)
+	_ground_mat = Ground.ground_material(theme)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(900, 900)
 	if shore_side() == "none":
-		add_child(Models.mi(sea, _flat(theme["grass"]), Vector3(0, 0, 0)))
+		var land := Models.mi(plane, _ground_mat)
+		land.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(land)
 		return
-	add_child(Models.mi(sea, _flat(theme["sea"]), Vector3(0, -0.45, 0)))
-	add_child(_poly_mesh(_land_poly(-9.0), -0.38, theme["shallow"]))
-	add_child(_poly_mesh(_land_poly(-5.0), -0.33, theme["foam"]))
-	add_child(_poly_mesh(_land_poly(-4.0), -0.22, theme["sand"]))
-	add_child(_poly_mesh(_land_poly(-0.6), -0.1, theme["lip"]))
-	add_child(_poly_mesh(_land_poly(0.0), 0.0, theme["grass"]))
+	_water_mat = Ground.water_material(theme)
+	var sea := Models.mi(plane, _water_mat, Vector3(0, -0.3, 0))
+	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sea)
+	add_child(_poly_mesh(_land_poly(-Ground.SAND_REACH), 0.0, _ground_mat))
+
+# Contact shade beside the track and under every prop, plus the shoreline distance.
+func _bake_ground() -> void:
+	var rects: Array = []
+	var half: float = TrackScript.CELL / 2.0
+	for c in track.cells:
+		var p: Vector3 = TrackScript.cell_to_world(c)
+		rects.append(Rect2(p.x - half, p.z - half, half * 2.0, half * 2.0))
+	var discs: Array = []
+	for b in blockers:
+		discs.append(Vector3(b.x, b.y, maxf(0.8, float(b.z) * 0.72)))
+	var tex := Ground.bake(land_value if shore_side() != "none" else Callable(), rects, discs)
+	_ground_mat.set_shader_parameter("data", tex)
+	if _water_mat:
+		_water_mat.set_shader_parameter("data", tex)
 
 # ---------------------------------------------------------------------
 # Landmarks: shrine at the exit, torii, spirit portal, windmill, cottages
@@ -267,17 +285,11 @@ func _build_landmarks() -> void:
 
 	# Spirit portal at the entry.
 	var in_dir := (entry_tile - entry_p).normalized()
-	var portal := Node3D.new()
+	var portal := Models.portal()
 	portal.name = "SpiritPortal"
-	Models.add(portal, Models.torus(2.5, 0.35), Models.toon(0x5a2d82), Vector3(0, 2.5, 0), Vector3(PI / 2, 0, 0))
-	var swirl := Models.fx_mat(Defs.col(0x9d5cff, 0.55))
-	Models.add(portal, Models.cyl(2.4, 2.4, 0.05, 36), swirl, Vector3(0, 2.5, 0), Vector3(PI / 2, 0, 0))
 	portal.position = entry_tile - in_dir * 1.6
 	portal.rotation.y = atan2(in_dir.x, in_dir.z)
 	add_child(portal)
-	var tw := create_tween().set_loops()
-	tw.tween_property(swirl, "albedo_color:a", 0.25, 1.2)
-	tw.tween_property(swirl, "albedo_color:a", 0.6, 1.2)
 
 	_place_buildings()
 
@@ -328,38 +340,27 @@ func _cols(key: String) -> Array:
 	return out
 
 func _build_ground_details() -> void:
-	var patch_items: Array = []
 	var fl: Array = []
 	var tf: Array = []
-	# Soft tone-on-tone patches: each patch colour is pulled halfway back to the grass colour
-	var greens := _cols("patches")
-	var grass_col: Color = Defs.col(theme["grass"])
-	for gi in range(greens.size()):
-		greens[gi] = (greens[gi] as Color).lerp(grass_col, 0.5)
 	var flower_cols := _cols("flowers")
 	var tuft_cols := _cols("tufts")
-	for i in range(44):
-		var x := _rng.randf_range(-40, 46)
-		var z := _rng.randf_range(-30, 30)
-		if not is_land(x, z, 2.0) or track_distance(x, z) < 0.5:
-			continue
-		var r := _rng.randf_range(2.0, 5.5)
-		var b := Basis(Vector3.UP, _rng.randf() * TAU) * Basis.from_scale(Vector3(r, 1.0, r * _rng.randf_range(0.45, 0.9)))
-		patch_items.append([Transform3D(b, Vector3(x, 0.01, z)), greens[i % greens.size()]])
+	var grass_col: Color = Defs.col(theme["grass"])
 	for i in range(1100):
 		var x := _rng.randf_range(-42, 50)
 		var z := _rng.randf_range(-32, 32)
 		if not is_land(x, z, 0.8) or track_distance(x, z) < 0.35:
 			continue
 		if i % 4 == 0:
-			var s := _rng.randf_range(0.7, 1.3)
-			fl.append([Transform3D(Basis.from_scale(Vector3(s, 0.5 * s, s)), Vector3(x, 0.06, z)), flower_cols[i % flower_cols.size()]])
+			var s := _rng.randf_range(0.7, 1.2)
+			fl.append([Transform3D(Basis.from_scale(Vector3(s, 0.45 * s, s)), Vector3(x, 0.05, z)), flower_cols[i % flower_cols.size()]])
 		else:
 			var s2 := _rng.randf_range(0.8, 1.5)
-			tf.append([Transform3D(Basis(Vector3.UP, _rng.randf() * TAU) * Basis.from_scale(Vector3.ONE * s2), Vector3(x, 0.15 * s2, z)), tuft_cols[i % tuft_cols.size()]])
-	add_child(Models.batch(Models.cyl(1.0, 1.0, 0.02, 20), patch_items, false, false))
-	add_child(Models.batch(Models.sphere(0.13, 6), fl, false, false))
-	add_child(Models.batch(Models.cone(0.13, 0.32, 4), tf, false, false))
+			var tc: Color = (tuft_cols[i % tuft_cols.size()] as Color).lerp(grass_col, 0.55)
+			tf.append([Transform3D(Basis(Vector3.UP, _rng.randf() * TAU) * Basis.from_scale(Vector3.ONE * s2), Vector3(x, 0.0, z)), tc])
+	add_child(Models.batch(Models.sphere(0.12, 8), fl, false, false))
+	var tufts := Models.batch(Models.grass_tuft(), tf, false, false)
+	(tufts.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
+	add_child(tufts)
 
 # ---------------------------------------------------------------------
 # Vegetation: dense trees in the outer corners, palms on the beach,
@@ -470,27 +471,14 @@ func _build_particles() -> void:
 	var cfg: Array = theme["particles"]
 	if int(cfg[1]) <= 0:
 		return
-	var parts := CPUParticles3D.new()
-	var quad := QuadMesh.new()
-	var is_snow: bool = map.get("theme", "") == "snow"
-	var is_fly: bool = map.get("theme", "") == "dusk"
-	quad.size = Vector2(0.22, 0.22) if (is_snow or is_fly) else Vector2(0.35, 0.22)
-	var pmat := StandardMaterial3D.new()
-	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	pmat.albedo_color = Defs.col(cfg[0])
-	pmat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	pmat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	quad.material = pmat
-	parts.mesh = quad
-	parts.amount = int(cfg[1])
-	parts.lifetime = 14.0
-	parts.preprocess = 14.0
-	parts.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	parts.emission_box_extents = Vector3(48, 1 if not is_fly else 2, 28)
-	parts.position = Vector3(-6, 22 if not is_fly else 2.5, 0)
-	parts.direction = Vector3(1, -0.4, 0.2) if not is_fly else Vector3(0, 1, 0)
-	parts.spread = 25.0 if not is_fly else 180.0
-	parts.gravity = Vector3(0, -0.6, 0) if not is_fly else Vector3(0, 0.05, 0)
-	parts.initial_velocity_min = 0.8 if not is_fly else 0.2
-	parts.initial_velocity_max = 1.8 if not is_fly else 0.7
-	add_child(parts)
+	var name: String = map.get("theme", "")
+	var kind := "petal"
+	match name:
+		"snow":
+			kind = "flake"
+		"dusk":
+			kind = "dot"
+		"autumn":
+			kind = "leaf"
+	var fly := kind == "dot"
+	add_child(Models.drift_particles(kind, Defs.col(cfg[0]), int(cfg[1]), Vector3(48, 2 if fly else 1, 28), 2.5 if fly else 22.0))

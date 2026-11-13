@@ -289,7 +289,24 @@ func btn(text: String, bg: Color, size: int = 20, radius: int = 12) -> Button:
 	for c in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
 		b.add_theme_color_override(c, Color.WHITE)
 	b.add_theme_color_override("icon_disabled_color", Color(0.72, 0.75, 0.85))
+	_juice(b)
 	return b
+
+## Hover and press feedback: the control grows slightly under the pointer and dips when pressed.
+func _juice(b: BaseButton) -> void:
+	b.resized.connect(func() -> void: b.pivot_offset = b.size / 2.0)
+	b.mouse_entered.connect(func() -> void:
+		if not b.disabled:
+			_scale_to(b, 1.04))
+	b.mouse_exited.connect(func() -> void: _scale_to(b, 1.0))
+	b.button_down.connect(func() -> void: _scale_to(b, 0.95))
+	b.button_up.connect(func() -> void: _scale_to(b, 1.0))
+
+func _scale_to(c: Control, s: float) -> void:
+	if not c.is_inside_tree():
+		return
+	c.pivot_offset = c.size / 2.0
+	c.create_tween().tween_property(c, "scale", Vector2(s, s), 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func _set_btn_bg(b: Button, bg: Color, radius: int = 12) -> void:
 	b.add_theme_stylebox_override("normal", bsb(bg, radius))
@@ -320,7 +337,7 @@ func panel_of(bg: Color = NAVY, radius: int = 16) -> PanelContainer:
 # ---------------------------------------------------------------------
 func _make_portrait(k: String) -> Texture2D:
 	var vp := SubViewport.new()
-	vp.size = Vector2i(160, 160)
+	vp.size = Vector2i(192, 192)
 	vp.own_world_3d = true
 	vp.transparent_bg = true
 	vp.msaa_3d = Viewport.MSAA_4X
@@ -330,13 +347,14 @@ func _make_portrait(k: String) -> Texture2D:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(1, 0.97, 0.95)
-	env.ambient_light_energy = 0.8
+	env.ambient_light_color = Color(0.93, 0.95, 1.0)
+	env.ambient_light_energy = 0.64
 	we.environment = env
 	vp.add_child(we)
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-35, 25, 0)
-	light.light_energy = 1.1
+	light.light_color = Color(1.0, 0.95, 0.86)
+	light.light_energy = 0.115
 	vp.add_child(light)
 	var m: Dictionary = Models.build_hero(k)
 	(m["body"] as Node3D).rotation.y = 0.35
@@ -344,8 +362,9 @@ func _make_portrait(k: String) -> Texture2D:
 	var cam := Camera3D.new()
 	cam.fov = 30.0
 	vp.add_child(cam)
-	cam.position = Vector3(0.9, 2.15, 5.0)
-	cam.look_at(Vector3(0, 1.47, 0), Vector3.UP)
+	# Knees-up shot so the face reads at small sizes
+	cam.position = Vector3(0.75, 1.95, 4.3)
+	cam.look_at(Vector3(0, 1.5, 0), Vector3.UP)
 	cam.make_current()
 	portrait_vps.append(vp)
 	return vp.get_texture()
@@ -367,13 +386,14 @@ func spirit_portrait(k: String) -> Texture2D:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(1, 0.97, 0.95)
-	env.ambient_light_energy = 0.8
+	env.ambient_light_color = Color(0.93, 0.95, 1.0)
+	env.ambient_light_energy = 0.64
 	we.environment = env
 	vp.add_child(we)
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-35, 25, 0)
-	light.light_energy = 1.1
+	light.light_color = Color(1.0, 0.95, 0.86)
+	light.light_energy = 0.115
 	vp.add_child(light)
 	var node: Node3D = Models.build_enemy(k, false, game.rainbow_mat, game.rainbow_camo)
 	node.rotation.y = 0.5
@@ -1086,26 +1106,46 @@ func _build_toasts() -> void:
 	toast_box.add_theme_constant_override("separation", 6)
 	root.add_child(toast_box)
 
+## Toasts play one at a time, so a burst of achievements never covers the screen.
+var _toasts: Array = []      # queued [title, text]
+var _toast_busy := false
+
 func toast(title: String, text: String) -> void:
+	_toasts.append([title, text])
+	if not _toast_busy:
+		_next_toast()
+
+func _next_toast() -> void:
+	if _toasts.is_empty():
+		_toast_busy = false
+		return
+	_toast_busy = true
+	var item: Array = _toasts.pop_front()
+	var title: String = item[0]
 	var p := panel_of(Color(0.075, 0.1, 0.19, 0.96), 14)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.custom_minimum_size = Vector2(340, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
 	p.add_child(v)
-	var t := lbl(title, 16, GOLD, 6)
+	var t := lbl(title, 15, GOLD, 0)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
-	var b := lbl(text, 22, Color.WHITE, 8)
+	var b := lbl(item[1], 21, Color.WHITE, 0)
 	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(b)
+	# Below the boss bar in a game, below the logo on the menus
+	toast_box.offset_top = 150 if game.attract else 64
 	toast_box.add_child(p)
 	p.modulate.a = 0.0
+	# Shorter when more are waiting
+	var hold := 2.2 if _toasts.is_empty() else 1.1
 	var tw := p.create_tween()
-	tw.tween_property(p, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(2.6)
-	tw.tween_property(p, "modulate:a", 0.0, 0.4)
+	tw.tween_property(p, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(hold)
+	tw.tween_property(p, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(p.queue_free)
+	tw.tween_callback(_next_toast)
 	game.sfx.play("win" if title.begins_with("LEVEL") else "upgrade")
 
 # ---------------------------------------------------------------------

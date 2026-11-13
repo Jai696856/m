@@ -279,26 +279,38 @@ func _setup_env() -> void:
 	sky.sky_material = sm
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(1, 0.98, 0.92)
-	env.ambient_light_energy = 0.3
+	env.ambient_light_color = Color(0.86, 0.9, 1.0)
+	env.ambient_light_energy = 0.5
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	# A little bloom on bright effects, and slightly richer colour
+	env.glow_enabled = true
+	env.glow_intensity = 0.7
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 0.985
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.02
+	env.adjustment_saturation = 1.0
 	we.environment = env
 	add_child(we)
 
 	sun = DirectionalLight3D.new()
 	sun.light_color = Defs.col(0xfff1dc)
-	sun.light_energy = 0.8
-	sun.shadow_blur = 1.0
-	sun.shadow_bias = 0.06
-	sun.shadow_normal_bias = 3.0
+	sun.light_energy = 0.6
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 160.0
-	sun.rotation_degrees = Vector3(-62, -28, 0)
+	sun.shadow_blur = 1.6
+	sun.shadow_bias = 0.05
+	sun.shadow_normal_bias = 2.0
+	sun.shadow_opacity = 0.85
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	sun.directional_shadow_max_distance = 170.0
+	sun.rotation_degrees = Vector3(-58, -32, 0)
 	add_child(sun)
 
 	camera = Camera3D.new()
 	camera.fov = 40.0
-	camera.far = 900.0
+	camera.near = 1.0
+	camera.far = 700.0
 	add_child(camera)
 	camera.make_current()
 
@@ -318,11 +330,18 @@ func load_map(i: int) -> void:
 	_build_path()
 	_apply_theme(level.theme)
 
+## Daylight for a theme. Toon-lit surfaces receive the sun at about pi times its energy,
+## so the energies here are small: sun * pi + ambient comes to roughly 1.0, which keeps
+## every colour on screen close to its palette value instead of blowing out.
+const AMBIENT_TINT := Color(0.74, 0.82, 1.0)
+const SUN_SCALE := 0.145
+const AMBIENT_SCALE := 1.55
+
 func _apply_theme(t: Dictionary) -> void:
 	sun.light_color = Defs.col(t["sun"])
-	sun.light_energy = t["sun_energy"]
-	env.ambient_light_color = Defs.col(t["ambient"])
-	env.ambient_light_energy = t["ambient_energy"]
+	sun.light_energy = float(t["sun_energy"]) * SUN_SCALE
+	env.ambient_light_color = Defs.col(t["ambient"]).lerp(AMBIENT_TINT, 0.4)
+	env.ambient_light_energy = float(t["ambient_energy"]) * AMBIENT_SCALE
 	sky_mat.sky_top_color = Defs.col(t["sky_top"])
 	sky_mat.sky_horizon_color = Defs.col(t["sky_horizon"])
 	sky_mat.ground_horizon_color = Defs.col(t["sky_horizon"])
@@ -389,7 +408,7 @@ func _setup_particles() -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.instance_count = PCOUNT
-	var sm := Models.sphere(0.13, 4)
+	var sm := Models.sphere(0.13, 8)
 	mm.mesh = sm
 	pmm = MultiMeshInstance3D.new()
 	pmm.multimesh = mm
@@ -819,6 +838,7 @@ func place_hero(k: String, x: float, z: float, free: bool = false) -> Hero:
 		progress.set_max("squad", squad.size())
 	recalc_buffs()
 	burst(Vector3(x, 0.4, z), Color.WHITE, 14, 4.0)
+	shockwave(Vector3(x, 0, z), 2.4, 0xffffff, 0.32, 0.45)
 	sfx.play("place")
 	return h
 
@@ -903,6 +923,8 @@ func buy_upgrade(h: Hero, p: int) -> void:
 		float_text(String(ABILITIES[h.key]["name"]).to_upper() + "!", Vector3(h.x, 4.0, h.z), false)
 		ui.refresh_abilities()
 	burst(Vector3(h.x, 2, h.z), Defs.col(RING_COLORS[h.tiers[p]]), 24, 6.0)
+	shockwave(Vector3(h.x, 0, h.z), 2.6, RING_COLORS[h.tiers[p]], 0.4, 0.5)
+	pillar(Vector3(h.x, 0, h.z), RING_COLORS[h.tiers[p]], 0.8, 0.45, 5.0)
 	sfx.play("upgrade")
 	if selected == h:
 		show_range(h.x, h.z, h.stats["range"], true)
@@ -1452,6 +1474,9 @@ func _place_enemy_node(e: Enemy) -> void:
 	var y := size + 0.7 if e.boss else size + 0.45
 	e.node.position = Vector3(e.pos.x, y + sin(e.bob) * (0.25 if e.boss else 0.12), e.pos.z)
 	e.node.rotation.y = dir_at(e.d)
+	if not e.boss:
+		var sq := 1.0 + sin(e.bob * 2.0 + 1.0) * 0.045
+		e.node.scale = Vector3(2.0 - sq, sq, 2.0 - sq)
 	for i in range(e.segs.size()):
 		var sd := e.d - (i + 1) * 1.7
 		var p := pos_at(maxf(0.0, sd))
@@ -1531,6 +1556,10 @@ func pop_enemy(e: Enemy, hero) -> Array:
 		hero.pops += 1
 	var col := Color.from_hsv(randf(), 0.7, 1.0) if e.def.get("rainbow", false) else Defs.col(e.def["color"])
 	burst(where, col, 40 if e.boss else 7, 9.0 if e.boss else 5.0)
+	if effects.size() < 70:
+		# A quick puff where the spirit popped
+		var puff := Models.fx_mat(Color(col.lerp(Color.WHITE, 0.55), 0.7), true)
+		add_effect(Models.mi(Models.sphere(1.0, 10), puff), where, 0.16, "blast", float(e.def["size"]) * (1.9 if e.boss else 1.5))
 	if e.boss:
 		sfx.play("boom")
 		shake = 0.5 * shake_mul()
