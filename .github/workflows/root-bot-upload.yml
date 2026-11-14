@@ -1,0 +1,51 @@
+name: Upload Root bot
+
+on:
+  push:
+    paths:
+      - "root-bot/**"
+      - ".github/workflows/root-bot-upload.yml"
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: root-bot
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Package (production dependencies only)
+        run: |
+          STAGE="$RUNNER_TEMP/stage"
+          mkdir -p "$STAGE"
+          cp -r dist package.json package-lock.json root-manifest.json "$STAGE/"
+          (cd "$STAGE" && npm ci --omit=dev --no-audit --no-fund)
+          node_modules/@rootsdk/dev-tools/publish/bin/RootApp.AppSdk.Publish.Console \
+            package --dir="$STAGE" --out="$GITHUB_WORKSPACE/claude-fan-art-bot.pkg"
+
+      - name: Keep the package as a download
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-fan-art-bot
+          path: claude-fan-art-bot.pkg
+
+      - name: Upload to Root
+        env:
+          ROOT_AUTH_TOKEN: ${{ secrets.ROOT_AUTH_TOKEN }}
+        run: |
+          if [ -z "$ROOT_AUTH_TOKEN" ]; then
+            echo "::warning::No ROOT_AUTH_TOKEN secret yet. Add it in Settings > Secrets and variables > Actions, then re-run."
+            exit 0
+          fi
+          npx rootsdk upload package --file "$GITHUB_WORKSPACE/claude-fan-art-bot.pkg" --authToken "$ROOT_AUTH_TOKEN"
