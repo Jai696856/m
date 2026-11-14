@@ -57,11 +57,25 @@ export const RULES =
   "7. This is a fan community, not affiliated with Anthropic.\n" +
   "8. Mods have the final say.";
 
+export const WELCOME =
+  "🌸 Welcome to **Claude Fan Art**, {name}! ✨\n" +
+  "👉 Read #rules, grab roles in #roles and say hi in #introductions.\n" +
+  "Type `/help` to see what I can do. We can't wait to see your art! 🎨";
+
+// {name} and {level} are filled in automatically.
+export const LEVEL_UP = "🎉 **{name}** reached **Level {level}**! Keep creating ✨";
+
+// Make roles named "Level 5", "Level 10", ... and the bot hands them out automatically.
+export const LEVEL_ROLE_PREFIX = "Level";
+
 export const HELP =
   "✨ **Claude Fan Art bot commands**\n" +
   "`/prompt` → a random art prompt\n" +
   "`/palette` → a random colour palette\n" +
   "`/challenge` → this week's challenge\n" +
   "`/rules` → community rules\n" +
+  "`/level` → your level and XP\n" +
+  "`/leaderboard` → top 10 most active artists\n" +
   "`/hi` → say hello\n" +
-  "`/help` → this list";
+  "`/help` → this list\n" +
+  "Admins: `/setwelcome` in a channel to welcome new members there.";
