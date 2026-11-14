@@ -4,17 +4,41 @@ A small bot for the Claude Fan Art community on [Root](https://www.rootapp.com),
 
 ## Commands
 
+**Everyone**
+
 | Command | What it does |
 |---|---|
 | `/prompt` | A random art prompt (subject + twist) |
 | `/palette` | A random colour palette with hex codes |
 | `/challenge` | This week's challenge |
-| `/rules` | Community rules |
-| `/hi` | Greets you by nickname |
+| `/rules` / `/rule 3` | All rules, or one rule |
 | `/level` (or `/rank`) | Your level, XP and a progress bar |
 | `/leaderboard` (or `/top`) | Top 10 most active members |
-| `/setwelcome` | Admins only: welcome new members in this channel |
-| `/help` | Lists the commands |
+| `/ticket <topic>` | Opens a private channel with the mods |
+| `/close` | Closes your ticket (inside the ticket channel) |
+| `/hi`, `/help` | Say hello, list commands |
+
+**Mods** (owner, admins, or roles that can kick or ban). `/modhelp` lists these in chat.
+
+| Command | What it does |
+|---|---|
+| `/warn @user reason` | Warns someone and keeps a record |
+| `/warnings @user` / `/clearwarns @user` | Shows or clears someone's warnings |
+| `/kick @user reason` / `/ban @user reason` | Kicks or bans someone |
+| `/purge 10` | Deletes the last 1–50 messages in the channel |
+| `/giveaway 1h Prize` | Starts a giveaway; people react to enter. Add `3w` for 3 winners: `/giveaway 2d 3w Prize` |
+| `/gend` / `/greroll` | Ends the channel's giveaway now / picks a new winner |
+
+Mods can't warn, kick or ban other mods or admins.
+
+**Admin setup** (type each one in the channel you want)
+
+| Command | What it does |
+|---|---|
+| `/setwelcome` | New members are welcomed here |
+| `/setmodlog` | Mod actions and tickets are logged here (keep it private) |
+| `/ticketsetup` | Ticket channels are created in this channel's category |
+| `/postrules` | Posts the rules here and pins them |
 
 ## Welcome messages
 

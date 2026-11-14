@@ -46,16 +46,20 @@ export const CHALLENGE =
   "🎨 **This week's challenge:** Claude in a cozy autumn scene 🍂\n" +
   "Post your entry in #weekly-challenge before Sunday! Any medium welcome.";
 
+// Edit the rules here. /rules shows them all, /rule 3 shows one, /postrules posts and pins them.
+export const RULE_LIST = [
+  "Be kind. Critique the art, never the artist.",
+  "Credit original creators. No art theft or tracing passed off as your own.",
+  "Keep it SFW. No NSFW, gore or hateful content.",
+  "Label AI-assisted work and post it in #ai-assisted.",
+  "Post in the right channel.",
+  "No spam, self-promo floods or unsolicited DMs.",
+  "This is a fan community and isn't affiliated with Anthropic.",
+  "Mods have the final say. Need help? Type /ticket.",
+];
+
 export const RULES =
-  "📜 **Claude Fan Art rules**\n" +
-  "1. Be kind. Critique the art, never the artist.\n" +
-  "2. Credit original creators. No art theft or tracing passed off as your own.\n" +
-  "3. Keep it SFW.\n" +
-  "4. Label AI-assisted work and post it in #ai-assisted.\n" +
-  "5. Post in the right channel.\n" +
-  "6. No spam or unsolicited DMs.\n" +
-  "7. This is a fan community, not affiliated with Anthropic.\n" +
-  "8. Mods have the final say.";
+  "📜 **Claude Fan Art rules**\n" + RULE_LIST.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
 export const WELCOME =
   "🌸 Welcome to **Claude Fan Art**, {name}! ✨\n" +
@@ -69,13 +73,17 @@ export const LEVEL_UP = "🎉 **{name}** reached **Level {level}**! Keep creatin
 export const LEVEL_ROLE_PREFIX = "Level";
 
 export const HELP =
-  "✨ **Claude Fan Art bot commands**\n" +
-  "`/prompt` → a random art prompt\n" +
-  "`/palette` → a random colour palette\n" +
-  "`/challenge` → this week's challenge\n" +
-  "`/rules` → community rules\n" +
-  "`/level` → your level and XP\n" +
-  "`/leaderboard` → top 10 most active artists\n" +
-  "`/hi` → say hello\n" +
-  "`/help` → this list\n" +
-  "Admins: `/setwelcome` in a channel to welcome new members there.";
+  "✨ **Claude Fan Art bot**\n" +
+  "🎨 `/prompt` art idea · `/palette` colour palette · `/challenge` weekly challenge\n" +
+  "⭐ `/level` your level · `/leaderboard` top artists\n" +
+  "📜 `/rules` all rules · `/rule 3` one rule\n" +
+  "🎫 `/ticket <topic>` private help from the mods · `/close` close your ticket\n" +
+  "🎉 React to a giveaway message to enter\n" +
+  "Mods: type `/modhelp`";
+
+export const MOD_HELP =
+  "🛡️ **Mod commands**\n" +
+  "`/warn @user reason` · `/warnings @user` · `/clearwarns @user`\n" +
+  "`/kick @user reason` · `/ban @user reason` · `/purge 10`\n" +
+  "🎉 `/giveaway 1h Prize` · `/giveaway 2d 3w Prize` (3 winners) · `/gend` end now · `/greroll` new winner\n" +
+  "**Admin setup:** `/setwelcome` · `/setmodlog` · `/ticketsetup` · `/postrules` (run each in the channel you want)";

@@ -1,6 +1,6 @@
 {
   "id": "ADJ57ej7hgm-c7xE-NfyFQ",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "package": {
     "server": {
       "launch": "dist/main.js",
@@ -14,11 +14,18 @@
   },
   "permissions": {
     "community": {
-      "manageRoles": true
+      "manageRoles": true,
+      "kick": true,
+      "createBan": true
     },
     "channel": {
+      "fullControl": true,
       "createMessage": true,
-      "viewMessageHistory": true
+      "viewMessageHistory": true,
+      "deleteMessageOther": true,
+      "managePinnedMessages": true,
+      "createMessageMention": true,
+      "createMessageReaction": true
     }
   }
 }
