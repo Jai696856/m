@@ -1,11 +1,24 @@
 {
   "id": "ADJ57ej7hgm-c7xE-NfyFQ",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "package": {
     "server": {
       "launch": "dist/main.js",
-      "deploy": ["dist"],
-      "nodeModules": ["node_modules"]
+      "deploy": [
+        "dist"
+      ],
+      "nodeModules": [
+        "node_modules"
+      ]
+    }
+  },
+  "permissions": {
+    "community": {
+      "manageRoles": true
+    },
+    "channel": {
+      "createMessage": true,
+      "viewMessageHistory": true
     }
   }
 }
