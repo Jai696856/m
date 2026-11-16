@@ -2,14 +2,45 @@
   "day": 1,
   "title": "Kicked Out",
   "chunks": [
-    {"scene": "title", "text": "Day one."},
-    {"scene": "marcus", "text": "My name's Marcus. Twenty-four years old. No job. No savings. And as of this morning... no home."},
-    {"scene": "house", "text": "My dad dropped a duffel bag on the porch and said, \"Thirty days. Go pro at something... or don't come back.\""},
-    {"scene": "inventory", "text": "Go pro. At what? I've got a cracked phone, forty-seven dollars, and a basketball I haven't touched since high school."},
-    {"scene": "calendar", "text": "But I've got thirty days. And this time... you decide what I do."},
-    {"scene": "options", "letter": "A", "title": "BASKETBALL", "sub": "Hit the street courts", "icon": "ball", "text": "Option A: I hit the street courts and try to go pro in basketball."},
-    {"scene": "options", "letter": "B", "title": "STREAMING", "sub": "Last $47 on a used mic", "icon": "mic", "text": "Option B: I spend my last forty-seven bucks on a used mic and go pro at streaming."},
-    {"scene": "options", "letter": "C", "title": "BOXING", "sub": "The gym downtown", "icon": "glove", "text": "Option C: I walk into that boxing gym downtown."},
-    {"scene": "cta", "text": "Comment A, B, or C. Whatever wins... that's Day two."}
+    {
+      "scene": "title",
+      "text": "Day one."
+    },
+    {
+      "scene": "marcus",
+      "text": "My name's Marcus. Twenty-four years old. No job. No savings. And as of this morning... no home."
+    },
+    {
+      "scene": "house",
+      "text": "My dad dropped a duffel bag on the porch and said, \"Thirty days. Go pro at something... or don't come back.\""
+    },
+    {
+      "scene": "inventory",
+      "text": "Go pro. At what? I've got a cracked phone, forty-seven dollars, and a basketball I haven't touched since high school."
+    },
+    {
+      "scene": "calendar",
+      "text": "But I've got thirty days. And this time... you decide what I do."
+    },
+    {
+      "scene": "options",
+      "letter": "A",
+      "title": "BASKETBALL",
+      "sub": "Hit the street courts",
+      "icon": "ball",
+      "text": "Option A: I hit the street courts and try to go pro in basketball."
+    },
+    {
+      "scene": "options",
+      "letter": "B",
+      "title": "STREAMING",
+      "sub": "Last $47 on a used mic",
+      "icon": "mic",
+      "text": "Option B: I spend my last forty-seven bucks on a used mic and go pro at streaming."
+    },
+    {
+      "scene": "cta",
+      "text": "Comment A or B. Whatever wins... that's Day two."
+    }
   ]
 }
