@@ -5,7 +5,7 @@ import {
   ChannelMessageCreatedEvent,
   RootApiException,
 } from "@rootsdk/server-bot";
-import { CHALLENGE, HELP, MOD_HELP, PALETTES, RULE_LIST, RULES, SUBJECTS, TWISTS } from "./content";
+import { GAME_GENRES, GAME_MECHANICS, GAME_TWISTS, VIDEO_FORMATS, VIDEO_SUBJECTS, VIDEO_TWISTS, CHALLENGE, HELP, MOD_HELP, PALETTES, RULE_LIST, RULES, SUBJECTS, TWISTS } from "./content";
 import { displayName, isAdmin, isMod } from "./members";
 import { allRecords, awardXp, getRecord, levelFor, progressBar } from "./levels";
 import { setWelcomeChannel } from "./welcome";
@@ -24,7 +24,16 @@ type Handler = (evt: ChannelMessageCreatedEvent, args: string) => Promise<string
 const COMMANDS: Record<string, Handler> = {
   help: () => HELP,
   modhelp: async (evt) => ((await isMod(evt.userId)) ? MOD_HELP : "🔒 That list is for mods."),
-  prompt: () => `🖌️ **Your prompt:** ${pick(SUBJECTS)}, ${pick(TWISTS)}.`,
+  /** /prompt, /prompt game, /prompt video */
+  prompt: (_evt, args) => {
+    const kind = args.trim().toLowerCase();
+    if (/^(game|games|gamedev)$/.test(kind))
+      return `🎮 **Game idea:** Make ${pick(GAME_GENRES)} ${pick(GAME_MECHANICS)}, ${pick(GAME_TWISTS)}.`;
+    if (/^(video|videos|animation|anim)$/.test(kind))
+      return `🎬 **Video idea:** ${pick(VIDEO_FORMATS)} about ${pick(VIDEO_SUBJECTS)}, ${pick(VIDEO_TWISTS)}.`;
+    if (kind && !/^(art|draw|drawing)$/.test(kind)) return "Try `/prompt`, `/prompt game` or `/prompt video`.";
+    return `🖌️ **Art idea:** ${pick(SUBJECTS)}, ${pick(TWISTS)}.`;
+  },
   palette: () => {
     const p = pick(PALETTES);
     return `🎨 **${p.name}**\n${p.colors.map((c) => `\`${c}\``).join("  ")}`;

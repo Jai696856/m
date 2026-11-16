@@ -8,7 +8,7 @@ A small bot for the Claude Fan Art community on [Root](https://www.rootapp.com),
 
 | Command | What it does |
 |---|---|
-| `/prompt` | A random art prompt (subject + twist) |
+| `/prompt` | A random art prompt. `/prompt game` and `/prompt video` give game and video ideas |
 | `/palette` | A random colour palette with hex codes |
 | `/challenge` | This week's challenge |
 | `/rules` / `/rule 3` | All rules, or one rule |

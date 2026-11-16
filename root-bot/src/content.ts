@@ -33,6 +33,45 @@ export const TWISTS = [
   "as a sticker design",
 ];
 
+// /prompt game: a genre, a core mechanic and a twist. Everything should be small enough for a game jam.
+export const GAME_GENRES = [
+  "a cozy farming game", "a tiny platformer", "a puzzle game", "a tower defense game", "a visual novel",
+  "a rhythm game", "a roguelike", "a point-and-click adventure", "a racing game", "a card game",
+  "a pet simulator", "an idle/clicker game", "a stealth game", "a fishing game", "a cooking game",
+];
+export const GAME_MECHANICS = [
+  "where Claude helps players by answering riddles", "where every level is solved by rearranging words",
+  "where you can only move when the music plays", "where you swap places with your shadow",
+  "where gravity flips every 10 seconds", "where you build the level as you play it",
+  "where enemies become friends when you compliment them", "where time only moves when you move",
+  "where your inventory is a tiny backpack you must pack like Tetris", "with a one-button control scheme",
+  "where you paint platforms into existence", "where every choice changes the art style",
+];
+export const GAME_TWISTS = [
+  "and it must be finishable in 5 minutes", "and it's set inside a giant library",
+  "and the whole game fits on one screen", "and it uses only 4 colours", "and the main character can't jump",
+  "and it's set during a rainy night in a sakura village", "and the title screen is part of the game",
+  "and it has to work on a phone", "and the villain is a misunderstood robot", "and there is no text at all",
+];
+
+// /prompt video: a format, a subject and a twist.
+export const VIDEO_FORMATS = [
+  "a 30-second animation", "a speedpaint timelapse", "a short comic dub", "a stop-motion clip",
+  "a fake movie trailer", "a 'day in the life' vlog", "a music video", "a tutorial",
+  "a reaction-style skit", "a lo-fi study stream intro", "a before/after redraw video", "a cooking-show parody",
+];
+export const VIDEO_SUBJECTS = [
+  "Claude learning to draw", "Claude's first day at art school", "Claude as a tour guide in a fantasy city",
+  "Claude and a cat trying to bake a cake", "Claude reviewing the community's art", "Claude exploring the deep sea",
+  "Claude running a tiny café", "Claude building a robot friend", "Claude getting lost in a museum",
+  "Claude teaching a dragon to read",
+];
+export const VIDEO_TWISTS = [
+  "told without any dialogue", "in a retro 90s anime style", "in one continuous shot", "made only with paper cut-outs",
+  "with a surprise ending", "in under 60 seconds", "narrated like a nature documentary", "in pixel art",
+  "using only sound effects you make yourself", "as a split-screen story",
+];
+
 export const PALETTES = [
   { name: "Warm Clay", colors: ["#D97757", "#F0E6DC", "#3D3929", "#C6A48A", "#8A9A5B"] },
   { name: "Sakura Dusk", colors: ["#F7C6D0", "#E58FA5", "#6B4E71", "#2E2A4F", "#FFF4E6"] },
@@ -80,7 +119,7 @@ export const EIGHT_BALL = [
 
 export const HELP =
   "✨ **Claude Fan Art bot**\n" +
-  "🎨 `/prompt` art idea · `/palette` palette · `/colors 3` colour challenge · `/challenge` weekly challenge\n" +
+  "🎨 `/prompt` art idea · `/prompt game` · `/prompt video` · `/palette` palette · `/colors 3` colour challenge · `/challenge` weekly challenge\n" +
   "🤝 `/trade` art trade with someone · `/trade cancel` to leave the queue\n" +
   "⭐ `/level` · `/profile` · `/daily` bonus XP · `/leaderboard` (posting art earns double XP!)\n" +
   "🎲 `/8ball question` · `/coinflip` · `/roll 2d6` · `/poll Question | A | B`\n" +
