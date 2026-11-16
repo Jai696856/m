@@ -518,7 +518,7 @@ function sceneCounter(t, seg) {
   return `<rect width="${W}" height="${H}" fill="url(#night)"/>${rays(540, 720, '#4a5cb0', .3, t)}
   <circle cx="540" cy="720" r="420" fill="${Y}" opacity="${t >= tHit ? .16 : .06}" filter="url(#b30)"/>
   <g transform="translate(540,640) scale(${pop})">${txt(0, 0, n.toLocaleString('en-US'), 260, Y, 'filter="url(#tsh)"')}</g>
-  ${txt(540, 820, 'VIEWS', 110, '#fff', 'filter="url(#tsh)"')}
+  ${txt(540, 820, 'VIEWS', 110, '#fff', 'filter="url(#tsh)"')}<g transform="translate(540,930)"><rect x="-250" y="-42" width="500" height="84" rx="42" fill="#FF0033"/><path d="M-200,-18 L-200,18 L-170,0Z" fill="#fff"/>${txt(30, 3, 'ON YOUTUBE', 44, '#fff')}</g>
   <g transform="translate(${540 - 300 * 1.0},${1150 + (1 - eo(lt / 0.7)) * 300}) scale(1.0)">${marcus(t >= tHit ? 'happy' : 'neutral', blinking(t, .4), 0)}</g>
   ${confetti(t, tHit)}`;
 }
@@ -566,7 +566,10 @@ function sceneVote(t, seg) {
     <circle cx="${bx + bw * wob}" cy="${by + 35}" r="46" fill="#fff" filter="url(#sh)"/>${txt(bx + bw * wob, by + 37, 'VS', 30, '#111')}
     ${txt(bx + 30, by + 120, `A · ${opts[0].votes}`, 44, Y, 'text-anchor="start"')}${txt(bx + bw - 30, by + 120, `${opts[1].votes} · B`, 44, '#4ea8ff', 'text-anchor="end"')}</g>`;
   const tSub = kw(seg, 'tomorrow'), q = eb((t - kw(seg, 'Drop')) / 0.4);
-  if (q > 0) s += `<g transform="translate(540,1420) scale(${q})"><rect x="-330" y="-58" width="660" height="116" rx="58" fill="${RED}" filter="url(#sh)"/>${txt(0, 4, 'VOTE ON DAY 1 👆', 52, '#fff')}</g>`;
+  if (q > 0) s += `<g transform="translate(540,1380) scale(${q})"><rect x="-330" y="-50" width="660" height="100" rx="50" fill="#fff" filter="url(#sh)"/>${txt(0, 4, 'VOTE ON DAY 1 👆', 46, '#111')}</g>`;
+  const sb = eb((t - kw(seg, 'subscribe')) / 0.4);
+  if (sb > 0) s += `<g transform="translate(540,1510) scale(${sb})"><rect x="-260" y="-56" width="520" height="112" rx="20" fill="#FF0033" filter="url(#sh)"/>${txt(0, 4, 'SUBSCRIBE', 58, '#fff')}
+    <g transform="translate(${190 + 20 * Math.sin(t * 6)},${40})"><path d="M0,0 L0,60 L16,46 L28,72 L38,67 L26,42 L46,40Z" fill="#fff" stroke="#111" stroke-width="4"/></g></g>`;
   return s + confetti(t, tSub, 540, 900, 60);
 }
 
