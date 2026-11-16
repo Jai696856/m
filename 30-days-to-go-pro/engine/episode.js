@@ -68,9 +68,10 @@ function marcus(expr = 'neutral', blink = false, look = 0) {
     sad: ['M205,262 Q240,250 278,238', 'M322,238 Q360,250 395,262'],
     neutral: ['M205,254 Q240,240 278,250', 'M322,250 Q360,240 395,254'],
     det: ['M205,242 Q242,244 278,262', 'M322,262 Q358,244 395,242'],
+    happy: ['M205,248 Q240,226 278,240', 'M322,240 Q360,226 395,248'],
   }[expr];
   const mouth = {
-    sad: 'M266,420 Q300,405 334,420', neutral: 'M268,412 Q300,419 332,412', det: 'M262,410 Q306,425 342,401',
+    happy: 'M262,404 Q300,412 338,404', sad: 'M266,420 Q300,405 334,420', neutral: 'M268,412 Q300,419 332,412', det: 'M262,410 Q306,425 342,401',
   }[expr];
   let twists = '';
   for (let i = 0; i < 9; i++) {
@@ -97,7 +98,9 @@ function marcus(expr = 'neutral', blink = false, look = 0) {
   <path d="M298,300 C292,340 280,356 290,370 C297,377 306,377 314,370" stroke="#55301e" stroke-width="5" fill="none" stroke-linecap="round"/>
   <ellipse cx="287" cy="368" rx="7" ry="4" fill="#3e2214"/><ellipse cx="315" cy="368" rx="7" ry="4" fill="#3e2214"/>
   <ellipse cx="300" cy="428" rx="27" ry="7" fill="#6b3826" opacity=".7"/>
-  <path d="${mouth}" stroke="#3a1b10" stroke-width="8" fill="none" stroke-linecap="round"/>
+  ${expr === 'happy'
+    ? '<path d="M258,402 Q300,470 342,402 Q300,414 258,402Z" fill="#3a1408"/><path d="M266,405 Q300,416 334,405 L331,418 Q300,428 269,418Z" fill="#fff"/><path d="M280,446 Q300,456 320,446 Q300,440 280,446Z" fill="#c75b5b"/><path d="M252,398 Q258,404 262,410 M348,398 Q342,404 338,410" stroke="#3a1b10" stroke-width="5" stroke-linecap="round"/>'
+    : `<path d="${mouth}" stroke="#3a1b10" stroke-width="8" fill="none" stroke-linecap="round"/>`}
   <path d="M410,250 C430,330 410,410 360,452 C400,400 418,330 410,250Z" fill="#000" opacity=".12"/>
   </g>`;
 }
@@ -484,7 +487,90 @@ function sceneCta(t, seg) {
   return s;
 }
 
-const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta };
+// ------------------------------------------------------- milestone video ---
+const CONF = ['#FFD60A', '#EB4034', '#4ea8ff', '#7ee08a', '#ff8fd0', '#ffffff'];
+function confetti(t, tb, ox = 540, oy = 760, n = 110) {
+  const lt = t - tb;
+  if (lt < 0 || lt > 4) return '';
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + ((i * 97) % 200 - 100) / 100 * 1.25, v = 900 + (i * 53) % 700;
+    const x = ox + Math.cos(a) * v * lt * 0.9 + Math.sin(lt * 3 + i) * 30;
+    const y = oy + Math.sin(a) * v * lt + 900 * lt * lt;
+    if (y > H + 40) continue;
+    const r = (lt * (200 + (i * 31) % 400)) % 360, w = 14 + (i % 3) * 6;
+    s += `<rect x="${-w / 2}" y="-6" width="${w}" height="12" rx="3" fill="${CONF[i % CONF.length]}" transform="translate(${x},${y}) rotate(${r}) scale(1,${Math.cos(lt * 8 + i)})"/>`;
+  }
+  return s;
+}
+function rays(cx, cy, col, op, t) {
+  let s = `<g transform="translate(${cx},${cy}) rotate(${t * 8})" fill="${col}" opacity="${op}">`;
+  for (let i = 0; i < 18; i++) {
+    const a = i * 20 * Math.PI / 180, b = (i * 20 + 9) * Math.PI / 180;
+    s += `<path d="M0,0 L${1400 * Math.cos(a)},${1400 * Math.sin(a)} L${1400 * Math.cos(b)},${1400 * Math.sin(b)}Z"/>`;
+  }
+  return s + '</g>';
+}
+function sceneCounter(t, seg) {
+  const lt = t - seg.t0, tHit = seg.t0 + 1.6;
+  const n = Math.round(1000 * eo(lt / 1.6));
+  const pop = t >= tHit ? 1 + 0.25 * (1 - eo((t - tHit) / 0.35)) : 1;
+  return `<rect width="${W}" height="${H}" fill="url(#night)"/>${rays(540, 720, '#4a5cb0', .3, t)}
+  <circle cx="540" cy="720" r="420" fill="${Y}" opacity="${t >= tHit ? .16 : .06}" filter="url(#b30)"/>
+  <g transform="translate(540,640) scale(${pop})">${txt(0, 0, n.toLocaleString('en-US'), 260, Y, 'filter="url(#tsh)"')}</g>
+  ${txt(540, 820, 'VIEWS', 110, '#fff', 'filter="url(#tsh)"')}
+  <g transform="translate(${540 - 300 * 1.0},${1150 + (1 - eo(lt / 0.7)) * 300}) scale(1.0)">${marcus(t >= tHit ? 'happy' : 'neutral', blinking(t, .4), 0)}</g>
+  ${confetti(t, tHit)}`;
+}
+function sceneJourney(t, seg) {
+  const tNow = kw(seg, 'thousand');
+  const f1 = eo((t - seg.t0) / 0.4), f2 = eo((t - tNow) / 0.4);
+  let s = houseScene(t, { open: 0, lit: true, porch: false }) + fig(400, 1660, 430, 'marcus', 'sad', blinking(t, .3)) + duffel(620, 1630, 0.62, 200) +
+    `<rect width="${W}" height="${H}" fill="#05060c" opacity=".55"/>`;
+  s += `<g opacity="${f1}" transform="translate(0,${(1 - f1) * 30})"><rect x="140" y="300" width="800" height="180" rx="36" fill="#000" opacity=".55"/>
+    ${txt(540, 345, 'YESTERDAY', 40, '#bbb', 'font-weight="700"')}${txt(540, 420, 'KICKED OUT · $47', 76, '#fff')}</g>`;
+  if (f2 > 0) s += `<g opacity="${f2}" transform="translate(540,${640 + (1 - f2) * 40}) scale(${0.85 + 0.15 * eb((t - tNow) / 0.5)})">
+    <rect x="-400" y="-90" width="800" height="180" rx="36" fill="url(#ybtn)" filter="url(#sh)"/>
+    ${txt(0, -45, 'TODAY', 40, '#3a2c00', 'font-weight="700"')}${txt(0, 30, '1,000 OF YOU', 84, '#111')}</g>`;
+  return s;
+}
+function sceneThanks(t, seg) {
+  const lt = t - seg.t0, p = eb(lt / 0.5);
+  let hearts = '';
+  for (let i = 0; i < 14; i++) {
+    const x = 100 + (i * 173) % 880, y = 1500 - ((lt * (160 + (i * 37) % 120) + i * 140) % 1500), z = 0.6 + (i % 4) * 0.2;
+    hearts += `<path transform="translate(${x},${y}) scale(${z})" d="M0,30 C-60,-10 -40,-60 0,-30 C40,-60 60,-10 0,30Z" fill="${i % 3 ? RED : Y}" opacity=".75"/>`;
+  }
+  return `<rect width="${W}" height="${H}" fill="url(#gold)"/>${rays(540, 520, Y, .07, t)}${hearts}
+  <g transform="translate(540,420) scale(${p})">${txt(0, 0, 'THANK', 200, '#fff', 'filter="url(#tsh)"')}${txt(0, 200, 'YOU', 230, Y, 'filter="url(#tsh)"')}</g>
+  <g transform="translate(${540 - 300 * 1.05},${1000}) scale(1.05)">${marcus('happy', blinking(t, 1.2), 0)}</g>${confetti(t, seg.t0, 540, 400, 70)}`;
+}
+function sceneVote(t, seg) {
+  const lt = t - seg.t0, opts = EP.vote;
+  const total = opts[0].votes + opts[1].votes || 1, share = opts[0].votes / total;
+  const wob = share + 0.04 * Math.sin(t * 3);
+  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>${txt(540, 270, 'DAY 2 VOTE', 110, '#fff', 'filter="url(#tsh)"')}${txt(540, 380, "IT'S CLOSE 👀", 64, Y)}`;
+  const cards = [[artPitch(t), 70], [artStream(t), 570]];
+  opts.forEach((o, i) => {
+    const p = eb((lt - i * 0.2) / 0.5);
+    if (p <= 0) return;
+    s += `<g transform="translate(${cards[i][1] + 220},${720}) scale(${p}) translate(-220,-220)">
+      <rect width="440" height="520" rx="36" fill="url(#card)" stroke="${Y}" stroke-width="6" filter="url(#sh)"/>
+      <g transform="translate(10,10) scale(1.0)" clip-path="url(#cardArt)">${cards[i][0]}</g>
+      <rect x="20" y="420" width="90" height="80" rx="20" fill="url(#ybtn)"/>${txt(65, 462, o.letter, 60, '#111')}
+      ${txt(130, 462, o.title, 46, '#fff', 'text-anchor="start"')}</g>`;
+  });
+  const bw = 900, bx = 90, by = 1130, f = eo((lt - 0.5) / 0.6);
+  if (f > 0) s += `<g opacity="${f}"><rect x="${bx}" y="${by}" width="${bw}" height="70" rx="35" fill="#4ea8ff"/>
+    <rect x="${bx}" y="${by}" width="${bw * wob}" height="70" rx="35" fill="${Y}"/>
+    <circle cx="${bx + bw * wob}" cy="${by + 35}" r="46" fill="#fff" filter="url(#sh)"/>${txt(bx + bw * wob, by + 37, 'VS', 30, '#111')}
+    ${txt(bx + 30, by + 120, `A · ${opts[0].votes}`, 44, Y, 'text-anchor="start"')}${txt(bx + bw - 30, by + 120, `${opts[1].votes} · B`, 44, '#4ea8ff', 'text-anchor="end"')}</g>`;
+  const tSub = kw(seg, 'tomorrow'), q = eb((t - kw(seg, 'Drop')) / 0.4);
+  if (q > 0) s += `<g transform="translate(540,1420) scale(${q})"><rect x="-330" y="-58" width="660" height="116" rx="58" fill="${RED}" filter="url(#sh)"/>${txt(0, 4, 'VOTE ON DAY 1 👆', 52, '#fff')}</g>`;
+  return s + confetti(t, tSub, 540, 900, 60);
+}
+
+const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta, counter: sceneCounter, journey: sceneJourney, thanks: sceneThanks, vote: sceneVote };
 
 // --------------------------------------------------------------- overlays ---
 function captions(t) {
@@ -502,6 +588,8 @@ function captions(t) {
 }
 
 function chrome() {
+  if (EP.badge) return `<rect x="60" y="80" width="300" height="74" rx="22" fill="${Y}"/>${txt(210, 118, EP.badge, 34, '#111')}
+  ${txt(1020, 118, '30 DAYS TO GO PRO', 32, '#fff', 'text-anchor="end" font-weight="700" opacity=".85" filter="url(#tsh)"')}`;
   return `<rect x="60" y="80" width="250" height="74" rx="22" fill="${Y}"/>${txt(185, 118, `DAY ${EP.day}/30`, 36, '#111')}
   ${txt(1020, 118, '30 DAYS TO GO PRO', 32, '#fff', 'text-anchor="end" font-weight="700" opacity=".85" filter="url(#tsh)"')}`;
 }

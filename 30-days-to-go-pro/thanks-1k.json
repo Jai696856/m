@@ -1,0 +1,15 @@
+{
+  "day": 1,
+  "title": "1,000 Views Thank You",
+  "badge": "THANK YOU!",
+  "vote": [
+    {"letter": "A", "title": "SOCCER", "votes": 1},
+    {"letter": "B", "title": "STREAMING", "votes": 1}
+  ],
+  "chunks": [
+    {"scene": "counter", "text": "Yo... one thousand views?!"},
+    {"scene": "journey", "text": "Yesterday my dad kicked me out with forty-seven dollars. Now a thousand of you are watching my story."},
+    {"scene": "thanks", "text": "Thank you. For real."},
+    {"scene": "vote", "text": "The vote for Day two is still close... soccer or streaming. Drop your vote on Day one... and I'll see you tomorrow."}
+  ]
+}
