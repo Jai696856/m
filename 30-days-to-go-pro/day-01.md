@@ -19,8 +19,11 @@ Option C: I walk into that boxing gym downtown.
 
 [determined] Comment A, B, or C. Whatever wins... that's Day two.
 
-## Shots (Higgsfield, 5 sec each, 9:16)
-1. Cinematic close-up: a young man in his 20s in a hoodie, gray morning light, a duffel bag thrown onto a suburban porch at his feet, front door slams behind him.
-2. He sits on the curb counting crumpled dollar bills, cracked phone screen beside him, shallow depth of field.
-3. Slow push-in on a dusty basketball in the duffel bag, then he looks up at the camera, determined.
-4. End card: three split panels — street basketball court, a streaming setup with a mic, a gritty boxing gym — with "A / B / C" text overlays.
+## Video
+Built locally as motion graphics (no Higgsfield): `python3 render.py day-01.json audio/day-01.mp3 out/day-01.mp4`
+Scenes: title card -> Marcus + NO JOB / NO SAVINGS / NO HOME stamps -> house, door slam, duffel bag ->
+cracked phone / $47 / basketball -> 30-day calendar "YOU DECIDE" -> A/B/C option cards -> "COMMENT A B C" end card.
+Word-by-word captions are synced to the narration.
+
+## Viewer vote
+Pending. Winner becomes Day 2.
