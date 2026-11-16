@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .env
 *.pkg
+.env
+rootsdk.sqlite3

@@ -1,0 +1,46 @@
+name: Test Root bot
+
+# Runs the bot against your Root test community (the "-test" community Root made
+# when you generated a DEV_TOKEN). Start it from the Actions tab, or let Claude start it.
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How many minutes to keep the bot running (max 330)"
+        default: "60"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    defaults:
+      run:
+        working-directory: root-bot
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Run the bot in the test community
+        env:
+          DEV_TOKEN: ${{ secrets.ROOT_DEV_TOKEN }}
+          MINUTES: ${{ inputs.minutes || '60' }}
+        run: |
+          if [ -z "$DEV_TOKEN" ]; then
+            echo "::error::Add a ROOT_DEV_TOKEN secret first (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          M=$(( MINUTES > 330 ? 330 : MINUTES ))
+          printf 'DEV_TOKEN=%s\n' "$DEV_TOKEN" > .env
+          echo "Bot running for $M minutes. Go test it in your -test community on Root!"
+          timeout --signal=INT "${M}m" npx rootsdk start devhost || code=$?
+          rm -f .env
+          # timeout exits 124 when time runs out: that's the normal way this ends.
+          if [ "${code:-0}" -ne 0 ] && [ "${code}" -ne 124 ] && [ "${code}" -ne 130 ]; then exit "$code"; fi
