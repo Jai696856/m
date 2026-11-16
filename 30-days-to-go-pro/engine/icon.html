@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:transparent}svg{display:block}</style>
+</head><body><div id="root"></div>
+<script src="episode.js"></script>
+<script>
+// Channel icon: 800x800, key content kept inside the centre circle so it survives a round crop.
+function icon(round) {
+  let rays = '';
+  for (let i = 0; i < 24; i++) {
+    const a = i * 15 * Math.PI / 180, b = (i * 15 + 7) * Math.PI / 180;
+    rays += `<path d="M400,430 L${400 + 900 * Math.cos(a)},${430 + 900 * Math.sin(a)} L${400 + 900 * Math.cos(b)},${430 + 900 * Math.sin(b)}Z"/>`;
+  }
+  const clip = round ? 'clip-path="url(#round)"' : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">${defs(1)}
+  <defs><clipPath id="round"><circle cx="400" cy="400" r="400"/></clipPath>
+  <radialGradient id="ibg" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#2a3566"/><stop offset="1" stop-color="#0b0e1f"/></radialGradient></defs>
+  <g ${clip}>
+  <rect width="800" height="800" fill="url(#ibg)"/>
+  <g fill="#4a5cb0" opacity=".35">${rays}</g>
+  <circle cx="400" cy="430" r="250" fill="#FFD60A" opacity=".18" filter="url(#b30)"/>
+  ${txt(400, 300, '30', 470, '#FFD60A', 'opacity=".95" filter="url(#tsh)"')}
+  <g transform="translate(${400 - 300 * 0.78},${245}) scale(.78)" filter="url(#sh)">${marcus('det', false, 0)}</g>
+  <g transform="translate(400,665) rotate(-4)" filter="url(#sh)">
+    <rect x="-235" y="-58" width="470" height="116" rx="22" fill="url(#ybtn)"/>
+    ${txt(0, 4, 'GO PRO', 92, '#111')}
+  </g>
+  </g></svg>`;
+}
+</script></body></html>
