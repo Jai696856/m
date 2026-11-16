@@ -16,7 +16,7 @@
     },
     {
       "scene": "inventory",
-      "text": "Go pro. At what? I've got a cracked phone, forty-seven dollars, and a basketball I haven't touched since high school."
+      "text": "Go pro. At what? I've got a cracked phone, forty-seven dollars, and a soccer ball I haven't touched since high school."
     },
     {
       "scene": "calendar",
@@ -25,10 +25,10 @@
     {
       "scene": "options",
       "letter": "A",
-      "title": "BASKETBALL",
-      "sub": "Hit the street courts",
+      "title": "SOCCER",
+      "sub": "Hit the street pitch",
       "icon": "ball",
-      "text": "Option A: I hit the street courts and try to go pro in basketball."
+      "text": "Option A: I hit the street pitch and try to go pro in soccer."
     },
     {
       "scene": "options",

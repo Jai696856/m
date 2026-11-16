@@ -30,6 +30,7 @@ const defs = seed => `<defs>
 <radialGradient id="spot"><stop offset="0" stop-color="#8fa0c8" stop-opacity=".55"/><stop offset="1" stop-color="#8fa0c8" stop-opacity="0"/></radialGradient>
 <radialGradient id="warm"><stop offset="0" stop-color="#ffcf7a" stop-opacity=".55"/><stop offset="1" stop-color="#ffcf7a" stop-opacity="0"/></radialGradient>
 <radialGradient id="vig" cx=".5" cy=".45" r=".78"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".72"/></radialGradient>
+<radialGradient id="sball" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#dcdcdc"/><stop offset="1" stop-color="#7d7d7d"/></radialGradient>
 <radialGradient id="ball" cx=".36" cy=".3" r=".78"><stop offset="0" stop-color="#f5a35a"/><stop offset=".55" stop-color="#d4661f"/><stop offset="1" stop-color="#6e2f0e"/></radialGradient>
 <linearGradient id="bill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4e4c4"/><stop offset="1" stop-color="#8eac7e"/></linearGradient>
 <linearGradient id="bag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c84536"/><stop offset="1" stop-color="#6e1a12"/></linearGradient>
@@ -186,6 +187,30 @@ function basketball(x, y, r, rot = 0, dusty = false) {
   if (dusty) for (let i = 0; i < 26; i++) {
     const a = i * 2.39, d = r * 0.85 * Math.sqrt((i * 37 % 26) / 26);
     s += `<circle cx="${Math.cos(a) * d}" cy="${Math.sin(a) * d}" r="${2 + (i % 3)}" fill="#d8cbb8" opacity=".55"/>`;
+  }
+  return s + '</g>';
+}
+
+let BALLN = 0;
+function pent(cx, cy, R, a0) {
+  return Array.from({ length: 5 }, (_, k) => { const a = (a0 + 72 * k) * Math.PI / 180; return `${cx + R * Math.cos(a)},${cy + R * Math.sin(a)}`; }).join(' ');
+}
+function soccerBall(x, y, r, rot = 0, dusty = false) {
+  const id = 'sb' + (BALLN++);
+  let s = `<g transform="translate(${x},${y}) rotate(${rot})"><clipPath id="${id}"><circle r="${r}"/></clipPath>
+  <circle r="${r}" fill="url(#sball)"/><g clip-path="url(#${id})">`;
+  for (let k = 0; k < 5; k++) {
+    const a = (-90 + 72 * k) * Math.PI / 180, ix = r * 0.3 * Math.cos(a), iy = r * 0.3 * Math.sin(a);
+    const ox = r * 0.92 * Math.cos(a), oy = r * 0.92 * Math.sin(a);
+    s += `<path d="M${ix},${iy} L${r * 0.66 * Math.cos(a)},${r * 0.66 * Math.sin(a)}" stroke="#333" stroke-width="${r * 0.035}"/>`;
+    s += `<polygon points="${pent(ox, oy, r * 0.3, -90 + 72 * k + 180)}" fill="#1c1c1c"/>`;
+  }
+  s += `<polygon points="${pent(0, 0, r * 0.3, -90)}" fill="#1c1c1c"/></g>
+  <circle r="${r}" fill="none" stroke="#3a3a3a" stroke-width="${r * 0.03}"/>
+  <ellipse cx="${-r * 0.35}" cy="${-r * 0.45}" rx="${r * 0.32}" ry="${r * 0.16}" fill="#fff" opacity=".5"/>`;
+  if (dusty) for (let i = 0; i < 26; i++) {
+    const a = i * 2.39, d = r * 0.85 * Math.sqrt((i * 37 % 26) / 26);
+    s += `<circle cx="${Math.cos(a) * d}" cy="${Math.sin(a) * d}" r="${2 + (i % 3)}" fill="#b5a58c" opacity=".55"/>`;
   }
   return s + '</g>';
 }
@@ -362,14 +387,14 @@ function sceneInventory(t, seg) {
   <g stroke="#000" stroke-opacity=".18" stroke-width="3" fill="none">${Array.from({ length: 16 }, (_, i) => `<path d="M0,${560 + i * 48} C300,${550 + i * 48} 700,${575 + i * 48} 1080,${558 + i * 48}"/>`).join('')}</g>
   <ellipse cx="540" cy="900" rx="560" ry="420" fill="#ffd9a0" opacity=".12" filter="url(#b30)"/>
   ${txt(540, 290, 'GO PRO.', 150, '#fff', 'filter="url(#tsh)"')}${txt(540, 410, 'AT WHAT?', 72, Y, 'filter="url(#tsh)"')}`;
-  const items = [['cracked', 230], ['forty-seven', 540], ['basketball', 855]];
+  const items = [['cracked', 230], ['forty-seven', 540], ['soccer', 855]];
   items.forEach(([k, x], i) => {
     const p = eb((t - kw(seg, k)) / 0.45);
     if (p <= 0) return;
     const y = 830 + (1 - p) * 260;
     if (i === 0) s += phone(x, y, 0.82, -8) + txt(x, 1080, 'CRACKED PHONE', 34, '#bbb');
     if (i === 1) s += bill(x - 10, y + 40, -14, '20') + bill(x + 10, y, 7, '20') + bill(x, y - 40, -3, '5') + `<g transform="translate(${x},${y - 40}) scale(${p})">${txt(0, -150, '$47', 110, '#7ee08a', 'filter="url(#tsh)"')}</g>` + txt(x, 1080, 'TO HIS NAME', 34, '#bbb');
-    if (i === 2) s += `<ellipse cx="${x}" cy="${y + 130}" rx="110" ry="18" fill="#000" opacity=".4"/>` + basketball(x, y, 120, lt * 10, true) + txt(x, 1080, 'DUSTY', 34, '#bbb');
+    if (i === 2) s += `<ellipse cx="${x}" cy="${y + 130}" rx="110" ry="18" fill="#000" opacity=".4"/>` + soccerBall(x, y, 120, lt * 10, true) + txt(x, 1080, 'DUSTY', 34, '#bbb');
   });
   const up = eo(lt / 0.7);
   s += `<g transform="translate(${540 - 300 * 0.95},${1250 + (1 - up) * 300}) scale(.95)">${marcus('neutral', blinking(t, .5), 0)}</g>`;
@@ -394,15 +419,18 @@ function sceneCalendar(t, seg) {
   return s;
 }
 
-function artCourt(t) {
-  const by = 150 + Math.abs(Math.sin(t * 3.2)) * -70;
-  return `<rect width="420" height="392" fill="url(#dusk)"/><circle cx="300" cy="250" r="90" fill="#ffd28a" opacity=".55" filter="url(#b6)"/>
-  <g fill="#141a2e">${[[0, 40, 180], [40, 30, 140], [70, 50, 210], [120, 40, 160], [160, 60, 230], [220, 40, 170], [260, 50, 200], [310, 40, 150], [350, 70, 220]].map(([x, w, h]) => `<rect x="${x}" y="${300 - h + 60}" width="${w}" height="${h}"/>`).join('')}</g>
-  <g stroke="#cfd6e6" stroke-opacity=".18" stroke-width="2">${Array.from({ length: 22 }, (_, i) => `<path d="M${i * 22 - 120},90 L${i * 22 + 80},300 M${i * 22 + 80},90 L${i * 22 - 120},300"/>`).join('')}</g>
-  <polygon points="0,300 420,300 420,392 0,392" fill="#3c5a82"/><path d="M60,392 Q210,320 360,392" stroke="#fff" stroke-opacity=".7" stroke-width="4" fill="none"/>
-  <rect x="318" y="110" width="12" height="200" fill="#777"/><rect x="250" y="60" width="130" height="86" rx="4" fill="#f4f4f4" stroke="#333" stroke-width="3"/><rect x="292" y="92" width="46" height="34" fill="none" stroke="${RED}" stroke-width="4"/>
-  <ellipse cx="300" cy="138" rx="34" ry="8" fill="none" stroke="#f06a1a" stroke-width="5"/><path d="M268,140 L278,180 M284,142 L290,182 M300,143 L300,183 M316,142 L310,182 M332,140 L322,180" stroke="#fff" stroke-width="2"/>
-  ${basketball(200, by, 24, t * 200)}${fig(130, 375, 210, 'marcus', 'det', blinking(t, .9))}`;
+function artPitch(t) {
+  const bx = 205 + Math.sin(t * 2) * 6, by = 318 - Math.abs(Math.sin(t * 4)) * 70;
+  return `<rect width="420" height="392" fill="url(#dusk)"/><circle cx="320" cy="240" r="90" fill="#ffd28a" opacity=".55" filter="url(#b6)"/>
+  <g fill="#141a2e">${[[0, 40, 180], [40, 30, 140], [70, 50, 210], [120, 40, 160], [160, 60, 230], [220, 40, 170], [260, 50, 200], [310, 40, 150], [350, 70, 220]].map(([x, w, h]) => `<rect x="${x}" y="${300 - h + 40}" width="${w}" height="${h}"/>`).join('')}</g>
+  <g stroke="#cfd6e6" stroke-opacity=".2" stroke-width="2">${Array.from({ length: 22 }, (_, i) => `<path d="M${i * 22 - 120},70 L${i * 22 + 80},290 M${i * 22 + 80},70 L${i * 22 - 120},290"/>`).join('')}</g>
+  <rect x="0" y="66" width="420" height="6" fill="#8a93a8"/><rect x="0" y="66" width="6" height="230" fill="#8a93a8"/><rect x="414" y="66" width="6" height="230" fill="#8a93a8"/>
+  <polygon points="0,290 420,290 420,392 0,392" fill="#2f7a3c"/>
+  <g fill="#3a8a47">${[0, 1, 2, 3, 4, 5].map(i => `<rect x="${i * 70}" y="290" width="35" height="102"/>`).join('')}</g>
+  <path d="M0,300 H420 M210,300 V392" stroke="#fff" stroke-opacity=".75" stroke-width="4"/><ellipse cx="210" cy="345" rx="70" ry="22" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="4"/>
+  <g transform="translate(300,210)"><g stroke="#fff" stroke-opacity=".45" stroke-width="1.5">${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 12},6 V92"/>`).join('')}${Array.from({ length: 8 }, (_, i) => `<path d="M0,${6 + i * 12} H96"/>`).join('')}</g>
+  <path d="M0,92 V0 H100 V92" stroke="#fff" stroke-width="7" fill="none"/></g>
+  ${fig(140, 372, 210, 'marcus', 'det', blinking(t, .9))}${soccerBall(bx, by, 20, t * 220)}`;
 }
 
 function artStream(t) {
@@ -433,7 +461,7 @@ function sceneOptions(t, seg) {
   opts.forEach((o, i) => {
     const appear = eo((t - o.t0) / 0.45);
     if (appear <= 0) return;
-    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, o.icon === 'ball' ? artCourt(t) : artStream(t));
+    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, o.icon === 'ball' ? artPitch(t) : artStream(t));
   });
   return s;
 }
@@ -482,6 +510,7 @@ function render(t) {
   let i = TL.findIndex(s => s.t0 <= t && t < s.t1);
   if (i < 0) i = t < TL[0].t0 ? 0 : TL.length - 1;
   const seg = TL[i];
+  BALLN = 0;
   let body = SCENES[seg.scene](t, seg);
   const since = t - seg.t0, prev = TL[i - 1];
   let fade = 0;
