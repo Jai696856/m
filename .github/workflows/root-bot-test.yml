@@ -1,8 +1,12 @@
 name: Test Root bot
 
 # Runs the bot against your Root test community (the "-test" community Root made
-# when you generated a DEV_TOKEN). Start it from the Actions tab, or let Claude start it.
+# when you generated a DEV_TOKEN). To start a test, change the number in
+# root-bot/test-run.txt (how many minutes to run) and commit. Ask Claude, or edit it in the GitHub app.
 on:
+  push:
+    paths:
+      - "root-bot/test-run.txt"
   workflow_dispatch:
     inputs:
       minutes:
@@ -31,12 +35,14 @@ jobs:
       - name: Run the bot in the test community
         env:
           DEV_TOKEN: ${{ secrets.ROOT_DEV_TOKEN }}
-          MINUTES: ${{ inputs.minutes || '60' }}
+          MINUTES_INPUT: ${{ inputs.minutes }}
         run: |
           if [ -z "$DEV_TOKEN" ]; then
             echo "::error::Add a ROOT_DEV_TOKEN secret first (Settings > Secrets and variables > Actions)."
             exit 1
           fi
+          MINUTES="${MINUTES_INPUT:-$(grep -o '[0-9]\+' test-run.txt | head -1)}"
+          MINUTES="${MINUTES:-60}"
           M=$(( MINUTES > 330 ? 330 : MINUTES ))
           printf 'DEV_TOKEN=%s\n' "$DEV_TOKEN" > .env
           echo "Bot running for $M minutes. Go test it in your -test community on Root!"
