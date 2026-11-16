@@ -1,2 +1,2 @@
-60
-# change the number above to start a new test run (minutes). Version 1.2.1
+330
+# change the number above to start a new test run (minutes, max 330). Version 1.2.1
