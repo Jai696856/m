@@ -59,7 +59,7 @@ jobs:
           : > devhost.log
           tail -n +1 -F devhost.log 2>/dev/null | awk "$SHORTEN" &
           TAIL=$!
-          timeout --signal=INT "${M}m" npx rootsdk start devhost > devhost.log 2>&1 || code=$?
+          timeout --signal=INT "${M}m" node node_modules/@rootsdk/dev-tools/bin/rootsdk-devhost > devhost.log 2>&1 || code=$?
           sleep 2; kill $TAIL 2>/dev/null || true
           echo "Bot stopped (exit code ${code:-0})."
           rm -f .env
