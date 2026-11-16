@@ -16,6 +16,14 @@ A small bot for the Claude Fan Art community on [Root](https://www.rootapp.com),
 | `/leaderboard` (or `/top`) | Top 10 most active members |
 | `/ticket <topic>` | Opens a private channel with the mods |
 | `/close` | Closes your ticket (inside the ticket channel) |
+| `/colors 3` | 1–8 random colours to draw with |
+| `/trade [note]` | Joins the art trade queue, or pairs you with whoever is waiting (`/trade cancel` to leave) |
+| `/daily` | Daily bonus XP; streaks give more, and every 7th day in a row gives +150 |
+| `/profile [@user]` | Level, rank, art posts, streak and join date |
+| `/8ball question`, `/coinflip`, `/roll 2d6` | Little fun commands |
+| `/poll Question \| A \| B` | A poll with numbered reactions (2–10 options) |
+| `/remind 30m text` | Reminds you in this channel (1 minute to 30 days) |
+| `/stats` | Member count and art stats |
 | `/hi`, `/help` | Say hello, list commands |
 
 **Mods** (owner, admins, or roles that can kick or ban). `/modhelp` lists these in chat.
@@ -48,6 +56,7 @@ To choose a channel, the owner or an admin types `/setwelcome` in that channel.
 ## Levels
 
 - Every message earns 15–25 XP, at most once a minute per person, so spamming doesn't help.
+- Messages with an image attached earn **double XP** and count as art posts.
 - Levels need 100, 300, 600, 1000, 1500… total XP (each level takes 100 XP more than the last).
 - Level-ups are announced in the channel where they happened.
 - **Level roles:** create roles named `Level 5`, `Level 10` and so on, and the bot gives them out automatically.

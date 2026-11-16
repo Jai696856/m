@@ -72,14 +72,21 @@ export const LEVEL_UP = "🎉 **{name}** reached **Level {level}**! Keep creatin
 // Make roles named "Level 5", "Level 10", ... and the bot hands them out automatically.
 export const LEVEL_ROLE_PREFIX = "Level";
 
+export const EIGHT_BALL = [
+  "Yes, definitely! ✨", "It is certain.", "Without a doubt.", "Most likely.", "Signs point to yes.",
+  "Ask again after a coffee break ☕", "Better not tell you now.", "Cannot predict now. Keep sketching!",
+  "Don't count on it.", "My sources say no.", "Very doubtful.", "The paint isn't dry on that one yet 🎨",
+];
+
 export const HELP =
   "✨ **Claude Fan Art bot**\n" +
-  "🎨 `/prompt` art idea · `/palette` colour palette · `/challenge` weekly challenge\n" +
-  "⭐ `/level` your level · `/leaderboard` top artists\n" +
-  "📜 `/rules` all rules · `/rule 3` one rule\n" +
-  "🎫 `/ticket <topic>` private help from the mods · `/close` close your ticket\n" +
-  "🎉 React to a giveaway message to enter\n" +
-  "Mods: type `/modhelp`";
+  "🎨 `/prompt` art idea · `/palette` palette · `/colors 3` colour challenge · `/challenge` weekly challenge\n" +
+  "🤝 `/trade` art trade with someone · `/trade cancel` to leave the queue\n" +
+  "⭐ `/level` · `/profile` · `/daily` bonus XP · `/leaderboard` (posting art earns double XP!)\n" +
+  "🎲 `/8ball question` · `/coinflip` · `/roll 2d6` · `/poll Question | A | B`\n" +
+  "⏰ `/remind 30m finish sketch` · 📈 `/stats`\n" +
+  "📜 `/rules` · `/rule 3` · 🎫 `/ticket <topic>` private help from mods\n" +
+  "🎉 React to a giveaway message to enter · Mods: `/modhelp`";
 
 export const MOD_HELP =
   "🛡️ **Mod commands**\n" +

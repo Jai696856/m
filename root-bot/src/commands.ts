@@ -12,6 +12,7 @@ import { setWelcomeChannel } from "./welcome";
 import { GIVEAWAY_COMMANDS } from "./giveaways";
 import { MOD_COMMANDS } from "./moderation";
 import { TICKET_COMMANDS } from "./tickets";
+import { FUN_COMMANDS } from "./fun";
 
 function pick<T>(list: readonly T[]): T {
   return list[Math.floor(Math.random() * list.length)];
@@ -72,6 +73,7 @@ const COMMANDS: Record<string, Handler> = {
   ...GIVEAWAY_COMMANDS,
   ...MOD_COMMANDS,
   ...TICKET_COMMANDS,
+  ...FUN_COMMANDS,
 };
 COMMANDS.rank = COMMANDS.level;
 COMMANDS.top = COMMANDS.leaderboard;
@@ -88,7 +90,8 @@ async function onMessage(evt: ChannelMessageCreatedEvent): Promise<void> {
 
   if (!text.startsWith("/")) {
     try {
-      await awardXp(evt.userId, await displayName(evt.userId), evt.channelId);
+      const hasArt = (evt.messageUris ?? []).some((u) => u.attachment?.mimeType?.startsWith("image/"));
+      await awardXp(evt.userId, await displayName(evt.userId), evt.channelId, hasArt);
     } catch (err) {
       console.error("XP failed:", err instanceof RootApiException ? err.errorCode : err);
     }
