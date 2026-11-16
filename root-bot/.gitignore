@@ -5,3 +5,4 @@ dist/
 *.pkg
 .env
 rootsdk.sqlite3
+devhost.log

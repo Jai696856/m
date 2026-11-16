@@ -53,9 +53,15 @@ jobs:
           fi
           printf 'DEV_TOKEN=%s\n' "$TOKEN" > .env
           echo "Bot running for $M minutes. Go test it in your -test community on Root!"
-          # Shorten the huge minified code lines so real error messages are readable.
-          set -o pipefail
-          timeout --signal=INT "${M}m" npx rootsdk start devhost 2>&1 | awk '{ if (length($0) > 400) print substr($0,1,200) " ... " substr($0,length($0)-200); else print; fflush() }' || code=$?
+          # Write the bot's output to a file (so nothing is lost if it exits suddenly)
+          # and stream it here with the huge minified code lines shortened.
+          SHORTEN='{ if (length($0) > 400) print substr($0,1,200) " ... " substr($0,length($0)-200); else print; fflush() }'
+          : > devhost.log
+          tail -n +1 -F devhost.log 2>/dev/null | awk "$SHORTEN" &
+          TAIL=$!
+          timeout --signal=INT "${M}m" npx rootsdk start devhost > devhost.log 2>&1 || code=$?
+          sleep 2; kill $TAIL 2>/dev/null || true
+          echo "Bot stopped (exit code ${code:-0})."
           rm -f .env
           # timeout exits 124 when time runs out: that's the normal way this ends.
           if [ "${code:-0}" -ne 0 ] && [ "${code}" -ne 124 ] && [ "${code}" -ne 130 ]; then exit "$code"; fi
