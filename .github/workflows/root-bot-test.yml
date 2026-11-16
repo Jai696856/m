@@ -52,6 +52,7 @@ jobs:
             exit 1
           fi
           printf 'DEV_TOKEN=%s\n' "$TOKEN" > .env
+          export DEV_TOKEN="$TOKEN"   # Root's tool prefers this over .env, so it must be the cleaned key too
           echo "Bot running for $M minutes. Go test it in your -test community on Root!"
           # Write the bot's output to a file (so nothing is lost if it exits suddenly)
           # and stream it here with the huge minified code lines shortened.
