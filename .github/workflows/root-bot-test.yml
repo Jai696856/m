@@ -44,9 +44,18 @@ jobs:
           MINUTES="${MINUTES_INPUT:-$(grep -o '[0-9]\+' test-run.txt | head -1)}"
           MINUTES="${MINUTES:-60}"
           M=$(( MINUTES > 330 ? 330 : MINUTES ))
-          printf 'DEV_TOKEN=%s\n' "$DEV_TOKEN" > .env
+          # Clean up common copy/paste extras: spaces, new lines, quotes, a "DEV_TOKEN=" prefix.
+          TOKEN="$(printf '%s' "$DEV_TOKEN" | tr -d '[:space:]"' | tr -d "'" | sed 's/^DEV_TOKEN=//')"
+          echo "Key length: ${#TOKEN} characters (a DEV_TOKEN is usually 150-250)."
+          if [ "${#TOKEN}" -lt 60 ] || ! printf '%s' "$TOKEN" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+            echo "::error::ROOT_DEV_TOKEN doesn't look like a DEV_TOKEN. In dev.rootapp.com open your bot > Settings > Generate new dev token, and save that whole value as ROOT_DEV_TOKEN. (It is not the bot ID or the upload token.)"
+            exit 1
+          fi
+          printf 'DEV_TOKEN=%s\n' "$TOKEN" > .env
           echo "Bot running for $M minutes. Go test it in your -test community on Root!"
-          timeout --signal=INT "${M}m" npx rootsdk start devhost || code=$?
+          # Hide the huge minified code lines so real error messages are readable.
+          set -o pipefail
+          timeout --signal=INT "${M}m" npx rootsdk start devhost 2>&1 | awk 'length($0) < 400' || code=$?
           rm -f .env
           # timeout exits 124 when time runs out: that's the normal way this ends.
           if [ "${code:-0}" -ne 0 ] && [ "${code}" -ne 124 ] && [ "${code}" -ne 130 ]; then exit "$code"; fi
