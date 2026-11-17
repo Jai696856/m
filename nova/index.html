@@ -1,0 +1,1870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="NOVA: a retro reasoning engine that learns facts and looks things up on Wikipedia.">
+<title>Question Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: a cream retro computer — mascot, model dial and brain meter on the case, warm phosphor terminal, keys below.
+   Case follows the viewer's theme; the glowing screen stays the same in both. */
+:root {
+  --page: #e9e0d1;
+  --case: #f5f0e6;
+  --case-hi: #fffaf2;
+  --case-shade: #d8ccb9;
+  --case-ink: #5b4a3e;
+  --key: #e8dece;
+  --key-shadow: #b9aa94;
+  --glass: #231a15;
+  --glass-mid: #33261e;
+  --phos: #f1b48f;
+  --accent: #d97757;
+  --dim: #a07b66;
+  --you: #f7ecdc;
+  --f-label: "Press Start 2P", "Courier New", monospace;
+  --f-term: "VT323", "Courier New", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #171310; --case: #2d2621; --case-hi: #3a312a; --case-shade: #1d1814; --case-ink: #cdbcaa;
+    --key: #3d342c; --key-shadow: #141110; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #171310; --case: #2d2621; --case-hi: #3a312a; --case-shade: #1d1814; --case-ink: #cdbcaa;
+  --key: #3d342c; --key-shadow: #141110; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--page); color: var(--case-ink); font-family: var(--f-term); font-size: 22px; line-height: 1.2;
+  margin: 0; display: flex; flex-direction: column; box-sizing: border-box;
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 12px;
+}
+.computer {
+  flex: 1; min-height: 0; width: 100%; max-width: 940px; margin: 0 auto; box-sizing: border-box;
+  background: linear-gradient(180deg, var(--case-hi), var(--case));
+  border-radius: 20px; padding: 14px 16px 12px;
+  box-shadow: inset 0 -4px 0 var(--case-shade), 0 12px 28px #0000002e;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+#mascot { width: 70px; height: 65px; image-rendering: pixelated; flex-shrink: 0; }
+.who { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 220px; }
+.name { font-family: var(--f-label); font-size: 13px; color: var(--accent); letter-spacing: .06em; }
+.tag { font-size: 19px; color: var(--case-ink); }
+.side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.dial { display: flex; gap: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 3px 0 var(--key-shadow); }
+.dial button {
+  font-family: var(--f-label); font-size: 8px; letter-spacing: .08em; color: var(--case-ink); background: var(--key);
+  border: 0; border-right: 1px solid var(--key-shadow); padding: 9px 10px; cursor: pointer;
+}
+.dial button:last-child { border-right: 0; }
+.dial button[aria-pressed="true"] { background: var(--accent); color: #fff7ef; }
+.meter { display: flex; align-items: center; gap: 8px; }
+.meter-label { font-family: var(--f-label); font-size: 8px; letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+.cells { display: flex; gap: 2px; }
+.cells i { width: 6px; height: 12px; background: var(--case-shade); border-radius: 1px; }
+.cells i.on { background: var(--accent); box-shadow: 0 0 5px #d9775788; }
+
+.screen {
+  position: relative; flex: 1; min-height: 0; border-radius: 16px / 22px; overflow: hidden;
+  background: radial-gradient(ellipse at center, var(--glass-mid) 0%, var(--glass) 78%);
+  box-shadow: inset 0 0 36px #000c, 0 0 0 4px var(--case-shade);
+  display: flex; flex-direction: column; color: var(--phos);
+  text-shadow: 0 0 4px #f1b48faa, 0 0 12px #d9775744;
+}
+.screen::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; background: repeating-linear-gradient(0deg, #0000004d 0 1px, transparent 1px 3px); }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; background: radial-gradient(ellipse at 28% 8%, #ffffff10, transparent 45%); animation: flicker 5s infinite steps(1); }
+@keyframes flicker { 0%,100% { opacity: 1 } 47% { opacity: .86 } 48% { opacity: 1 } 81% { opacity: .94 } }
+#out { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: var(--dim) transparent; }
+.line { margin: 0 0 4px; }
+.you { color: var(--you); text-shadow: 0 0 4px #f7ecdc88; margin-top: 10px; }
+.step { color: var(--dim); text-shadow: none; padding-left: 1.2em; }
+.ans { color: var(--phos); }
+.ans.big { color: var(--accent); text-shadow: 0 0 6px #d97757aa; }
+.sys { color: var(--dim); text-shadow: none; }
+.cmd-row { display: flex; align-items: center; gap: 8px; padding: 10px 18px 14px; border-top: 2px dashed #5a4335; }
+.prompt { color: var(--accent); flex-shrink: 0; }
+#q { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--you); font: inherit; caret-color: var(--accent); text-shadow: 0 0 4px #f7ecdc66; }
+#q::placeholder { color: #7d5f4f; text-shadow: none; }
+.cursor { display: inline-block; width: .55em; height: 1em; background: var(--phos); vertical-align: -0.12em; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0 } }
+
+.keys { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.key {
+  font-family: var(--f-label); font-size: 9px; letter-spacing: .08em; color: var(--case-ink);
+  background: var(--key); border: 0; border-radius: 5px; padding: 10px 12px; cursor: pointer; box-shadow: 0 3px 0 var(--key-shadow);
+}
+.key.hot { background: var(--accent); color: #fff7ef; box-shadow: 0 3px 0 #9c4a30; }
+.key:active, .dial button:active { transform: translateY(2px); }
+.key:focus-visible, .dial button:focus-visible, #q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.key:disabled { opacity: .5; cursor: default; }
+#autoBtn[aria-pressed="false"] { opacity: .7; }
+.reader {
+  position: absolute; inset: 0; z-index: 4; background: #231a15f2; display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 18px; box-sizing: border-box;
+}
+.reader[hidden] { display: none; }
+.reader h2 { margin: 0; font-family: var(--f-label); font-size: 11px; color: var(--accent); letter-spacing: .08em; font-weight: 400; }
+.reader p { margin: 0; color: var(--dim); text-shadow: none; font-size: 19px; }
+#readText {
+  flex: 1; min-height: 100px; resize: none; background: #1a130f; color: var(--you); border: 2px dashed #5a4335; border-radius: 8px;
+  padding: 10px 12px; font: 20px/1.25 var(--f-term); outline: none;
+}
+#readText:focus-visible { border-color: var(--accent); }
+.reader .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 600px) {
+  body { font-size: 19px; } .computer { padding: 10px; border-radius: 14px; }
+  .side { align-items: flex-start; width: 100%; } .tag { font-size: 17px; } .keys { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .screen::after, .cursor { animation: none; } }
+
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+</style>
+</head>
+<body>
+
+<div class="computer">
+  <div class="top">
+    <canvas id="mascot" width="140" height="130" aria-label="NOVA mascot" role="img"></canvas>
+    <div class="who">
+      <div class="name" id="mname">NOVA-2 SCHOLAR</div>
+      <div class="tag" id="tag">Loading...</div>
+    </div>
+    <div class="side">
+      <div class="dial" role="group" aria-label="Choose a model">
+        <button type="button" data-model="blank" aria-pressed="false">BLANK</button>
+        <button type="button" data-model="scholar" aria-pressed="true">SCHOLAR</button>
+        <button type="button" data-model="mini" aria-pressed="false">MINI</button>
+      </div>
+      <div class="meter" aria-live="polite">
+        <div class="meter-label" id="meterLabel">BRAIN: 0</div>
+        <div class="cells" id="cells"></div>
+      </div>
+    </div>
+  </div>
+  <div class="screen">
+    <div id="out" aria-live="polite"></div>
+    <div class="reader" id="reader" hidden>
+      <h2>READ &amp; LEARN</h2>
+      <p>Paste any factual text, like the opening paragraph of a Wikipedia article. I'll read it and teach myself the facts I can understand.</p>
+      <textarea id="readText" placeholder="Paste text here..." aria-label="Text for NOVA to read"></textarea>
+      <div class="row">
+        <button class="key" type="button" id="readSample">SAMPLE TEXT</button>
+        <button class="key" type="button" id="readCancel">CANCEL</button>
+        <button class="key hot" type="button" id="readGo">LEARN IT</button>
+      </div>
+    </div>
+    <form class="cmd-row" id="form" autocomplete="off">
+      <label class="prompt" for="q">&gt;</label>
+      <input id="q" type="text" placeholder="Ask a question or teach me a fact..." spellcheck="false">
+    </form>
+  </div>
+  <div class="keys">
+    <button class="key hot" type="button" id="readBtn">READ &amp; LEARN</button>
+    <button class="key" type="button" id="wikiBtn">WIKIPEDIA</button>
+    <button class="key" type="button" id="autoBtn" aria-pressed="true">AUTO-LEARN: ON</button>
+    <button class="key" type="button" id="surprise">SURPRISE ME</button>
+    <button class="key" type="button" id="demo">DEMO LESSON</button>
+    <button class="key" type="button" data-cmd="topics">TOPICS</button>
+    <button class="key" type="button" data-cmd="what do you know">MY BRAIN</button>
+    <button class="key" type="button" data-cmd="help">HELP</button>
+    <button class="key" type="button" id="reset">RESET BRAIN</button>
+  </div>
+</div>
+
+<script>
+(() => {
+/* ================= NOVA reasoning engine v3 ================= */
+const fmt = v => Number.isInteger(v) ? String(v) : String(+v.toPrecision(10));
+const LEAD = /^(a|an|the|all|every|each|some|any)\s+/;
+function sing(w) {
+  if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + "y";
+  if (/(ss|us|is|ous|ics)$/.test(w)) return w;
+  if (/(ches|shes|xes|sses)$/.test(w)) return w.slice(0, -2);
+  if (/s$/.test(w) && w.length > 3) return w.slice(0, -1);
+  return w;
+}
+function clean(t) { return String(t).toLowerCase().replace(/[’]/g, "'").replace(/[.!?,;:]+$/g, "").replace(/["“”]/g, "").replace(/\s+/g, " ").trim(); }
+function ent0(t) {
+  t = clean(t); let p;
+  while ((p = t.replace(LEAD, "")) !== t) t = p;
+  if (!t) return "";
+  const ws = t.split(" "); ws[ws.length - 1] = sing(ws[ws.length - 1]);
+  return ws.join(" ");
+}
+const ALIAS = new Map();
+const ent = t => { const k = ent0(t); return ALIAS.get(k) || k; };
+function alias(a, canon) { ALIAS.set(ent0(a), ent0(canon)); }
+const an = w => (/^[aeiou]/i.test(w) && !/^(us\b|uni|use|eu|one\b)/i.test(w) ? "an " : "a ") + w;
+const plural = w => /[^aeiou]y$/.test(w) ? w.slice(0, -1) + "ies" : /(s|x|ch|sh)$/.test(w) ? w + "es" : w + "s";
+const canonVerb = t => { const ws = clean(t).split(" "); ws[ws.length - 1] = sing(ws[ws.length - 1]); return ws.join(" "); };
+const DISP = new Map();
+function reg(text) {
+  let t = String(text).trim().replace(/[.!?]+$/, ""), p;
+  while ((p = t.replace(/^(a|an|the|all|every|each|some|any)\s+/, "")) !== t) t = p; // lowercase articles only
+  const k = ent(t); if (k && !DISP.has(k)) DISP.set(k, t === t.toLowerCase() ? k : t); return k;
+}
+const disp = k => DISP.get(k) || k;
+
+const OPP = { bigger: "smaller", larger: "smaller", taller: "shorter", longer: "shorter", faster: "slower", older: "younger", heavier: "lighter", stronger: "weaker", higher: "lower", hotter: "colder", warmer: "colder", richer: "poorer", better: "worse", louder: "quieter", wider: "narrower", deeper: "shallower", farther: "closer" };
+const REV = {}; for (const [a, b] of Object.entries(OPP)) if (!REV[b]) REV[b] = a;
+const SYN = { larger: "bigger", longer: "taller", further: "farther", nearer: "closer" };
+function canonCmp(w) { w = SYN[w] || w; if (REV[w]) return { w: REV[w], flip: true }; return { w, flip: false }; }
+
+/* ---------------- models ---------------- */
+const MODELS = {
+  blank:   { id: "blank",   name: "NOVA-1 BLANK",   key: "nova1-brain-v2", pack: false, chain: true,  steps: true,  color: "#d97757", tip: "#f1b48f",
+             tag: "Starts knowing nothing. Learns only from you." },
+  scholar: { id: "scholar", name: "NOVA-2 SCHOLAR", key: "nova2-scholar",  pack: true,  chain: true,  steps: true,  color: "#c98a3c", tip: "#ffe2a8",
+             tag: "Knowledge pack loaded. Reasons and shows its working." },
+  mini:    { id: "mini",    name: "NOVA-2 MINI",    key: "nova2-mini",     pack: true,  chain: false, steps: false, color: "#c46a6a", tip: "#ffd35a",
+             tag: "Knowledge pack, fast short answers. No chaining." },
+};
+let model = MODELS.scholar;
+let brain = { facts: [], nums: {} };
+let BYS = new Map(), BYO = new Map(), NUMS = {};
+const PACK = [], PACKNUMS = {};
+const subj = x => BYS.get(x) || [], obj = x => BYO.get(x) || [];
+function rebuild() {
+  BYS = new Map(); BYO = new Map();
+  const all = model.pack ? brain.facts.concat(PACK) : brain.facts; // your facts first, so they win
+  for (const f of all) {
+    if (!BYS.has(f.s)) BYS.set(f.s, []); BYS.get(f.s).push(f);
+    if (!BYO.has(f.o)) BYO.set(f.o, []); BYO.get(f.o).push(f);
+  }
+  NUMS = model.pack ? { ...PACKNUMS, ...brain.nums } : { ...brain.nums };
+}
+function save() { try { localStorage.setItem(model.key, JSON.stringify(brain)); } catch (e) {} }
+function useModel(id) {
+  model = MODELS[id] || MODELS.scholar; brain = { facts: [], nums: {} };
+  try { const b = JSON.parse(localStorage.getItem(model.key) || "null"); if (b && Array.isArray(b.facts) && b.nums) brain = b; } catch (e) {}
+  (brain.aliases || []).forEach(([a, c]) => alias(a, c));
+  rebuild();
+}
+const brainSize = () => brain.facts.length + Object.keys(brain.nums).length;
+const packSize = () => model.pack ? PACK.length + Object.keys(PACKNUMS).length : 0;
+
+/* ---------------- memory ---------------- */
+const NEG = { is: "isnt", can: "cant", has: "hasnt" };
+const POS = { isnt: "is", cant: "can", hasnt: "has" };
+function addFact(f) {
+  const opp = NEG[f.r] || POS[f.r];
+  brain.facts = brain.facts.filter(g => !(g.s === f.s && g.o === f.o && (g.r === f.r || g.r === opp) && g.w === f.w && g.k === f.k));
+  if (f.r === "cmp") brain.facts = brain.facts.filter(g => !(g.r === "cmp" && g.w === f.w && g.s === f.o && g.o === f.s));
+  if (f.r === "attr") brain.facts = brain.facts.filter(g => !(g.r === "attr" && g.k === f.k && g.s === f.s));
+  brain.facts.push(f); save(); rebuild();
+}
+const PHRASE = {
+  inventor: "{s} was invented by {o}", "year invented": "{s} was invented in {o}", author: "{s} was written by {o}",
+  painter: "{s} was painted by {o}", sculptor: "{s} was sculpted by {o}", composer: "{s} was composed by {o}",
+  discoverer: "{s} was discovered by {o}", "year discovered": "{s} was discovered in {o}", year: "{s} happened in {o}",
+  "year built": "{s} was built in {o}", "year born": "{s} was born in {o}", "year written": "{s} was written in {o}",
+  builder: "{s} was built by {o}", creator: "{s} was created by {o}", publisher: "{s} was published by {o}", founder: "{s} was founded by {o}", "year founded": "{s} was founded in {o}", "year died": "{s} died in {o}", director: "{s} was directed by {o}", "year made": "{s} was made in {o}", location: "{s} is in {o}", continent: "{s} is in {o}", job: "the job of the {s} is to {o}",
+};
+function objText(f) { if (f.d) return f.d; const o = disp(f.o); return f.a ? an(o) : o; }
+function say(f) {
+  const S = disp(f.s);
+  switch (f.r) {
+    case "is": return `${S} is ${objText(f)}`;
+    case "isnt": return `${S} is not ${objText(f)}`;
+    case "can": return `${S} can ${f.o}`;
+    case "cant": return `${S} cannot ${f.o}`;
+    case "has": return `${S} has ${objText(f)}`;
+    case "hasnt": return `${S} does not have ${objText(f)}`;
+    case "cmp": return `${S} is ${f.w} than ${disp(f.o)}`;
+    case "attr":
+      if (f.k[0] === "#") return `${S} has ${disp(f.o)} ${f.o === "1" ? f.k.slice(1) : (f.pl || plural(f.k.slice(1)))}`;
+      return (PHRASE[f.k] || ("the {k} of {s} " + (/s$/.test(f.k) && !/ss$/.test(f.k) ? "are" : "is") + " {o}")).replace("{k}", f.k).replace("{s}", S).replace("{o}", disp(f.o));
+  }
+}
+const known = x => BYS.has(x) || BYO.has(x) || x in NUMS;
+
+/* ---------------- reasoning ---------------- */
+function ancestors(x) {
+  const out = [{ node: x, path: [] }];
+  if (!model.chain) return out;
+  const seen = new Map([[x, []]]), q = [x];
+  while (q.length) {
+    const n = q.shift();
+    for (const f of subj(n)) if (f.r === "is" && !seen.has(f.o)) {
+      const p = [...seen.get(n), f]; seen.set(f.o, p); q.push(f.o); out.push({ node: f.o, path: p });
+    }
+  }
+  return out;
+}
+function pickAt(node, rels, o) {
+  let best = null;
+  for (const f of subj(node)) if (rels.includes(f.r) && f.o === o) { if (f.u) return f; best = best || f; }
+  return best;
+}
+function query(rel, x, y) {
+  for (const { node, path } of ancestors(x)) {
+    const f = pickAt(node, [rel, NEG[rel]], y);
+    if (f) return { ans: f.r === rel, path: [...path, f] };
+  }
+  return null;
+}
+function attrQuery(k, x) {
+  for (const { node, path } of ancestors(x)) {
+    let fs = subj(node).filter(f => f.r === "attr" && f.k === k);
+    if (fs.some(f => f.u)) fs = fs.filter(f => f.u);
+    if (fs.length) return { vals: fs, path: [...path, ...fs] };
+  }
+  return null;
+}
+function cmpPath(w, a, b) {
+  const seen = new Map([[a, []]]), q = [a];
+  while (q.length) {
+    const n = q.shift();
+    for (const f of subj(n)) if (f.r === "cmp" && f.w === w && !seen.has(f.o)) {
+      const p = [...seen.get(n), f]; if (f.o === b) return p;
+      if (model.chain) { seen.set(f.o, p); q.push(f.o); }
+    }
+  }
+  return null;
+}
+function compare(word, a, b) {
+  const { w, flip } = canonCmp(word);
+  const [hi, lo] = flip ? [b, a] : [a, b];
+  let p = cmpPath(w, hi, lo); if (p) return { ans: true, path: p };
+  p = cmpPath(w, lo, hi); if (p) return { ans: false, path: p };
+  return null;
+}
+function explain(path, conclusion) {
+  const steps = path.map(f => "• " + say(f) + (f.u ? (f.src === "read" ? "  (I read this)" : "  (you told me)") : ""));
+  if (path.length > 1) steps.push("• chaining these together...");
+  if (conclusion) steps.push("∴ " + conclusion);
+  return steps;
+}
+function leaves(x) {
+  const seen = new Set([x]), q = [x], out = new Set();
+  while (q.length) {
+    const n = q.shift(), kids = obj(n).filter(f => f.r === "is");
+    if (!kids.length && n !== x) out.add(n);
+    for (const f of kids) if (!seen.has(f.s)) { seen.add(f.s); q.push(f.s); }
+  }
+  return [...out];
+}
+function describe(x) {
+  const lines = [], own = subj(x);
+  const show = (arr, max, pre) => { arr.slice(0, max).forEach(t => lines.push(pre + t)); if (arr.length > max) lines.push(`${pre}...and ${arr.length - max} more`); };
+  show(own.map(say), 14, "• ");
+  show(obj(x).filter(f => f.r === "attr" || f.r === "cmp").map(say), 8, "• ");
+  if (model.chain) {
+    const inferred = [];
+    for (const { node } of ancestors(x).slice(1)) {
+      if (!own.some(f => f.r === "is" && f.o === node)) inferred.push(`${disp(x)} is ${an(disp(node))}`);
+      for (const f of subj(node)) {
+        if (f.r === "is" || f.r === "cmp") continue;
+        if (f.r === "attr") { const r = attrQuery(f.k, x); if (r && r.path.includes(f)) inferred.push(say({ ...f, s: x })); continue; }
+        const r = query(POS[f.r] || f.r, x, f.o);
+        if (r && r.path.includes(f)) inferred.push(`${say({ ...f, s: x })}  (because ${disp(x)} is ${an(disp(node))})`);
+      }
+    }
+    show([...new Set(inferred)], 14, "◇ ");
+  }
+  const kidFacts = obj(x).filter(f => f.r === "is");
+  if (kidFacts.length === 1 && !own.length) lines.push("• " + say(kidFacts[0]));
+  else if (kidFacts.length) {
+    const kids = kidFacts.map(f => disp(f.s));
+    lines.push(`• examples of ${disp(x)}: ${kids.slice(0, 24).join(", ")}${kids.length > 24 ? `, and ${kids.length - 24} more` : ""}`);
+  }
+  return lines;
+}
+function countDerived() {
+  if (!model.chain) return 0;
+  let n = 0;
+  const memo = new Map();
+  const anc = x => { if (!memo.has(x)) memo.set(x, ancestors(x).slice(1).map(a => a.node)); return memo.get(x); };
+  for (const [s, fs] of BYS) {
+    const direct = new Set(fs.filter(f => f.r === "is").map(f => f.o));
+    for (const a of anc(s)) { if (!direct.has(a)) n++; n += subj(a).filter(f => f.r !== "is" && f.r !== "cmp").length; }
+  }
+  const cmpSubj = new Set(); for (const [s, fs] of BYS) if (fs.some(f => f.r === "cmp")) cmpSubj.add(s);
+  for (const s of cmpSubj) { const seen = new Set(), q = [s]; while (q.length) { const c = q.shift(); for (const f of subj(c)) if (f.r === "cmp" && !seen.has(f.o + f.w)) { seen.add(f.o + f.w); q.push(f.o); } } n += Math.max(0, seen.size - subj(s).filter(f => f.r === "cmp").length); }
+  return n;
+}
+
+/* ---------------- math ---------------- */
+function tokenize(s) {
+  const out = [], re = /\s*(\d*\.\d+|\d+|[a-z]+|[-+*/^()=])/y; re.lastIndex = 0;
+  while (re.lastIndex < s.length) {
+    if (/^\s*$/.test(s.slice(re.lastIndex))) break;
+    const m = re.exec(s); if (!m) return null; out.push(m[1]);
+  }
+  const FN = ["sqrt"], t = [];
+  for (const tok of out) {
+    const prev = t[t.length - 1];
+    const prevVal = prev !== undefined && (/^[\d.]/.test(prev) || prev === ")" || (/^[a-z]/.test(prev) && !FN.includes(prev)));
+    const curVal = /^[a-z]/.test(tok) || tok === "(" || (/^[\d.]/.test(tok) && /^[a-z)]/.test(prev || "") && !FN.includes(prev));
+    if (prevVal && curVal) t.push("*");
+    t.push(tok);
+  }
+  return t;
+}
+function parse(tokens) {
+  let i = 0;
+  const peek = () => tokens[i], next = () => tokens[i++];
+  function expr() { let a = term(); while (peek() === "+" || peek() === "-") { const op = next(); a = { op, a, b: term() }; } return a; }
+  function term() { let a = unary(); while (peek() === "*" || peek() === "/") { const op = next(); a = { op, a, b: unary() }; } return a; }
+  function unary() { if (peek() === "-") { next(); return { neg: unary() }; } if (peek() === "+") { next(); return unary(); } return power(); }
+  function power() { const a = atom(); if (peek() === "^") { next(); return { op: "^", a, b: unary() }; } return a; }
+  function atom() {
+    const t = next(); if (t === undefined) throw 0;
+    if (t === "(") { const e = expr(); if (next() !== ")") throw 0; return e; }
+    if (t === "sqrt") return { fn: "sqrt", a: power() };
+    if (/^[\d.]/.test(t)) return { n: parseFloat(t) };
+    if (/^[a-z]+$/.test(t)) return { v: t };
+    throw 0;
+  }
+  const e = expr(); if (i !== tokens.length) throw 0; return e;
+}
+const vars = (n, s = new Set()) => { if (n.v) s.add(n.v); ["a", "b", "neg"].forEach(k => n[k] && vars(n[k], s)); return s; };
+function ev(n, env, steps) {
+  if ("n" in n) return n.n;
+  if (n.v) return env[n.v];
+  if (n.neg) return -ev(n.neg, env, steps);
+  if (n.fn) { const a = ev(n.a, env, steps), r = Math.sqrt(a); steps && steps.push(`√${fmt(a)} = ${fmt(r)}`); return r; }
+  const a = ev(n.a, env, steps), b = ev(n.b, env, steps);
+  const r = { "+": a + b, "-": a - b, "*": a * b, "/": a / b, "^": Math.pow(a, b) }[n.op];
+  steps && steps.push(`${fmt(a)} ${{ "*": "×", "/": "÷" }[n.op] || n.op} ${fmt(b)} = ${fmt(r)}`);
+  return r;
+}
+const WORDS = [[/\btimes\b|\bmultiplied by\b/g, "*"], [/\bdivided by\b/g, "/"], [/\bplus\b/g, "+"], [/\bminus\b/g, "-"], [/\bsquared\b/g, "^2"], [/\bcubed\b/g, "^3"], [/\bsquare root of\b/g, "sqrt "], [/(\d)\s*x\s*(\d)/g, "$1*$2"], [/(\d+(?:\.\d+)?)\s*%\s*of\s*/g, "($1/100)*"], [/(\d),(\d{3})/g, "$1$2"]];
+function prepMath(s) {
+  s = s.replace(/^(what is|what's|whats|calculate|compute|work out|solve|find)\s+/, "").replace(/\?$/, "");
+  for (const [re, r] of WORDS) s = s.replace(re, r);
+  const used = [];
+  for (const k of Object.keys(NUMS).sort((a, b) => b.length - a.length)) {
+    if (k.length === 1) continue;
+    const re = new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "g");
+    if (re.test(s)) { s = s.replace(re, "(" + NUMS[k] + ")"); used.push(k); }
+  }
+  return { s: s.trim(), used };
+}
+const numSrc = k => k in brain.nums ? "you told me" : "I know";
+function solveEquation(L, R, x) {
+  const f = v => ev(L, { ...NUMS, [x]: v }) - ev(R, { ...NUMS, [x]: v });
+  const f0 = f(0), f1 = f(1), f2 = f(2), f3 = f(3);
+  const d1 = f1 - f0, d2 = f2 - f1, d3 = f3 - f2, close = (a, b) => Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+  const steps = ["• move everything to one side so it equals 0"];
+  if (close(d1, d2) && close(d2, d3)) {
+    const a = d1, b = f0;
+    steps.push(`• try ${x} = 0: the left side is ${fmt(b)}`, `• each +1 to ${x} changes it by ${fmt(a)}, so it's a straight line`);
+    if (close(a, 0)) return { steps, answer: close(b, 0) ? `every value of ${x} works.` : "there is no solution." };
+    const r = -b / a;
+    steps.push(`• to reach 0: ${x} = −(${fmt(b)}) ÷ ${fmt(a)} = ${fmt(r)}`, `• check: put ${x} = ${fmt(r)} back in → both sides match ✓`);
+    return { steps, answer: `${x} = ${fmt(r)}` };
+  }
+  const A = (f2 - 2 * f1 + f0) / 2, B = f1 - f0 - A, C = f0;
+  if (close(f3, A * 9 + B * 3 + C) && !close(A, 0)) {
+    const term = (c, t, first) => c === 0 ? "" : (c < 0 ? (first ? "−" : " − ") : (first ? "" : " + ")) + (Math.abs(c) === 1 && t ? "" : fmt(Math.abs(c))) + t;
+    steps.push(`• the change isn't steady, so it's a curve: ${term(A, x + "²", true)}${term(B, x)}${term(C, "")} = 0`);
+    const D = B * B - 4 * A * C, p = v => v < 0 ? `(${fmt(v)})` : fmt(v);
+    steps.push(`• discriminant: ${p(B)}² − 4×${p(A)}×${p(C)} = ${fmt(D)}`);
+    if (D < 0) return { steps, answer: "no real solution (the curve never touches 0)." };
+    const r1 = (-B + Math.sqrt(D)) / (2 * A), r2 = (-B - Math.sqrt(D)) / (2 * A);
+    steps.push(`• quadratic formula: (−b ± √D) ÷ 2a`);
+    return { steps, answer: close(r1, r2) ? `${x} = ${fmt(r1)}` : `${x} = ${fmt(r1)} or ${x} = ${fmt(r2)}` };
+  }
+  return { steps, answer: "that equation is too tricky for my solver so far." };
+}
+function tryMath(raw) {
+  const { s, used } = prepMath(raw);
+  if (!/\d/.test(s) && !used.length && !/=/.test(s)) return null;
+  const sides = s.split("=");
+  if (sides.length > 2) return null;
+  const toks = sides.map(tokenize); if (toks.some(t => !t || !t.length)) return null;
+  let trees; try { trees = toks.map(parse); } catch (e) { return null; }
+  const unknown = new Set(); trees.forEach(t => vars(t).forEach(v => { if (!(v in NUMS)) unknown.add(v); }));
+  if ([...unknown].some(v => v.length > 1)) return null;
+  const pre = used.map(k => `• ${numSrc(k)} ${k} = ${fmt(NUMS[k])}`);
+  trees.forEach(t => vars(t).forEach(v => { if (v in NUMS) pre.push(`• ${numSrc(v)} ${v} = ${fmt(NUMS[v])}`); }));
+  if (sides.length === 2) {
+    if (unknown.size !== 1) return unknown.size ? { steps: pre, answer: "that has more than one unknown. Tell me some of them first, like: y = 3" } : null;
+    const r = solveEquation(trees[0], trees[1], [...unknown][0]);
+    return { steps: [...new Set(pre), ...r.steps], answer: r.answer };
+  }
+  if (unknown.size) return { steps: pre, answer: `I don't know what ${[...unknown].join(", ")} is yet. Tell me, like: ${[...unknown][0]} = 4` };
+  const steps = []; const v = ev(trees[0], NUMS, steps);
+  if (!isFinite(v)) return { steps, answer: "that can't be worked out (dividing by zero?)." };
+  return { steps: [...new Set(pre), ...steps.map(t => "• " + t)], answer: fmt(v) };
+}
+
+/* ---------------- reading sentences into facts ---------------- */
+const BYKEY = { built: "builder", invented: "inventor", created: "inventor", written: "author", painted: "painter", composed: "composer", discovered: "discoverer", sculpted: "sculptor" };
+const YEARKEY = { invented: "year invented", discovered: "year discovered", built: "year built", born: "year born", written: "year written", published: "year written", happened: "year", founded: "year founded", died: "year died", die: "year died", made: "year made", released: "year made" };
+function displayObj(text, f) {
+  const raw = String(text).trim().replace(/[.!?]+$/, "").replace(/^(all|every|each|some|any)\s+/i, "");
+  if (/^(a|an)\s/i.test(raw)) return raw;
+  if (f.a && (f.r === "is" || f.r === "isnt")) return an(disp(f.o));
+  return raw;
+}
+function parseStatement(input) {
+  const t = String(input).trim().replace(/[.!]+$/, "").replace(/^(i know that|did you know|fact:?|remember that|teach:?|learn:?)\s+/i, "");
+  let m, f = null;
+  const plur = x => { const w = clean(x).split(" ").pop(); return sing(w) !== w; };
+  const art = x => !/^the\s/i.test(String(x).trim()) && (/^(a|an)\s+/i.test(String(x).trim()) || plur(x));
+  if ((m = /^(.+?)\s+(?:was|were)\s+(invented|created|written|painted|composed|discovered|sculpted|built)\s+by\s+(.+)$/i.exec(t))) f = { r: "attr", k: BYKEY[m[2].toLowerCase()], s: reg(m[1]), o: reg(m[3]) };
+  else if ((m = /^(.+?)\s+(?:was|were)\s+(invented|discovered|built|born|written|published|founded)\s+in\s+(.+)$/i.exec(t))) f = { r: "attr", k: YEARKEY[m[2].toLowerCase()], s: reg(m[1]), o: reg(m[3]) };
+  else if ((m = /^(.+?)\s+happened\s+in\s+(.+)$/i.exec(t))) f = { r: "attr", k: "year", s: reg(m[1]), o: reg(m[2]) };
+  else if ((m = /^(.+?)\s+(?:has|have)\s+(?:about\s+)?(\d[\d,.]*)\s+(.+)$/i.exec(t))) f = { r: "attr", k: "#" + ent0(m[3]), s: reg(m[1]), o: m[2], pl: clean(m[3]) };
+  else if ((m = /^(?:the\s+)?(\w+(?:\s\w+){0,2}?)\s+of\s+(.+?)\s+(?:is|are|was)\s+(.+)$/i.exec(t)) && !/\b(than|not)\b/i.test(m[3])) f = { r: "attr", k: clean(m[1]), s: reg(m[2]), o: reg(m[3]) };
+  else if ((m = /^(.+?)\s+(?:is not|isn't|are not|aren't)\s+(.+)$/i.exec(t))) f = { r: "isnt", s: reg(m[1]), o: reg(m[2]), a: art(m[2]) };
+  else if ((m = /^(.+?)\s+(?:can't|cannot|can not)\s+(.+)$/i.exec(t))) f = { r: "cant", s: reg(m[1]), o: canonVerb(m[2]) };
+  else if ((m = /^(.+?)\s+can\s+(.+)$/i.exec(t))) f = { r: "can", s: reg(m[1]), o: canonVerb(m[2]) };
+  else if ((m = /^(.+?)\s+(?:doesn't|does not|don't|do not)\s+have\s+(.+)$/i.exec(t))) f = { r: "hasnt", s: reg(m[1]), o: reg(m[2]), a: art(m[2]) };
+  else if ((m = /^(.+?)\s+(?:has|have)\s+(?:got\s+)?(.+)$/i.exec(t))) f = { r: "has", s: reg(m[1]), o: reg(m[2]), a: art(m[2]) };
+  else if ((m = /^(.+?)\s+(?:is|are)\s+(\w+er)\s+than\s+(.+)$/i.exec(t))) {
+    const { w, flip } = canonCmp(m[2].toLowerCase()); const a = reg(m[1]), b = reg(m[3]);
+    f = { r: "cmp", w, s: flip ? b : a, o: flip ? a : b };
+  }
+  else if ((m = /^(.+?)\s+(?:is|are)\s+in\s+(.+)$/i.exec(t))) f = { r: "attr", k: "location", s: reg(m[1]), o: reg(m[2]) };
+  else if ((m = /^(.+?)\s+(?:is|are)\s+(.+)$/i.exec(t))) f = { r: "is", s: reg(m[1]), o: reg(m[2]), a: art(m[2]) };
+  if (!f || !f.s || !f.o) return null;
+  if (["is", "isnt", "has", "hasnt"].includes(f.r)) f.d = displayObj(m[2], f);
+  return f;
+}
+
+/* ---------------- understanding questions ---------------- */
+function splitKnown(words, preferArticle) {
+  for (let k = words.length - 1; k >= 1; k--) { const x = ent(words.slice(0, k).join(" ")); if (BYS.has(x)) return [words.slice(0, k).join(" "), words.slice(k).join(" ")]; }
+  if (preferArticle) { const j = words.findIndex((w, i) => i > 0 && (w === "a" || w === "an")); if (j > 0) return [words.slice(0, j).join(" "), words.slice(j).join(" ")]; }
+  return null;
+}
+const stripLead = ws => { while (ws.length > 1 && /^(the|a|an|all|every|each|some|any)$/.test(ws[0])) ws = ws.slice(1); return ws; };
+const dontKnow = (what, hint, lookup) => ({ steps: [`• searched my memory for ${what}`, "• nothing found"], answer: `I don't know that yet.${hint ? " Teach me, like: " + hint : ""}`, mood: "confused", lookup });
+
+function attrAnswer(k, xs, label) {
+  const x = ent(xs), r = attrQuery(k, x);
+  if (!r) return dontKnow(`the ${label || k.replace(/^#/, "number of ")} of ${disp(x)}`, k[0] === "#" ? `${disp(x)} has 4 ${plural(k.slice(1))}` : `the ${k} of ${disp(x)} is ...`, xs);
+  const S = disp(x);
+  const vals = r.vals.length > 1 ? [{ ...r.vals[0], o: r.vals.map(v => disp(v.o)).join(" or ") }] : r.vals;
+  const ans = vals.map(f => { let t = say({ ...f, s: x }); if (/^[a-z]/.test(S) && t.startsWith(S)) t = (k[0] === "#" ? an(S) : "the " + S) + t.slice(S.length); return t; }).join("; ");
+  const inherited = r.path.length > r.vals.length;
+  return { steps: inherited ? explain(r.path) : r.vals.some(f => f.u) ? ["• you told me this"] : [], answer: ans.charAt(0).toUpperCase() + ans.slice(1) + "." };
+}
+
+const HELP = () => [
+  `${model.name}: ${model.tag}`,
+  "",
+  "TEACH ME (just say it):",
+  "  cats are animals · penguins cannot fly · birds have feathers",
+  "  tom is taller than sam · the capital of atlantis is coral city",
+  "  a spider has 8 legs · the radio was invented by marconi · x = 5",
+  "ASK ME:",
+  "  is a cat an animal? · can a penguin fly? · what is the capital of japan?",
+  "  who wrote hamlet? · how many legs does a spider have? · where is the eiffel tower?",
+  "  which element has the symbol au? · is jupiter bigger than earth? · name some reptiles",
+  "READ & LEARN (I teach myself from text you paste):",
+  "  read: The quokka is a small marsupial. It lives on Rottnest Island...",
+  "LOOK IT UP (only in your own copy, not on claude.ai):",
+  "  look up komodo dragon · or just ask; I'll check Wikipedia when I don't know",
+  "SOLVE:",
+  "  (12+8)*3 · 15% of 80 · 3 dozen · solve 2x + 3 = 11 · x^2 = 9",
+  "OTHER:",
+  "  topics · what do you know · forget cat · reset brain · clear",
+].join("\n");
+const TOPICS = "My knowledge pack covers:\n• every country: capital & continent (plus language & currency for 55)\n• all 50 US states & capitals\n• all 118 elements: symbol, number, group, state\n• about 330 animals: class, diet, special facts\n• space: planets, moons, dwarf planets, the sun\n• the human body · shapes · time & units · science\n• inventions, discoveries, books, paintings, music, famous people\n• history dates · world landmarks · geography records\n• plants, fruit & vegetables · sports · opposites\nPress SURPRISE ME for a random question.";
+
+function think(input) {
+  const raw = clean(input); if (!raw) return null;
+  const q = raw.replace(/\?$/, "");
+  const isQ = /\?\s*$/.test(String(input).trim()) || /^(what|who|whom|whose|which|why|how|where|when|is|are|was|were|can|could|does|do|did|has|have|tell me|name|list|solve|calculate|compute|work out|find)\b/.test(q);
+  let m;
+
+  if (/^(help|commands)$/.test(q)) return { answer: HELP() };
+  if ((m = /^(?:read|learn from)\s*:\s*([\s\S]+)$/i.exec(String(input).trim()))) return readText(m[1]);
+  if (/^(topics|subjects)$/.test(q)) return { answer: model.pack ? TOPICS : `${model.name} has no knowledge pack. Switch to SCHOLAR or MINI, or teach me yourself.` };
+  if (/^(clear|cls)$/.test(q)) return { clear: true };
+  if (/^(reset brain|forget everything|wipe memory|reset)$/.test(q)) return { reset: true };
+  if (/^(what do you know|memory|brain|show brain|what have you learned)$/.test(q)) {
+    const taught = [...brain.facts.map(f => "• " + say(f)), ...Object.entries(brain.nums).map(([k, v]) => `• ${k} = ${fmt(v)}`)];
+    const head = model.pack ? `Knowledge pack: ${packSize().toLocaleString()} facts${model.chain ? `, and I can reason out about ${DERIVED.toLocaleString()} more` : ""}. Type TOPICS to see subjects.\nYou've taught me ${brainSize()}${taught.length ? ":" : "."}` : brainSize() ? `I know ${brainSize()} thing${brainSize() === 1 ? "" : "s"}, all from you:` : "Nothing yet. My brain is empty. Teach me something!";
+    return { answer: [head, ...taught.slice(-40)].join("\n"), mood: !model.pack && !brainSize() ? "confused" : undefined };
+  }
+  if ((m = /^forget\s+(.+)$/.exec(q))) {
+    const x = ent(m[1]), before = brainSize();
+    brain.facts = brain.facts.filter(f => f.s !== x && f.o !== x); delete brain.nums[clean(m[1])]; save(); rebuild();
+    return { answer: before !== brainSize() ? `Forgotten what you taught me about ${disp(x)}.` : `You haven't taught me anything about ${disp(x)}.${model.pack ? " (My knowledge pack can't be erased.)" : ""}` };
+  }
+  if (/^(hi|hello|hey|yo|greetings)\b/.test(q)) return { answer: `Hello! I'm ${model.name}. ${model.tag} Type HELP to see what I can do.` };
+  if (/^(who|what) are you$/.test(q)) return { answer: `I'm ${model.name}, a reasoning engine that runs entirely in this page. ${model.tag} I answer by looking up facts, chaining them together, comparing, and solving math step by step.` };
+
+  if ((m = /^(?:let\s+)?([a-z][a-z ]{0,30}?)\s*(?:=|is|equals)\s*(-?\d*\.?\d+)$/.exec(q)) && !isQ) {
+    const k = m[1].trim().replace(/^the /, ""); brain.nums[k] = parseFloat(m[2]); save(); rebuild();
+    return { answer: `Stored: ${k} = ${m[2]}. I can use it in math now.`, mood: "happy", learned: true };
+  }
+  const mathR = tryMath(q);
+  if (mathR) return { ...mathR, mood: "think" };
+
+  if (isQ) {
+    if ((m = /^why\s+(.+)$/.exec(q))) return think(m[1] + "?");
+    if ((m = /^(?:which|who|what)\s+is\s+(\w+er)[,:]?\s+(.+?)\s+or\s+(.+)$/.exec(q))) {
+      const a = ent(m[2]), b = ent(m[3]), r = compare(m[1], a, b);
+      if (!r) return dontKnow(`a chain of "${m[1]}" facts between ${disp(a)} and ${disp(b)}`, `${disp(a)} is ${m[1]} than ${disp(b)}`, !known(a) ? m[2] : !known(b) ? m[3] : undefined);
+      return { steps: explain(r.path), answer: `${disp(r.ans ? a : b)} is ${m[1]}.` };
+    }
+    if ((m = /^(?:is|are)\s+(.+?)\s+(\w+er)\s+than\s+(.+)$/.exec(q))) {
+      const a = ent(m[1]), b = ent(m[3]), r = compare(m[2], a, b);
+      if (!r) return dontKnow(`a chain of "${m[2]}" facts from ${disp(a)} to ${disp(b)}`, `${disp(a)} is ${m[2]} than ${disp(b)}`, !known(a) ? m[1] : !known(b) ? m[3] : undefined);
+      return { steps: explain(r.path), answer: r.ans ? `YES, ${disp(a)} is ${m[2]} than ${disp(b)}.` : `NO, ${disp(b)} is ${m[2]} than ${disp(a)}.` };
+    }
+    if ((m = /^how many\s+(.+?)\s+are there$/.exec(q))) {
+      const x = ent(m[1]), l = leaves(x);
+      if (!l.length) return dontKnow(`kinds of ${disp(x)}`, `mercury is a ${disp(x)}`);
+      return { steps: [`• counting everything I know that is ${an(disp(x))}...`], answer: `I know ${l.length} ${plural(disp(x))}.` + (l.length <= 12 ? ` They are: ${l.map(disp).join(", ")}.` : "") };
+    }
+    if ((m = /^how many\s+(.+?)\s+(?:does|do|did|has|have)\s+(.+?)(?:\s+(?:have|got))?$/.exec(q))) return attrAnswer("#" + ent0(m[1]), m[2]);
+    if ((m = /^how many\s+(.+?)\s+(?:are|is)\s+(?:there\s+)?(?:in|on)\s+(.+)$/.exec(q))) return attrAnswer("#" + ent0(m[1]), m[2]);
+    if ((m = /^who\s+(invented|created|made|wrote|painted|composed|discovered|sculpted|built|founded|directed|published|designed|developed)\s+(.+)$/.exec(q))) {
+      const k = { published: "publisher", designed: "creator", developed: "creator", founded: "founder", directed: "director", built: "builder", invented: "inventor", created: "inventor", made: "inventor", wrote: "author", painted: "painter", composed: "composer", discovered: "discoverer", sculpted: "sculptor" }[m[1]];
+      const kk = (m[1] === "created" || m[1] === "made") ? (["creator", "inventor", "founder"].find(c => attrQuery(c, ent(m[2]))) || "creator") : k;
+      return attrAnswer(kk, m[2], kk);
+    }
+    if ((m = /^when (?:was|were|did)\s+(.+?)\s+(invented|discovered|built|born|written|published|founded|made|released|die|happen|take place|start|begin)$/.exec(q))) {
+      const k = YEARKEY[m[2]] || "year"; const r = attrQuery(k, ent(m[1])) ? k : k === "year founded" && attrQuery("year built", ent(m[1])) ? "year built" : attrQuery("year", ent(m[1])) ? "year" : k;
+      return attrAnswer(r, m[1], "date");
+    }
+    if ((m = /^when (?:was|were|is)\s+(.+)$/.exec(q))) return attrAnswer("year", m[1], "date");
+    if ((m = /^where (?:is|are|was|does|do)\s+(.+?)(?:\s+live)?$/.exec(q))) {
+      const x = ent(m[1]);
+      for (const k of ["location", "continent"]) if (attrQuery(k, x)) return attrAnswer(k, m[1]);
+      const cap = obj(x).find(f => f.r === "attr" && f.k === "capital");
+      if (cap) return { steps: ["• " + say(cap)], answer: `${disp(x)} is in ${disp(cap.s)}.` };
+      return dontKnow(`where ${disp(x)} is`, `${disp(x)} is in ...`, m[1]);
+    }
+    if ((m = /^(?:which|what)\s+(\w+(?:\s\w+)?)\s+(?:has|have)\s+(?:the\s+|an?\s+)?(.+?)\s+(\S+)$/.exec(q))) {
+      const k = clean(m[2]), v = ent(m[3]);
+      const hits = obj(v).filter(f => f.r === "attr" && (f.k === k || f.k === "#" + ent0(k)));
+      if (hits.length) return { steps: hits.map(f => "• " + say(f)), answer: hits.map(f => disp(f.s)).join(", ") + "." };
+    }
+    if ((m = /^(?:what|who)(?:'s| is| are| was| were)\s+(?:the\s+)?(\w+(?:\s\w+){0,2}?)\s+of\s+(.+)$/.exec(q))) {
+      const r = attrQuery(clean(m[1]), ent(m[2]));
+      if (r) return attrAnswer(clean(m[1]), m[2]);
+      if (!known(ent(m[1] + " of " + m[2]))) return attrAnswer(clean(m[1]), m[2]);
+    }
+    if ((m = /^(?:what|who)(?:'s| is| are)\s+(.+?)'s\s+(.+)$/.exec(q))) return attrAnswer(clean(m[2]), m[1]);
+    if ((m = /^(?:does|do|has|have|did)\s+(.+?)\s+(?:have|got)\s+(.+)$/.exec(q))) return yesNo("has", m[1], m[2]);
+    if ((m = /^(?:can|could)\s+(.+)$/.exec(q))) {
+      const ws = stripLead(m[1].split(" ")); const sp = splitKnown(ws) || [ws[0], ws.slice(1).join(" ")];
+      if (!sp[1]) return null;
+      return yesNo("can", sp[0], sp[1]);
+    }
+    if ((m = /^(?:is|are|was|were)\s+(.+)$/.exec(q))) {
+      const ws = stripLead(m[1].split(" "));
+      if (ws.length < 2) return { answer: "Is it what? Ask like: is a cat an animal?", mood: "confused" };
+      const sp = splitKnown(ws, true) || [ws.slice(0, -1).join(" "), ws[ws.length - 1]];
+      return yesNo("is", sp[0], sp[1]);
+    }
+    if ((m = /^(?:name|list|give me)\s+(?:some|all|the|a few|me)?\s*(.+)$/.exec(q))) {
+      const x = ent(m[1]), l = leaves(x);
+      if (!l.length) return dontKnow(`examples of ${disp(x)}`, `a lion is a ${disp(x)}`);
+      const pickN = l.length > 15 ? l.slice().sort(() => Math.random() - .5).slice(0, 15) : l;
+      return { answer: `${l.length > 15 ? "Some" : "All the"} ${plural(disp(x))} I know: ${pickN.map(disp).join(", ")}.` + (l.length > 15 ? ` (${l.length} in total)` : "") };
+    }
+    if ((m = /^(?:what|who)\s+(?:is|are|was|were)\s+(.+)$/.exec(q)) || (m = /^(?:tell me about|what do you know about|describe)\s+(.+)$/.exec(q))) {
+      const k = clean(m[1]).replace(/^the /, "");
+      if (k in NUMS) return { steps: [`• ${numSrc(k)} ${k} = ${fmt(NUMS[k])}`], answer: `${k} is ${fmt(NUMS[k])}.` };
+      const x = ent(m[1]), lines = describe(x);
+      if (!lines.length) return { answer: `I don't know anything about "${disp(x)}" yet. Tell me, like: ${disp(x)} is ...`, mood: "confused", lookup: m[1] };
+      if (lines.length === 1 && !subj(x).length) { const t = lines[0].replace(/^[•◇] /, ""); return { answer: t.charAt(0).toUpperCase() + t.slice(1) + "." }; }
+      if (!model.steps) return { answer: lines.slice(0, 4).join("\n").replace(/^• /gm, "") };
+      return { steps: [`• looking up ${disp(x)} and everything it belongs to...`], answer: `Here's what I know or can work out about ${disp(x)}:\n` + lines.join("\n") + (lines.some(l => l.startsWith("◇")) ? "\n(◇ = worked out myself)" : "") };
+    }
+    if ((m = /^(?:the\s+)?(\w+(?:\s\w+){0,2}?)\s+of\s+(.+)$/.exec(q)) && attrQuery(clean(m[1]), ent(m[2]))) return attrAnswer(clean(m[1]), m[2]);
+    return { answer: "I don't understand that kind of question yet. Type HELP to see what I can work out.", mood: "confused" };
+  }
+
+  const f = parseStatement(input);
+  if (f) {
+    f.u = 1;
+    const before = model.chain ? describe(f.s).filter(l => l.startsWith("◇")).length : 0;
+    addFact(f);
+    const after = model.chain ? describe(f.s).filter(l => l.startsWith("◇")).length : 0;
+    const extra = after > before ? ` That lets me work out ${after - before} new thing${after - before === 1 ? "" : "s"} about ${disp(f.s)}.` : "";
+    return { answer: `Learned: ${say(f)}.${extra}`, mood: "happy", learned: true };
+  }
+  return { answer: `I couldn't turn that into a fact. Try a sentence like "dogs are animals" or "x = 5". Type HELP for more.`, mood: "confused" };
+}
+function learnAlias(a, canon) {
+  if (!a || !canon || ent0(a) === ent0(canon) || BYS.has(ent0(a))) return;
+  brain.aliases = (brain.aliases || []).filter(([x]) => ent0(x) !== ent0(a)); brain.aliases.push([a, canon]); alias(a, canon); save();
+}
+function readText(text, names) {
+  const r = learnFromText(text);
+  if (r.topic && r.facts.length) (names || []).forEach(n => learnAlias(n, disp(r.topic)));
+  if (!r.facts.length) return { steps: [`• read ${splitSentences(text).length} sentence(s)`, "• found nothing I could turn into facts"], answer: "I couldn't find facts I understand in that text. Simple factual sentences work best, like the opening paragraph of an encyclopedia article.", mood: "confused" };
+  r.facts.forEach(f => { f.u = 1; f.src = "read"; addFact(f); });
+  return {
+    steps: [`• read ${splitSentences(text).length} sentence(s)${r.topic ? `, about ${disp(r.topic)}` : ""}`, `• understood ${r.facts.length} fact(s), skipped ${r.skipped} sentence(s) I couldn't parse`],
+    answer: `I taught myself ${r.facts.length} new fact${r.facts.length === 1 ? "" : "s"}:\n` + r.facts.map(f => "• " + say(f)).join("\n") + `\nAsk me about ${r.topic ? disp(r.topic) : "it"}!`,
+    mood: "happy", learned: true,
+  };
+}
+function yesNo(rel, xs, ys) {
+  const x = ent(xs), y = rel === "can" ? canonVerb(ys) : ent(ys);
+  const r = query(rel, x, y);
+  const verb = { is: `is ${disp(x)} ${disp(y)}`, can: `can ${disp(x)} ${y}`, has: `does ${disp(x)} have ${disp(y)}` }[rel];
+  if (!r) {
+    const chain = ancestors(x).slice(1).map(a => disp(a.node));
+    return {
+      steps: [`• question: ${verb}?`, chain.length ? `• ${disp(x)} is: ${chain.slice(0, 8).join(", ")}. None of those answer it.` : `• I know nothing that connects ${disp(x)} to that.`],
+      answer: model.chain ? `I DON'T KNOW. Teach me and I'll remember it.` : `I don't know that directly. MINI doesn't chain facts together, so try SCHOLAR.`, mood: "confused",
+      lookup: model.chain ? xs : undefined,
+    };
+  }
+  const lf = r.path[r.path.length - 1];
+  const concl = say({ r: r.ans ? rel : NEG[rel], s: x, o: y, a: lf.a, d: lf.d });
+  return { steps: [`• question: ${verb}?`, ...explain(r.path, concl)], answer: r.ans ? "YES." : "NO." };
+}
+
+/* ---------------- surprise questions from the pack ---------------- */
+function surprise() {
+  const art = k => /^[A-Z0-9]/.test(disp(k)) ? disp(k) : "a " + disp(k);
+  const artA = k => /^[A-Z0-9]/.test(disp(k)) ? disp(k) : an(disp(k));
+  for (let tries = 0; tries < 60; tries++) {
+    const f = PACK[Math.floor(Math.random() * PACK.length)];
+    if (f.r === "attr") {
+      const S = disp(f.s), k = f.k;
+      if (k[0] === "#") return `how many ${plural(k.slice(1))} does ${art(f.s)} have?`;
+      const Q = { capital: `what is the capital of ${S}?`, inventor: `who invented ${/^[A-Z]/.test(S) ? S : "the " + S}?`, author: `who wrote ${S}?`, painter: `who painted ${S}?`, composer: `who composed ${S}?`, discoverer: `who discovered ${S}?`, sculptor: `who sculpted ${S}?`, location: `where is ${/^[A-Z]/.test(S) ? S : "the " + S}?`, year: `when did ${S} happen?`, "year invented": `when was ${/^[A-Z]/.test(S) ? S : "the " + S} invented?`, symbol: `what is the symbol of ${S}?`, opposite: `what is the opposite of ${S}?`, continent: `where is ${S}?`, language: `what is the language of ${S}?`, currency: `what is the currency of ${S}?` }[k];
+      if (Q) return Q;
+    }
+    if (f.r === "is" && model.chain && !obj(f.s).some(g => g.r === "is")) {
+      const anc = ancestors(f.s).slice(1).filter(a => a.path[a.path.length - 1].a); if (anc.length < 2) continue;
+      const pick = anc[1 + Math.floor(Math.random() * (anc.length - 1))];
+      return `is ${artA(f.s)} ${an(disp(pick.node))}?`;
+    }
+    if (f.r === "is" && !obj(f.s).some(g => g.r === "is")) {
+      const props = []; for (const a of ancestors(f.s).slice(1)) for (const g of subj(a.node)) if (g.r === "can" || g.r === "cant") props.push(g);
+      if (props.length) { const g = props[Math.floor(Math.random() * props.length)]; return `can ${art(f.s)} ${g.o}?`; }
+    }
+    if (f.r === "cmp") return `is ${disp(f.s)} ${f.w} than ${disp(f.o)}?`;
+  }
+  return "what is the capital of japan?";
+}
+
+/* ================= READ & LEARN: NOVA reads text and pulls facts out by itself ================= */
+const STOPPER = /^(that|which|who|whom|whose|in|of|from|on|at|for|with|by|and|or|but|known|located|best|widely|considered|founded|used|born|made|when|where|to|as|between|since|during|after|before|than|because|whose|living|found|native|consisting|including|based|named|called|first|while|its|his|her|their|about|the|a|an|like|such|headquartered|orbiting|whose|also)$/i;
+const FILLER = /^(about|around|approximately|roughly|over|nearly|almost|more|than|some|at|least|up|to|only|just|currently|known|confirmed|official|officially|recognized|named|total|of)$/i;
+const ABBR = /\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Prof|Gen|Lt|Mt|vs|etc|e\.g|i\.e|U\.S|U\.K|No|approx|c|ca)\.$/;
+
+function splitSentences(text) {
+  const parts = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“])/), out = [];
+  for (const p of parts) {
+    const prev = out[out.length - 1];
+    if (prev && (ABBR.test(prev) || /\b[A-Z]\.$/.test(prev))) out[out.length - 1] = prev + " " + p; else out.push(p);
+  }
+  return out.map(s => s.trim()).filter(s => s.split(" ").length >= 3);
+}
+function nounPhrase(words, max) {
+  const out = [];
+  for (let i = 0; i < words.length; i++) { const w = words[i], bare = w.replace(/[,;:.!?)]+$/, ""), nxt = (words[i + 1] || "").toLowerCase();
+    const participle = (/ing$/.test(bare) && bare.length > 5) || (/ed$/.test(bare) && /^(by|and|in|from|for|to|as|at|with|on)$/.test(nxt));
+    if ((STOPPER.test(bare) || participle) && out.length) break; out.push(bare); if (bare !== w || out.length >= max) break; }
+  return out.join(" ").trim();
+}
+const cutAt = s => s.split(/[,;:()]|\s+(?:and|or|which|who|that|where|but|also known as)\s+/)[0].trim().replace(/[.!?]+$/, "");
+
+function learnFromText(raw) {
+  // 1. tidy: citation marks, phonetics, extra spaces
+  let text = String(raw).replace(/\[\s*(?:\d+|[a-z]|citation needed|note \d+)\s*\]/gi, "").replace(/\s+/g, " ").trim();
+  if (text.split(" ").length < 4) return { facts: [], skipped: 0, topic: null };
+  const facts = [], seen = new Set();
+  const add = f => { if (!f || !f.s || !f.o || f.s === f.o) return; const key = [f.r, f.k, f.w, f.s, f.o].join("|"); if (seen.has(key)) return; seen.add(key); facts.push(f); };
+  const sents = splitSentences(text);
+  let topic = null, topicText = null, skipped = 0, years = null;
+
+  sents.forEach((orig, i) => {
+    let s = orig, got = facts.length;
+    // years from the first bracket, e.g. "(14 March 1879 – 18 April 1955)"
+    if (i === 0) {
+      const br = /\(([^()]*)\)/.exec(s);
+      if (br) { const ys = br[1].match(/\b(1\d{3}|20\d{2}|\d{1,3} (?:BC|AD))\b/g); if (ys && /[–-]|born|b\./.test(br[1])) { s = s.replace(br[0], ""); years = ys; } }
+    }
+    s = s.replace(/\s*\([^()]*\)/g, "").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
+    // 2. find the subject in the first sentence; later "It/He/She/They" point back to it
+    if (topic) s = s.replace(/^(It|He|She|They|This|The (?:city|country|planet|animal|species|company|building|river|book|film|band|game|element|island|mountain))\b/, topicText);
+    const vm = /^(.{2,80}?)(?:,[^,]{2,80},)?\s+(is|was|are|were)\s+(.+)$/.exec(s);
+    if (i === 0 && vm) { topicText = cutAt(vm[1]).replace(/^(The|A|An)\s+/, m => m.toLowerCase()); topic = reg(topicText); }
+    if (i === 0 && !topic) { const w = s.split(" "); topicText = w.slice(0, 2).join(" "); topic = reg(topicText); }
+    if (i === 0 && years && topic) { add({ r: "attr", k: "year born", s: topic, o: reg(years[0]) }); if (years[1]) add({ r: "attr", k: "year died", s: topic, o: reg(years[1]) }); }
+
+    const subjText = vm ? cutAt(vm[1]) : null;
+    const S = vm ? reg(subjText) : null;
+    const rest = vm ? vm[3] : "";
+    let m;
+
+    // 3. what it is: "X is a/an ... NOUN"
+    if (vm && (m = /^(?:a|an)\s+(.+)$/i.exec(rest))) {
+      const np = nounPhrase(m[1].replace(/^((?:\w+\s+)?(?:type|kind|species|form|member|genus|variety|breed|subspecies|one|group|family)\s+of\s+(?:the\s+)?)/i, "").split(" "), 4);
+      if (np && !/^\d/.test(np)) {
+        const o = reg(np); add({ r: "is", s: S, o, a: true, d: an(np) });
+        const ws = np.split(" "); if (ws.length > 1) { const head = ws[ws.length - 1]; if (/^[a-z]/.test(head)) add({ r: "is", s: o, o: reg(head), a: true, d: an(head) }); }
+      }
+    } else if (vm && (m = /^the\s+(.+)$/i.exec(rest))) {
+      const d = "the " + cutAt(m[1]).split(" ").slice(0, 8).join(" ");
+      if (d.split(" ").length >= 2) add({ r: "is", s: S, o: reg(d.replace(/^the /, "")), a: false, d });
+    } else if (vm && /^(?:are|were)$/.test(vm[2]) && (m = /^([a-z][\w-]*(?:\s[a-z][\w-]*){0,2})\b/.exec(rest))) {
+      const np = nounPhrase(m[1].split(" "), 3); if (np && /s$/.test(np)) add({ r: "is", s: S, o: reg(np), a: true, d: an(ent(np)) });
+    }
+    // 4. other patterns anywhere in the sentence
+    const subjAny = S || topic;
+    if ((m = /\b(?:located|situated|found|lives|live)\s+(?:mainly |mostly |primarily |only )?(?:in|on)\s+(?:the\s+)?([A-Z][^,.;()]{1,80})/.exec(s))) add({ r: "attr", k: "location", s: subjAny, o: reg(m[1].trim()) });
+    if ((m = /\b(?:its|the)\s+capital(?:\s+and\s+(?:largest|most populous)\s+city|\s+city)?\s+is\s+([A-Z][^,.;()]{1,40})/i.exec(s))) add({ r: "attr", k: "capital", s: topic, o: reg(m[1].trim()) });
+    if ((m = /\bborn\s+(?:on\s+)?(?:\d{1,2}\s+)?(?:[A-Z][a-z]+\s+)?(?:\d{1,2},\s+)?(\d{4})\b/.exec(s))) add({ r: "attr", k: "year born", s: subjAny, o: reg(m[1]) });
+    if ((m = /\bdied\s+(?:on\s+)?(?:\d{1,2}\s+)?(?:[A-Z][a-z]+\s+)?(?:\d{1,2},\s+)?(?:in\s+)?(\d{4})\b/.exec(s))) add({ r: "attr", k: "year died", s: subjAny, o: reg(m[1]) });
+    if ((m = /\b(invented|written|painted|composed|discovered|founded|designed|created|directed|built|developed|published)\s+(?:in\s+(\d{4})\s+)?by\s+(?:the\s+)?([A-Z][^.;()]{1,90}?)(?:\s+in\s+(\d{4}))?(?=[.;]|$|,\s+(?:who|which|as|in|at|with|and then)\b|\s+(?:who|as|with|at|to)\b)/.exec(s))) {
+      const k = { invented: "inventor", written: "author", painted: "painter", composed: "composer", discovered: "discoverer", founded: "founder", designed: "creator", created: "creator", directed: "director", built: "builder", developed: "creator", published: "publisher" }[m[1]];
+      add({ r: "attr", k, s: subjAny, o: reg(m[3].trim()) });
+      const y = m[2] || m[4]; if (y) add({ r: "attr", k: { invented: "year invented", discovered: "year discovered", founded: "year founded", built: "year built", written: "year written" }[m[1]] || "year made", s: subjAny, o: reg(y) });
+    } else if ((m = /\b(invented|discovered|founded|built|established|opened|completed|released|published)\s+in\s+(\d{4})\b/.exec(s))) {
+      add({ r: "attr", k: { invented: "year invented", discovered: "year discovered", founded: "year founded", established: "year founded", built: "year built", opened: "year built", completed: "year built", released: "year made", published: "year written" }[m[1]], s: subjAny, o: reg(m[2]) });
+    }
+    if ((m = /^(.{2,60}?)\s+(?:has|have|had)\s+((?:\w+\s+){0,3}?)(\d[\d,.]*)\s+([a-z][\w\s-]{1,40})/.exec(s))) {
+      if ([...m[2].trim().split(/\s+/)].every(w => !w || FILLER.test(w))) {
+        const words = m[4].split(" ").filter(w => !FILLER.test(w)); const np = nounPhrase(words, 3); const unit = np.split(" ").pop();
+        if (unit && /^[a-z]{3,}$/.test(unit)) add({ r: "attr", k: "#" + ent0(unit), s: reg(cutAt(m[1])), o: m[3].replace(/,/g, ""), pl: unit });
+      }
+    }
+    if ((m = /^(.{2,60}?)\s+(?:is|are|was|were)\s+(\w+er)\s+than\s+([^,.;]{2,40})/.exec(s))) { const { w, flip } = canonCmp(m[2].toLowerCase()); const a = reg(cutAt(m[1])), b = reg(cutAt(m[3])); add({ r: "cmp", w, s: flip ? b : a, o: flip ? a : b }); }
+    if ((m = /^(.{2,60}?)\s+(can(?:not|'t)?)\s+([a-z][^,.;]{2,40})/.exec(s))) add({ r: /not|'t/.test(m[2]) ? "cant" : "can", s: reg(cutAt(m[1])), o: canonVerb(cutAt(m[3])) });
+    // 5. short simple sentences: read them like a lesson
+    if (facts.length === got && s.split(" ").length <= 10 && !/\?$/.test(orig) && !/^(hello|hi|hey|how|what|why|who|where|when|thanks|thank)\b/i.test(s)) { const f = parseStatement(s); if (f) add(f); }
+    if (facts.length === got) skipped++;
+  });
+  return { facts: facts.slice(0, 25), skipped, topic };
+}
+
+/* ================= KNOWLEDGE PACK ================= */
+let DERIVED = 0;
+const PI_ = (s, c) => PACK.push({ r: "is", s: reg(s), o: reg(c), a: true });
+const PX = (s, c) => PACK.push({ r: "is", s: reg(s), o: reg(c), a: false });
+const PA = (k, s, v) => PACK.push({ r: "attr", k, s: reg(s), o: reg(String(v)) });
+const PS = text => text.split("\n").map(x => x.trim()).filter(Boolean).forEach(line => { const f = parseStatement(line); if (f) PACK.push(f); });
+const each = (str, fn) => str.split("|").map(x => x.trim()).filter(Boolean).forEach(e => fn(...e.split(":").map(x => x.trim())));
+
+[["usa", "United States"], ["us", "United States"], ["america", "United States"], ["united states of america", "United States"], ["uk", "United Kingdom"], ["britain", "United Kingdom"], ["great britain", "United Kingdom"], ["holland", "Netherlands"], ["czech republic", "Czechia"], ["burma", "Myanmar"], ["swaziland", "Eswatini"], ["east timor", "Timor-Leste"], ["uae", "United Arab Emirates"], ["cote d'ivoire", "Ivory Coast"], ["côte d'ivoire", "Ivory Coast"], ["drc", "Democratic Republic of the Congo"], ["cape verde", "Cabo Verde"],
+ ["ww2", "World War II"], ["wwii", "World War II"], ["world war 2", "World War II"], ["second world war", "World War II"], ["the second world war", "World War II"], ["ww1", "World War I"], ["wwi", "World War I"], ["world war 1", "World War I"], ["first world war", "World War I"], ["the first world war", "World War I"],
+ ["element", "chemical element"], ["aluminum", "Aluminium"], ["sulphur", "Sulfur"], ["cesium", "Caesium"], ["the earth", "Earth"], ["planet earth", "Earth"], ["soccer", "football"], ["people", "person"], ["human being", "human"], ["kiwi bird", "kiwi"], ["ladybird", "ladybug"], ["mollusc", "mollusk"], ["us state", "US state"], ["state", "US state"]]
+  .forEach(([a, b]) => alias(a, b));
+
+/* ---------- countries: name:capital:continent ---------- */
+const CONT = { af: "Africa", as: "Asia", eu: "Europe", na: "North America", sa: "South America", oc: "Oceania" };
+each(`Afghanistan:Kabul:as|Albania:Tirana:eu|Algeria:Algiers:af|Andorra:Andorra la Vella:eu|Angola:Luanda:af|Antigua and Barbuda:Saint John's:na|Argentina:Buenos Aires:sa|Armenia:Yerevan:as|Australia:Canberra:oc|Austria:Vienna:eu|Azerbaijan:Baku:as|Bahamas:Nassau:na|Bahrain:Manama:as|Bangladesh:Dhaka:as|Barbados:Bridgetown:na|Belarus:Minsk:eu|Belgium:Brussels:eu|Belize:Belmopan:na|Benin:Porto-Novo:af|Bhutan:Thimphu:as|Bolivia:Sucre:sa|Bosnia and Herzegovina:Sarajevo:eu|Botswana:Gaborone:af|Brazil:Brasília:sa|Brunei:Bandar Seri Begawan:as|Bulgaria:Sofia:eu|Burkina Faso:Ouagadougou:af|Burundi:Gitega:af|Cabo Verde:Praia:af|Cambodia:Phnom Penh:as|Cameroon:Yaoundé:af|Canada:Ottawa:na|Central African Republic:Bangui:af|Chad:N'Djamena:af|Chile:Santiago:sa|China:Beijing:as|Colombia:Bogotá:sa|Comoros:Moroni:af|Democratic Republic of the Congo:Kinshasa:af|Republic of the Congo:Brazzaville:af|Costa Rica:San José:na|Croatia:Zagreb:eu|Cuba:Havana:na|Cyprus:Nicosia:as|Czechia:Prague:eu|Denmark:Copenhagen:eu|Djibouti:Djibouti:af|Dominica:Roseau:na|Dominican Republic:Santo Domingo:na|Ecuador:Quito:sa|Egypt:Cairo:af|El Salvador:San Salvador:na|Equatorial Guinea:Malabo:af|Eritrea:Asmara:af|Estonia:Tallinn:eu|Eswatini:Mbabane:af|Ethiopia:Addis Ababa:af|Fiji:Suva:oc|Finland:Helsinki:eu|France:Paris:eu|Gabon:Libreville:af|Gambia:Banjul:af|Georgia:Tbilisi:as|Germany:Berlin:eu|Ghana:Accra:af|Greece:Athens:eu|Grenada:Saint George's:na|Guatemala:Guatemala City:na|Guinea:Conakry:af|Guinea-Bissau:Bissau:af|Guyana:Georgetown:sa|Haiti:Port-au-Prince:na|Honduras:Tegucigalpa:na|Hungary:Budapest:eu|Iceland:Reykjavík:eu|India:New Delhi:as|Indonesia:Jakarta:as|Iran:Tehran:as|Iraq:Baghdad:as|Ireland:Dublin:eu|Israel:Jerusalem:as|Italy:Rome:eu|Ivory Coast:Yamoussoukro:af|Jamaica:Kingston:na|Japan:Tokyo:as|Jordan:Amman:as|Kazakhstan:Astana:as|Kenya:Nairobi:af|Kiribati:Tarawa:oc|Kuwait:Kuwait City:as|Kyrgyzstan:Bishkek:as|Laos:Vientiane:as|Latvia:Riga:eu|Lebanon:Beirut:as|Lesotho:Maseru:af|Liberia:Monrovia:af|Libya:Tripoli:af|Liechtenstein:Vaduz:eu|Lithuania:Vilnius:eu|Luxembourg:Luxembourg:eu|Madagascar:Antananarivo:af|Malawi:Lilongwe:af|Malaysia:Kuala Lumpur:as|Maldives:Malé:as|Mali:Bamako:af|Malta:Valletta:eu|Marshall Islands:Majuro:oc|Mauritania:Nouakchott:af|Mauritius:Port Louis:af|Mexico:Mexico City:na|Micronesia:Palikir:oc|Moldova:Chișinău:eu|Monaco:Monaco:eu|Mongolia:Ulaanbaatar:as|Montenegro:Podgorica:eu|Morocco:Rabat:af|Mozambique:Maputo:af|Myanmar:Naypyidaw:as|Namibia:Windhoek:af|Nauru:Yaren:oc|Nepal:Kathmandu:as|Netherlands:Amsterdam:eu|New Zealand:Wellington:oc|Nicaragua:Managua:na|Niger:Niamey:af|Nigeria:Abuja:af|North Korea:Pyongyang:as|North Macedonia:Skopje:eu|Norway:Oslo:eu|Oman:Muscat:as|Pakistan:Islamabad:as|Palau:Ngerulmud:oc|Panama:Panama City:na|Papua New Guinea:Port Moresby:oc|Paraguay:Asunción:sa|Peru:Lima:sa|Philippines:Manila:as|Poland:Warsaw:eu|Portugal:Lisbon:eu|Qatar:Doha:as|Romania:Bucharest:eu|Russia:Moscow:eu|Rwanda:Kigali:af|Saint Kitts and Nevis:Basseterre:na|Saint Lucia:Castries:na|Saint Vincent and the Grenadines:Kingstown:na|Samoa:Apia:oc|San Marino:San Marino:eu|São Tomé and Príncipe:São Tomé:af|Saudi Arabia:Riyadh:as|Senegal:Dakar:af|Serbia:Belgrade:eu|Seychelles:Victoria:af|Sierra Leone:Freetown:af|Singapore:Singapore:as|Slovakia:Bratislava:eu|Slovenia:Ljubljana:eu|Solomon Islands:Honiara:oc|Somalia:Mogadishu:af|South Africa:Pretoria:af|South Korea:Seoul:as|South Sudan:Juba:af|Spain:Madrid:eu|Sri Lanka:Sri Jayawardenepura Kotte:as|Sudan:Khartoum:af|Suriname:Paramaribo:sa|Sweden:Stockholm:eu|Switzerland:Bern:eu|Syria:Damascus:as|Tajikistan:Dushanbe:as|Tanzania:Dodoma:af|Thailand:Bangkok:as|Timor-Leste:Dili:as|Togo:Lomé:af|Tonga:Nuku'alofa:oc|Trinidad and Tobago:Port of Spain:na|Tunisia:Tunis:af|Turkey:Ankara:as|Turkmenistan:Ashgabat:as|Tuvalu:Funafuti:oc|Uganda:Kampala:af|Ukraine:Kyiv:eu|United Arab Emirates:Abu Dhabi:as|United Kingdom:London:eu|United States:Washington, D.C.:na|Uruguay:Montevideo:sa|Uzbekistan:Tashkent:as|Vanuatu:Port Vila:oc|Vatican City:Vatican City:eu|Venezuela:Caracas:sa|Vietnam:Hanoi:as|Yemen:Sanaa:as|Zambia:Lusaka:af|Zimbabwe:Harare:af`,
+  (c, cap, ct) => { PI_(c, "country"); PA("capital", c, cap); PA("continent", c, CONT[ct]); if (ent(cap) !== ent(c)) { PI_(cap, "capital city"); PA("location", cap, c); } });
+each(`England:London|Scotland:Edinburgh|Wales:Cardiff|Northern Ireland:Belfast`, (c, cap) => { PI_(c, "country of the United Kingdom"); PA("capital", c, cap); PA("location", c, "United Kingdom"); PI_(cap, "city"); });
+each(`United States:English:US dollar|United Kingdom:English:pound sterling|Canada:English and French:Canadian dollar|Australia:English:Australian dollar|New Zealand:English and Māori:New Zealand dollar|Ireland:Irish and English:euro|France:French:euro|Germany:German:euro|Italy:Italian:euro|Spain:Spanish:euro|Portugal:Portuguese:euro|Netherlands:Dutch:euro|Belgium:Dutch, French and German:euro|Austria:German:euro|Switzerland:German, French, Italian and Romansh:Swiss franc|Greece:Greek:euro|Finland:Finnish and Swedish:euro|Sweden:Swedish:Swedish krona|Norway:Norwegian:Norwegian krone|Denmark:Danish:Danish krone|Iceland:Icelandic:Icelandic króna|Poland:Polish:złoty|Czechia:Czech:Czech koruna|Hungary:Hungarian:forint|Romania:Romanian:leu|Ukraine:Ukrainian:hryvnia|Russia:Russian:ruble|Turkey:Turkish:Turkish lira|Israel:Hebrew:shekel|Egypt:Arabic:Egyptian pound|Saudi Arabia:Arabic:Saudi riyal|United Arab Emirates:Arabic:dirham|Iran:Persian:Iranian rial|India:Hindi and English:Indian rupee|Pakistan:Urdu and English:Pakistani rupee|Bangladesh:Bengali:taka|China:Mandarin Chinese:yuan (renminbi)|Japan:Japanese:yen|South Korea:Korean:won|North Korea:Korean:North Korean won|Vietnam:Vietnamese:đồng|Thailand:Thai:baht|Indonesia:Indonesian:rupiah|Philippines:Filipino and English:Philippine peso|Malaysia:Malay:ringgit|Singapore:English, Malay, Mandarin and Tamil:Singapore dollar|Mexico:Spanish:Mexican peso|Brazil:Portuguese:Brazilian real|Argentina:Spanish:Argentine peso|Chile:Spanish:Chilean peso|Colombia:Spanish:Colombian peso|Peru:Spanish and Quechua:sol|Nigeria:English:naira|Kenya:Swahili and English:Kenyan shilling|South Africa:12 official languages, including Zulu, Xhosa, Afrikaans and English:rand|Ethiopia:Amharic:birr|Morocco:Arabic and Berber:Moroccan dirham|Ghana:English:cedi|Croatia:Croatian:euro`,
+  (c, l, cur) => { PA("language", c, l); PA("currency", c, cur); });
+["Africa", "Antarctica", "Asia", "Europe", "North America", "Oceania", "South America"].forEach(c => PI_(c, "continent"));
+["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Southern Ocean", "Arctic Ocean"].forEach(o => PI_(o, "ocean"));
+PS(`a country is a place
+a city is a place
+a capital city is a city
+a state capital is a city
+a continent is a place
+an ocean is a body of water
+a US state is a place
+the United States has 50 states
+Asia is the largest continent
+Oceania is the smallest continent
+Russia is the largest country
+Vatican City is the smallest country
+India is the most populous country
+the Pacific Ocean is the largest ocean
+the Arctic Ocean is the smallest ocean
+the Mariana Trench is the deepest point in the ocean
+the depth of the Mariana Trench is about 11,000 m
+the Mariana Trench is in the Pacific Ocean
+the Nile is the longest river
+the length of the Nile is about 6,650 km
+the Amazon River is the river that carries the most water
+the Amazon River is in South America
+the Nile is in Africa
+the Mississippi River is in the United States
+the Yangtze is the longest river in Asia
+the Yangtze is in China
+the Thames is in London
+the Seine is in Paris
+the Danube is in Europe
+the Ganges is in India
+the Volga is the longest river in Europe
+Mount Everest is the tallest mountain
+the height of Mount Everest is 8,849 m (29,032 ft)
+Mount Everest is in Nepal and China
+K2 is the second-tallest mountain
+K2 is in Pakistan and China
+Kilimanjaro is the tallest mountain in Africa
+Kilimanjaro is in Tanzania
+Denali is the tallest mountain in North America
+Denali is in Alaska
+Aconcagua is the tallest mountain in South America
+Aconcagua is in Argentina
+Mont Blanc is the tallest mountain in the Alps
+Mount Fuji is the tallest mountain in Japan
+Mount Fuji is in Japan
+the Sahara is the largest hot desert
+the Sahara is in Africa
+Antarctica is the largest desert
+Antarctica is the coldest continent
+the Caspian Sea is the largest lake
+Lake Baikal is the deepest lake
+Lake Superior is the largest freshwater lake by area
+Angel Falls is the tallest waterfall
+Angel Falls is in Venezuela
+Niagara Falls is in Canada and the United States
+Greenland is the largest island
+the Amazon rainforest is the largest rainforest
+the Amazon rainforest is in South America
+the Great Barrier Reef is the largest coral reef
+the Great Barrier Reef is in Australia
+the equator is the line around the middle of Earth
+the Eiffel Tower is in Paris
+the Eiffel Tower was built in 1889
+the Statue of Liberty is in New York City
+the Statue of Liberty was built in 1886
+the Great Wall of China is in China
+the Taj Mahal is in Agra, India
+the Taj Mahal was built in 1653
+the Colosseum is in Rome
+the Colosseum was built in 80 AD
+Big Ben is in London
+Machu Picchu is in Peru
+the Great Pyramid of Giza is in Egypt
+the Great Pyramid of Giza was built in about 2560 BC
+Christ the Redeemer is in Rio de Janeiro, Brazil
+the Sydney Opera House is in Sydney, Australia
+the Sydney Opera House was built in 1973
+Stonehenge is in England
+Petra is in Jordan
+the Golden Gate Bridge is in San Francisco
+the Golden Gate Bridge was built in 1937
+Mount Rushmore is in South Dakota
+the Leaning Tower of Pisa is in Pisa, Italy
+the Acropolis is in Athens
+the Burj Khalifa is in Dubai
+the Burj Khalifa is the tallest building
+the height of the Burj Khalifa is 828 m
+Angkor Wat is in Cambodia
+Chichen Itza is in Mexico
+the Kremlin is in Moscow
+the Louvre is in Paris
+the White House is in Washington, D.C.`);
+["Eiffel Tower", "Statue of Liberty", "Great Wall of China", "Taj Mahal", "Colosseum", "Big Ben", "Machu Picchu", "Great Pyramid of Giza", "Christ the Redeemer", "Sydney Opera House", "Stonehenge", "Petra", "Golden Gate Bridge", "Mount Rushmore", "Leaning Tower of Pisa", "Acropolis", "Burj Khalifa", "Angkor Wat", "Chichen Itza"].forEach(l => PI_(l, "landmark"));
+["Mount Everest", "K2", "Kilimanjaro", "Denali", "Aconcagua", "Mont Blanc", "Mount Fuji", "Matterhorn"].forEach(m => PI_(m, "mountain"));
+["Nile", "Amazon River", "Yangtze", "Mississippi River", "Danube", "Thames", "Seine", "Ganges", "Rhine", "Volga", "Zambezi"].forEach(r => PI_(r, "river"));
+PS(`a landmark is a place\na mountain is a landform\na river is a body of water\na lake is a body of water`);
+
+/* ---------- US states: state:capital ---------- */
+each(`Alabama:Montgomery|Alaska:Juneau|Arizona:Phoenix|Arkansas:Little Rock|California:Sacramento|Colorado:Denver|Connecticut:Hartford|Delaware:Dover|Florida:Tallahassee|Georgia:Atlanta|Hawaii:Honolulu|Idaho:Boise|Illinois:Springfield|Indiana:Indianapolis|Iowa:Des Moines|Kansas:Topeka|Kentucky:Frankfort|Louisiana:Baton Rouge|Maine:Augusta|Maryland:Annapolis|Massachusetts:Boston|Michigan:Lansing|Minnesota:Saint Paul|Mississippi:Jackson|Missouri:Jefferson City|Montana:Helena|Nebraska:Lincoln|Nevada:Carson City|New Hampshire:Concord|New Jersey:Trenton|New Mexico:Santa Fe|New York:Albany|North Carolina:Raleigh|North Dakota:Bismarck|Ohio:Columbus|Oklahoma:Oklahoma City|Oregon:Salem|Pennsylvania:Harrisburg|Rhode Island:Providence|South Carolina:Columbia|South Dakota:Pierre|Tennessee:Nashville|Texas:Austin|Utah:Salt Lake City|Vermont:Montpelier|Virginia:Richmond|Washington:Olympia|West Virginia:Charleston|Wisconsin:Madison|Wyoming:Cheyenne`,
+  (s, cap) => { PI_(s, "US state"); PA("capital", s, cap); PA("location", s, "United States"); PI_(cap, "state capital"); PA("location", cap, s); });
+PS(`Alaska is the largest US state\nRhode Island is the smallest US state\nCalifornia is the most populous US state\nHawaii is the 50th state to join the United States\nNew York City is the largest city in the United States\nNew York City is in New York\nLos Angeles is in California\nChicago is in Illinois\nHouston is in Texas\nMiami is in Florida\nSan Francisco is in California\nSeattle is in Washington\nLas Vegas is in Nevada\nToronto is in Canada\nTokyo is the largest city in the world`);
+["New York City", "Los Angeles", "Chicago", "Houston", "Miami", "San Francisco", "Seattle", "Las Vegas", "Toronto"].forEach(c => PI_(c, "city"));
+
+/* ---------- elements ---------- */
+const ELEMENTS = "H Hydrogen,He Helium,Li Lithium,Be Beryllium,B Boron,C Carbon,N Nitrogen,O Oxygen,F Fluorine,Ne Neon,Na Sodium,Mg Magnesium,Al Aluminium,Si Silicon,P Phosphorus,S Sulfur,Cl Chlorine,Ar Argon,K Potassium,Ca Calcium,Sc Scandium,Ti Titanium,V Vanadium,Cr Chromium,Mn Manganese,Fe Iron,Co Cobalt,Ni Nickel,Cu Copper,Zn Zinc,Ga Gallium,Ge Germanium,As Arsenic,Se Selenium,Br Bromine,Kr Krypton,Rb Rubidium,Sr Strontium,Y Yttrium,Zr Zirconium,Nb Niobium,Mo Molybdenum,Tc Technetium,Ru Ruthenium,Rh Rhodium,Pd Palladium,Ag Silver,Cd Cadmium,In Indium,Sn Tin,Sb Antimony,Te Tellurium,I Iodine,Xe Xenon,Cs Caesium,Ba Barium,La Lanthanum,Ce Cerium,Pr Praseodymium,Nd Neodymium,Pm Promethium,Sm Samarium,Eu Europium,Gd Gadolinium,Tb Terbium,Dy Dysprosium,Ho Holmium,Er Erbium,Tm Thulium,Yb Ytterbium,Lu Lutetium,Hf Hafnium,Ta Tantalum,W Tungsten,Re Rhenium,Os Osmium,Ir Iridium,Pt Platinum,Au Gold,Hg Mercury,Tl Thallium,Pb Lead,Bi Bismuth,Po Polonium,At Astatine,Rn Radon,Fr Francium,Ra Radium,Ac Actinium,Th Thorium,Pa Protactinium,U Uranium,Np Neptunium,Pu Plutonium,Am Americium,Cm Curium,Bk Berkelium,Cf Californium,Es Einsteinium,Fm Fermium,Md Mendelevium,No Nobelium,Lr Lawrencium,Rf Rutherfordium,Db Dubnium,Sg Seaborgium,Bh Bohrium,Hs Hassium,Mt Meitnerium,Ds Darmstadtium,Rg Roentgenium,Cn Copernicium,Nh Nihonium,Fl Flerovium,Mc Moscovium,Lv Livermorium,Ts Tennessine,Og Oganesson".split(",");
+const inSet = (z, list) => list.includes(z);
+function elCat(z) {
+  if (inSet(z, [3, 11, 19, 37, 55, 87])) return "alkali metal";
+  if (inSet(z, [4, 12, 20, 38, 56, 88])) return "alkaline earth metal";
+  if (inSet(z, [2, 10, 18, 36, 54, 86, 118])) return "noble gas";
+  if (inSet(z, [9, 17, 35, 53, 85, 117])) return "halogen";
+  if (inSet(z, [5, 14, 32, 33, 51, 52])) return "metalloid";
+  if (inSet(z, [1, 6, 7, 8, 15, 16, 34])) return "nonmetal";
+  if (z >= 57 && z <= 71) return "lanthanide";
+  if (z >= 89 && z <= 103) return "actinide";
+  if ((z >= 21 && z <= 30) || (z >= 39 && z <= 48) || (z >= 72 && z <= 80) || (z >= 104 && z <= 112)) return "transition metal";
+  return "post-transition metal";
+}
+ELEMENTS.forEach((e, i) => {
+  const z = i + 1, [sym, name] = e.split(" ");
+  PI_(name, "chemical element"); PI_(name, elCat(z)); PA("symbol", name, sym); PA("atomic number", name, z);
+  if ([1, 2, 7, 8, 9, 10, 17, 18, 36, 54, 86].includes(z)) PX(name, "gas at room temperature");
+  else if ([35, 80].includes(z)) PX(name, "liquid at room temperature");
+  else if (z < 100) PX(name, "solid at room temperature");
+  if (z === 43 || z === 61 || z >= 95) PX(name, "synthetic");
+});
+PS(`an alkali metal is a metal
+an alkaline earth metal is a metal
+a transition metal is a metal
+a post-transition metal is a metal
+a lanthanide is a metal
+an actinide is a metal
+a halogen is a nonmetal
+a noble gas is a nonmetal
+a noble gas is very unreactive
+a metal can conduct electricity
+a metal is shiny
+an alkali metal is very reactive
+a chemical element is a pure substance
+Gold is a precious metal
+Silver is a precious metal
+Platinum is a precious metal
+Oxygen is the most common element in Earth's crust
+Hydrogen is the most common element in the universe
+Hydrogen is the lightest element
+Carbon is the basis of all known life
+Helium is lighter than air
+Mercury is the only metal that is liquid at room temperature
+Diamond is a form of carbon
+Graphite is a form of carbon
+Steel is an alloy of iron and carbon
+Bronze is an alloy of copper and tin
+Brass is an alloy of copper and zinc
+the chemical formula of water is H2O
+the chemical formula of carbon dioxide is CO2
+the chemical formula of table salt is NaCl
+the chemical formula of methane is CH4
+the chemical formula of ammonia is NH3
+the chemical formula of glucose is C6H12O6
+the chemical formula of oxygen gas is O2
+the chemical formula of ozone is O3
+the chemical formula of baking soda is NaHCO3
+the boiling point of water is 100 °C (212 °F) at sea level
+the freezing point of water is 0 °C (32 °F)
+absolute zero is −273.15 °C, the coldest possible temperature
+the speed of light is about 299,792 km per second
+the speed of sound is about 343 m per second in air
+the gravity of Earth is about 9.8 m/s²
+the gravity of the Moon is about 1.62 m/s², about one sixth of Earth's
+the states of matter are solid, liquid, gas and plasma
+ice is a solid
+water is a liquid
+steam is a gas
+the colors of the rainbow are red, orange, yellow, green, blue, indigo and violet
+the primary colors of light are red, green and blue
+the primary colors of paint are red, yellow and blue
+an atom is the smallest unit of a chemical element
+an atom has a nucleus
+a nucleus has protons and neutrons
+an electron has a negative charge
+a proton has a positive charge
+a neutron has no charge
+DNA is the molecule that carries genetic instructions
+a cell is the basic unit of life
+photosynthesis is how plants make food from sunlight
+gravity is the force that pulls masses together
+friction is the force that slows things that rub together
+a magnet can attract iron
+sound is a vibration that travels through matter
+light is a form of energy
+electricity is the flow of electric charge
+the layers of Earth are the crust, the mantle, the outer core and the inner core
+the core of Earth is mostly iron and nickel
+the atmosphere of Earth is about 78% nitrogen and 21% oxygen`);
+
+/* ---------- animals: name diet (c carnivore, h herbivore, o omnivore) ---------- */
+const DIET = { c: "carnivore", h: "herbivore", o: "omnivore" };
+const ANIMALS = {
+  mammal: "lion c,tiger c,leopard c,cheetah c,jaguar c,cougar c,lynx c,wolf c,fox o,dog o,cat c,bear o,polar bear c,grizzly bear o,giant panda h,red panda h,koala h,kangaroo h,wallaby h,wombat h,elephant h,rhinoceros h,hippopotamus h,giraffe h,zebra h,horse h,donkey h,mule h,pony h,cow h,ox h,yak h,sheep h,goat h,pig o,deer h,moose h,elk h,reindeer h,camel h,llama h,alpaca h,bison h,buffalo h,antelope h,gazelle h,okapi h,tapir h,warthog o,gorilla h,chimpanzee o,orangutan o,baboon o,lemur o,monkey o,human o,rabbit h,hare h,squirrel o,chipmunk o,beaver h,mouse o,rat o,hamster o,guinea pig h,porcupine h,hedgehog o,mole c,shrew c,bat o,raccoon o,skunk o,badger o,otter c,sea otter c,weasel c,ferret c,meerkat o,mongoose o,hyena c,armadillo o,sloth h,anteater c,aardvark c,opossum o,platypus c,echidna c,whale c,blue whale c,humpback whale c,orca c,dolphin c,porpoise c,seal c,sea lion c,walrus c,manatee h,dugong h",
+  bird: "eagle c,bald eagle c,hawk c,falcon c,peregrine falcon c,owl c,vulture c,condor c,osprey c,parrot h,macaw h,cockatoo h,budgie h,crow o,raven o,magpie o,robin o,sparrow o,finch h,canary h,pigeon h,dove h,swan h,goose h,duck o,chicken o,turkey o,peacock o,flamingo o,pelican c,stork c,heron c,crane o,ibis o,hummingbird h,woodpecker o,kingfisher c,toucan o,seagull o,albatross c,puffin c,penguin c,ostrich o,emu o,kiwi o,cassowary o,rhea o,dodo h,swallow c,starling o,blue jay o,cardinal o,quail o,pheasant o",
+  fish: "salmon c,trout c,tuna c,cod c,shark c,great white shark c,hammerhead shark c,whale shark c,goldfish o,carp o,catfish o,clownfish o,piranha o,swordfish c,marlin c,barracuda c,eel c,seahorse c,stingray c,manta ray c,pufferfish o,anchovy o,sardine o,herring o,mackerel c,halibut c,flounder c,bass c,pike c,perch c,tilapia o,guppy o,angelfish o,betta c,koi o,sturgeon o,minnow o",
+  reptile: "snake c,python c,cobra c,rattlesnake c,anaconda c,boa c,viper c,lizard c,iguana h,gecko c,chameleon c,komodo dragon c,monitor lizard c,gila monster c,skink o,crocodile c,alligator c,turtle o,sea turtle o,tortoise h,tuatara c",
+  amphibian: "frog c,toad c,bullfrog c,tree frog c,salamander c,newt c,axolotl c,caecilian c",
+  insect: "ant o,bee h,honeybee h,bumblebee h,wasp o,hornet c,butterfly h,moth h,fly o,mosquito o,beetle o,ladybug c,dragonfly c,grasshopper h,cricket o,cockroach o,termite h,flea c,mantis c,praying mantis c,firefly c,cicada h,aphid h,stick insect h,earwig o,weevil h",
+  arachnid: "spider c,tarantula c,black widow c,scorpion c,tick c,mite o",
+  crustacean: "crab o,lobster o,shrimp o,krill h,crayfish o,barnacle o",
+  mollusk: "octopus c,squid c,cuttlefish c,nautilus c,snail h,slug h,clam h,oyster h,mussel h",
+};
+for (const [cls, list] of Object.entries(ANIMALS)) list.split(",").forEach(it => { const w = it.trim().split(" "), d = w.pop(), nm = w.join(" "); PI_(nm, cls); PI_(nm, DIET[d]); });
+PS(`a living thing can grow
+a living thing can reproduce
+an animal is a living thing
+an animal can move
+an animal can breathe
+an animal can eat
+a plant is a living thing
+a vertebrate is an animal
+a vertebrate has a backbone
+an invertebrate is an animal
+an invertebrate does not have a backbone
+a mammal is a vertebrate
+a mammal has hair
+a mammal is warm-blooded
+a mammal has lungs
+a bird is a vertebrate
+a bird has feathers
+a bird has wings
+a bird has a beak
+a bird can lay eggs
+a bird can fly
+a bird is warm-blooded
+a bird has 2 legs
+a fish is a vertebrate
+a fish has gills
+a fish has fins
+a fish can swim
+a fish can breathe underwater
+a fish is cold-blooded
+a reptile is a vertebrate
+a reptile has scales
+a reptile is cold-blooded
+a reptile can lay eggs
+a reptile has lungs
+an amphibian is a vertebrate
+an amphibian is cold-blooded
+an amphibian can lay eggs
+an amphibian can swim
+an amphibian has moist skin
+an insect is an invertebrate
+an insect has 6 legs
+an insect has 3 body parts
+an insect has antennae
+an insect has an exoskeleton
+an arachnid is an invertebrate
+an arachnid has 8 legs
+an arachnid does not have antennae
+a crustacean is an invertebrate
+a crustacean has an exoskeleton
+a mollusk is an invertebrate
+a mollusk has a soft body
+a jellyfish is an invertebrate
+a jellyfish is not a fish
+a jellyfish does not have a brain
+a starfish is an invertebrate
+a starfish is not a fish
+a starfish has 5 arms
+an earthworm is an invertebrate
+a carnivore can eat meat
+a herbivore can eat plants
+an omnivore can eat meat
+an omnivore can eat plants
+a penguin cannot fly
+a penguin can swim
+an ostrich cannot fly
+an emu cannot fly
+a kiwi cannot fly
+a cassowary cannot fly
+a rhea cannot fly
+a dodo cannot fly
+a dodo is extinct
+a chicken can fly short distances
+the ostrich is the largest bird
+the ostrich is the fastest running bird
+a bee hummingbird is the smallest bird
+a hummingbird can fly backwards
+an owl can see in the dark
+a parrot can copy human speech
+a bat can fly
+a bat is not a bird
+a whale can swim
+a whale is not a fish
+a dolphin can swim
+a dolphin is not a fish
+a seal can swim
+an otter can swim
+a polar bear can swim
+a whale does not have legs
+a dolphin does not have legs
+a platypus can lay eggs
+an echidna can lay eggs
+a blue whale is a whale
+a humpback whale is a whale
+an orca is a whale
+a polar bear is a bear
+a grizzly bear is a bear
+a sea otter is an otter
+a human can talk
+a human can think
+a human can read
+a human has 2 legs
+a human has 2 arms
+a human has 206 bones
+a human has 32 teeth
+a human has 46 chromosomes
+a human has 2 lungs
+a human has 1 heart
+a human has 2 kidneys
+a human has 5 senses
+a human has 10 fingers
+a human has 24 ribs
+a human has about 600 muscles
+a dog has 4 legs
+a cat has 4 legs
+a horse has 4 legs
+a cow has 4 legs
+a lion has 4 legs
+an elephant has 4 legs
+a kangaroo can hop
+a kangaroo is a marsupial
+a koala is a marsupial
+a wombat is a marsupial
+an opossum is a marsupial
+a marsupial can carry babies in a pouch
+a marsupial is a mammal
+a rodent is a mammal
+an elephant has a trunk
+an elephant has tusks
+a giraffe has a long neck
+a camel has humps
+a zebra has stripes
+a tiger has stripes
+a leopard has spots
+a cheetah has spots
+a rhinoceros has a horn
+a dog can bark
+a cat can purr
+a lion can roar
+a dog can smell very well
+a monkey can climb trees
+a squirrel can climb trees
+a beaver can build dams
+the cheetah is the fastest land animal
+the peregrine falcon is the fastest animal
+the blue whale is the largest animal
+the giraffe is the tallest animal
+the African elephant is the largest land animal
+the whale shark is the largest fish
+the sloth is one of the slowest mammals
+a great white shark is a shark
+a hammerhead shark is a shark
+a whale shark is a shark
+a shark has rows of teeth
+a python is a snake
+a cobra is a snake
+a rattlesnake is a snake
+an anaconda is a snake
+a boa is a snake
+a viper is a snake
+a snake has 0 legs
+a snake can shed its skin
+a cobra is venomous
+a rattlesnake is venomous
+a viper is venomous
+an iguana is a lizard
+a gecko is a lizard
+a chameleon is a lizard
+a komodo dragon is a lizard
+a monitor lizard is a lizard
+a gila monster is a lizard
+a skink is a lizard
+a lizard has 4 legs
+a chameleon can change color
+a gecko can climb walls
+the komodo dragon is the largest lizard
+a sea turtle is a turtle
+a tortoise is a turtle
+a turtle has a shell
+a crocodile has 4 legs
+a bullfrog is a frog
+a tree frog is a frog
+a frog can jump
+a tadpole can grow into a frog
+a honeybee is a bee
+a bumblebee is a bee
+a bee can make honey
+a bee can sting
+a wasp can sting
+a caterpillar is a baby butterfly
+a caterpillar can turn into a butterfly
+a praying mantis is a mantis
+an ant can carry 50 times its weight
+a tarantula is a spider
+a black widow is a spider
+a black widow is venomous
+a spider can spin webs
+a scorpion can sting
+a scorpion is venomous
+an octopus has 8 arms
+an octopus has 3 hearts
+an octopus has blue blood
+an octopus can change color
+a squid has 8 arms
+a squid has 2 tentacles
+a crab has 10 legs
+a lobster has 10 legs
+a snail has a shell
+an oyster can make pearls
+a bald eagle is an eagle
+a peregrine falcon is a falcon
+the bald eagle is the national bird of the United States`);
+
+/* ---------- plants & food ---------- */
+"oak,pine,maple,birch,willow,palm,redwood,baobab,cedar,spruce,elm,cherry tree,apple tree,eucalyptus,bamboo".split(",").forEach(t => PI_(t, t === "bamboo" ? "grass" : "tree"));
+"rose,tulip,sunflower,daisy,lily,orchid,lavender,daffodil,poppy,lotus,dandelion,carnation,jasmine,marigold,violet".split(",").forEach(f => PI_(f, "flower"));
+each(`apple:red or green|banana:yellow|orange:orange|lemon:yellow|lime:green|strawberry:red|blueberry:blue|grape:purple or green|watermelon:green outside, red inside|cherry:red|peach:orange-pink|pear:green or yellow|pineapple:yellow inside|mango:orange-yellow|kiwifruit:brown outside, green inside|coconut:brown|avocado:green|tomato:red|plum:purple|raspberry:red|blackberry:black|papaya:orange|pomegranate:red|fig:purple|apricot:orange|grapefruit:pink-orange|cranberry:red|date:brown`, (f, c) => { PI_(f, "fruit"); PA("color", f, c); });
+each(`carrot:orange|potato:brown|broccoli:green|spinach:green|lettuce:green|cucumber:green|onion:white, yellow or red|garlic:white|bell pepper:red, green or yellow|corn:yellow|pea:green|cabbage:green|cauliflower:white|celery:green|pumpkin:orange|eggplant:purple|beet:dark red|radish:red|zucchini:green|asparagus:green|kale:dark green|sweet potato:orange`, (v, c) => { PI_(v, "vegetable"); PA("color", v, c); });
+PS(`a tree is a plant
+a flower is a plant
+a grass is a plant
+a cactus is a plant
+a fern is a plant
+a moss is a plant
+a plant can make food from sunlight
+a plant has roots
+a plant has leaves
+a plant cannot move
+a cactus can store water
+the giant sequoia is the largest tree
+the redwood is the tallest tree
+bamboo is the fastest-growing plant
+a sunflower can turn to face the sun
+a Venus flytrap is a plant
+a Venus flytrap can catch insects
+a fruit is a food
+a vegetable is a food
+a tomato is botanically a fruit
+the sky is blue
+grass is green
+snow is white
+milk is white
+honey is made by bees
+bread is made from flour
+cheese is made from milk
+butter is made from milk
+chocolate is made from cocoa beans
+popcorn is made from corn
+a dozen is 12
+pizza is from Italy
+sushi is from Japan
+tacos are from Mexico
+croissants are from France`);
+Object.assign(PACKNUMS, { pi: 3.14159265359, dozen: 12, "baker's dozen": 13, gross: 144, hundred: 100, thousand: 1000, million: 1e6, billion: 1e9 });
+
+/* ---------- space ---------- */
+each(`Mercury:rocky planet:0:first|Venus:rocky planet:0:second|Earth:rocky planet:1:third|Mars:rocky planet:2:fourth|Jupiter:gas giant:95:fifth|Saturn:gas giant:146:sixth|Uranus:ice giant:28:seventh|Neptune:ice giant:16:eighth`,
+  (p, t, moons, ord) => { PI_(p, "planet"); PI_(p, t); PACK.push({ r: "attr", k: "#moon", s: reg(p), o: moons }); PACK.push({ r: "is", s: reg(p), o: reg(ord + " planet from the Sun"), a: false, d: `the ${ord} planet from the Sun` }); });
+PS(`a rocky planet is a planet
+a gas giant is a planet
+an ice giant is a planet
+a planet can orbit a star
+the Sun is a star
+a star is a ball of hot glowing gas
+the Sun is the closest star to Earth
+the solar system has 8 planets
+Jupiter is bigger than Saturn
+Saturn is bigger than Uranus
+Uranus is bigger than Neptune
+Neptune is bigger than Earth
+Earth is bigger than Venus
+Venus is bigger than Mars
+Mars is bigger than Mercury
+Mercury is bigger than the Moon
+the Sun is bigger than Jupiter
+Jupiter is the biggest planet
+Mercury is the smallest planet
+Mercury is the closest planet to the Sun
+Neptune is the farthest planet from the Sun
+Venus is the hottest planet
+Mars is the Red Planet
+Earth is the only planet known to have life
+Saturn has rings
+Jupiter has the Great Red Spot
+a day on Venus is longer than a year on Venus
+Pluto is a dwarf planet
+Ceres is a dwarf planet
+Eris is a dwarf planet
+Haumea is a dwarf planet
+Makemake is a dwarf planet
+a dwarf planet is not a planet
+Pluto is a former planet, reclassified in 2006
+the Moon is a moon of Earth
+Phobos is a moon of Mars
+Deimos is a moon of Mars
+Io is a moon of Jupiter
+Europa is a moon of Jupiter
+Ganymede is a moon of Jupiter
+Callisto is a moon of Jupiter
+Titan is a moon of Saturn
+Enceladus is a moon of Saturn
+Triton is a moon of Neptune
+Ganymede is the largest moon in the solar system
+the distance from Earth to the Moon is about 384,400 km
+the distance from Earth to the Sun is about 150 million km
+the age of the Sun is about 4.6 billion years
+the age of Earth is about 4.54 billion years
+the age of the universe is about 13.8 billion years
+the diameter of Earth is about 12,742 km
+the diameter of the Moon is about 3,474 km
+the diameter of the Sun is about 1.39 million km
+the Milky Way is a galaxy
+the Milky Way is our home galaxy
+Andromeda is a galaxy
+Andromeda is the closest large galaxy to the Milky Way
+a galaxy is a huge group of stars
+a black hole is a place where gravity is so strong that light cannot escape
+a comet is a ball of ice and dust
+an asteroid is a rocky object that orbits the Sun
+a light-year is the distance light travels in a year
+Proxima Centauri is the closest star to the Sun
+Sirius is the brightest star in the night sky
+the ISS is a space station
+Apollo 11 is the first mission to land people on the Moon`);
+["Moon", "Phobos", "Deimos", "Io", "Europa", "Ganymede", "Callisto", "Titan", "Enceladus", "Triton"].forEach(m => PI_(m, "moon"));
+
+/* ---------- human body ---------- */
+["heart", "brain", "lung", "liver", "stomach", "kidney", "skin", "intestine", "pancreas", "bladder"].forEach(o => PI_(o, "organ"));
+each(`heart:pump blood around the body|brain:control the body and think|lung:take in oxygen and remove carbon dioxide|liver:clean the blood and help digest food|stomach:break down food|kidney:filter waste out of the blood|skin:protect the body|intestine:absorb nutrients from food|bone:support and protect the body|muscle:move the body|red blood cell:carry oxygen|white blood cell:fight germs`, (o, j) => PA("job", o, j));
+PS(`an organ is a body part
+the skin is the largest organ
+the femur is the longest bone
+the stapes is the smallest bone
+the femur is a bone
+the skull is a bone
+the femur is in the thigh
+the heart has 4 chambers
+blood is pumped by the heart
+the normal body temperature of a human is about 37 °C (98.6 °F)
+the blood types are A, B, AB and O
+the five senses are sight, hearing, smell, taste and touch
+a baby has about 300 bones`);
+
+/* ---------- shapes, time, units ---------- */
+each(`triangle:3|square:4|rectangle:4|pentagon:5|hexagon:6|heptagon:7|octagon:8|nonagon:9|decagon:10|dodecagon:12`, (s, n) => { PI_(s, "polygon"); PACK.push({ r: "attr", k: "#side", s: reg(s), o: n }); PACK.push({ r: "attr", k: "#corner", s: reg(s), o: n }); });
+PS(`a polygon is a shape
+a circle is a shape
+a circle has 0 corners
+a square is a rectangle
+a rectangle is a quadrilateral
+a quadrilateral has 4 sides
+the angle sum of a triangle is 180 degrees
+the angle sum of a quadrilateral is 360 degrees
+a right angle is 90 degrees
+a full turn is 360 degrees
+a cube has 6 faces
+a cube has 12 edges
+a cube has 8 corners
+a tetrahedron has 4 faces
+a square pyramid has 5 faces
+a sphere has 0 corners
+a cube is a 3D shape
+a sphere is a 3D shape
+a cylinder is a 3D shape
+a cone is a 3D shape
+a week has 7 days
+a year has 12 months
+a year has 365 days
+a year has 52 weeks
+a leap year has 366 days
+a day has 24 hours
+an hour has 60 minutes
+a minute has 60 seconds
+a decade has 10 years
+a century has 100 years
+a millennium has 1000 years
+a kilometer has 1000 meters
+a meter has 100 centimeters
+a centimeter has 10 millimeters
+a mile has 5280 feet
+a foot has 12 inches
+a yard has 3 feet
+a kilogram has 1000 grams
+a pound has 16 ounces
+a ton has 2000 pounds
+a liter has 1000 milliliters
+a gallon has 4 quarts
+a mile is about 1.609 kilometers
+an inch is 2.54 centimeters
+a kilogram is about 2.2 pounds
+a dozen has 12 things
+a score is 20
+a century is 100 years
+a chessboard has 64 squares
+a chess set has 32 pieces
+a deck of cards has 52 cards
+a die has 6 faces
+a soccer team has 11 players
+a basketball team has 5 players
+a baseball team has 9 players
+a volleyball team has 6 players
+an ice hockey team has 6 players
+a cricket team has 11 players
+an American football team has 11 players
+a rugby union team has 15 players
+a water polo team has 7 players
+the length of a marathon is 42.195 km
+the Olympic Games are held every 4 years
+a piano has 88 keys
+a guitar has 6 strings
+a violin has 4 strings
+the alphabet has 26 letters
+a haiku has 3 lines
+a sonnet has 14 lines`);
+each(`January:31|February:28|March:31|April:30|May:31|June:30|July:31|August:31|September:30|October:31|November:30|December:31`, (m, d) => { PI_(m, "month"); PACK.push({ r: "attr", k: "#day", s: reg(m), o: d }); });
+PS(`February has 29 days in a leap year`);
+"Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday".split(",").forEach(d => PI_(d, "day of the week"));
+"spring,summer,autumn,winter".split(",").forEach(s => PI_(s, "season"));
+"football,basketball,baseball,tennis,cricket,golf,swimming,volleyball,ice hockey,rugby,boxing,cycling,skiing,table tennis,badminton,surfing,skateboarding,gymnastics,athletics".split(",").forEach(s => PI_(s, "sport"));
+"piano,guitar,violin,cello,flute,trumpet,drum,saxophone,clarinet,harp,trombone,ukulele,accordion,harmonica,xylophone,tuba,oboe,banjo".split(",").forEach(i => PI_(i, "musical instrument"));
+PS(`a violin is a string instrument\na guitar is a string instrument\na cello is a string instrument\na harp is a string instrument\na trumpet is a brass instrument\na trombone is a brass instrument\na tuba is a brass instrument\na flute is a woodwind instrument\na clarinet is a woodwind instrument\nan oboe is a woodwind instrument\na saxophone is a woodwind instrument\na drum is a percussion instrument\na xylophone is a percussion instrument`);
+
+/* ---------- inventions & discoveries: thing:who:year ---------- */
+each(`telephone:Alexander Graham Bell:1876|light bulb:Thomas Edison:1879|phonograph:Thomas Edison:1877|airplane:the Wright brothers:1903|printing press:Johannes Gutenberg:1440|World Wide Web:Tim Berners-Lee:1989|television:John Logie Baird:1926|radio:Guglielmo Marconi:1895|steam engine:James Watt:1769|dynamite:Alfred Nobel:1867|telescope:Hans Lippershey:1608|automobile:Karl Benz:1886|telegraph:Samuel Morse:1837|Morse code:Samuel Morse:1837|battery:Alessandro Volta:1800|electric motor:Michael Faraday:1821|AC motor:Nikola Tesla:1888|mobile phone:Martin Cooper:1973|photograph:Joseph Nicéphore Niépce:1826|ballpoint pen:László Bíró:1938|microwave oven:Percy Spencer:1945|dishwasher:Josephine Cochrane:1886|windshield wiper:Mary Anderson:1903|Velcro:George de Mestral:1955|Python:Guido van Rossum:1991|Linux:Linus Torvalds:1991|JavaScript:Brendan Eich:1995|C programming language:Dennis Ritchie:1972|email:Ray Tomlinson:1971|transistor:John Bardeen, Walter Brattain and William Shockley:1947|laser:Theodore Maiman:1960|liquid-fuel rocket:Robert Goddard:1926|hot air balloon:the Montgolfier brothers:1783|steamboat:Robert Fulton:1807|steam locomotive:George Stephenson:1814|typewriter:Christopher Latham Sholes:1868|braille:Louis Braille:1824|sewing machine:Elias Howe:1846|bicycle:Karl Drais:1817|cotton gin:Eli Whitney:1793|lightning rod:Benjamin Franklin:1752|bifocals:Benjamin Franklin:1784|smallpox vaccine:Edward Jenner:1796|polio vaccine:Jonas Salk:1955|jet engine:Frank Whittle:1930|helicopter:Igor Sikorsky:1939|iPhone:Apple:2007|Internet protocol (TCP/IP):Vint Cerf and Bob Kahn:1974|periodic table:Dmitri Mendeleev:1869|pasteurization:Louis Pasteur:1864|calculus:Isaac Newton and Gottfried Leibniz:1680s|stethoscope:René Laennec:1816|thermometer:Galileo Galilei:1593|barometer:Evangelista Torricelli:1643|refrigerator:Jacob Perkins:1834|Lego brick:Ole Kirk Christiansen:1958|video game console:Ralph Baer:1972|World Wide Web browser:Tim Berners-Lee:1990|GPS:the US Department of Defense:1978|3D printer:Chuck Hull:1984`,
+  (t, who, y) => { PI_(t, "invention"); PA("inventor", t, who); PA("year invented", t, y); });
+each(`penicillin:Alexander Fleming:1928|X-rays:Wilhelm Röntgen:1895|radioactivity:Henri Becquerel:1896|radium:Marie and Pierre Curie:1898|polonium:Marie and Pierre Curie:1898|electron:J. J. Thomson:1897|neutron:James Chadwick:1932|proton:Ernest Rutherford:1917|atomic nucleus:Ernest Rutherford:1911|oxygen gas:Joseph Priestley:1774|insulin:Frederick Banting and Charles Best:1921|structure of DNA:James Watson, Francis Crick and Rosalind Franklin:1953|Pluto:Clyde Tombaugh:1930|Uranus:William Herschel:1781|Neptune:Urbain Le Verrier and Johann Galle:1846|moons of Jupiter:Galileo Galilei:1610|gravity:Isaac Newton:1687|theory of relativity:Albert Einstein:1905|theory of evolution:Charles Darwin:1859|laws of heredity:Gregor Mendel:1866|germ theory:Louis Pasteur:1860s|cells:Robert Hooke:1665|bacteria:Antonie van Leeuwenhoek:1676|Higgs boson:CERN scientists:2012`,
+  (t, who, y) => { PI_(t, "discovery"); PA("discoverer", t, who); PA("year discovered", t, y); });
+
+/* ---------- books, plays, paintings, music ---------- */
+each(`Pride and Prejudice:Jane Austen|Emma:Jane Austen|Sense and Sensibility:Jane Austen|1984:George Orwell|Animal Farm:George Orwell|Harry Potter:J. K. Rowling|The Hobbit:J. R. R. Tolkien|The Lord of the Rings:J. R. R. Tolkien|Moby-Dick:Herman Melville|War and Peace:Leo Tolstoy|Anna Karenina:Leo Tolstoy|Crime and Punishment:Fyodor Dostoevsky|Don Quixote:Miguel de Cervantes|The Great Gatsby:F. Scott Fitzgerald|To Kill a Mockingbird:Harper Lee|The Catcher in the Rye:J. D. Salinger|Frankenstein:Mary Shelley|Dracula:Bram Stoker|The Odyssey:Homer|The Iliad:Homer|Jane Eyre:Charlotte Brontë|Wuthering Heights:Emily Brontë|Great Expectations:Charles Dickens|A Christmas Carol:Charles Dickens|Oliver Twist:Charles Dickens|The Adventures of Tom Sawyer:Mark Twain|Adventures of Huckleberry Finn:Mark Twain|The Old Man and the Sea:Ernest Hemingway|Of Mice and Men:John Steinbeck|The Grapes of Wrath:John Steinbeck|Brave New World:Aldous Huxley|Fahrenheit 451:Ray Bradbury|The Little Prince:Antoine de Saint-Exupéry|Alice's Adventures in Wonderland:Lewis Carroll|Charlotte's Web:E. B. White|The Cat in the Hat:Dr. Seuss|The Very Hungry Caterpillar:Eric Carle|Matilda:Roald Dahl|Charlie and the Chocolate Factory:Roald Dahl|The BFG:Roald Dahl|The Chronicles of Narnia:C. S. Lewis|The Hunger Games:Suzanne Collins|Percy Jackson and the Olympians:Rick Riordan|Diary of a Wimpy Kid:Jeff Kinney|The Divine Comedy:Dante Alighieri|On the Origin of Species:Charles Darwin|A Brief History of Time:Stephen Hawking|Les Misérables:Victor Hugo|The Count of Monte Cristo:Alexandre Dumas|The Three Musketeers:Alexandre Dumas|Treasure Island:Robert Louis Stevenson|The Jungle Book:Rudyard Kipling|The Wonderful Wizard of Oz:L. Frank Baum|Peter Pan:J. M. Barrie|Little Women:Louisa May Alcott|The Hitchhiker's Guide to the Galaxy:Douglas Adams|One Hundred Years of Solitude:Gabriel García Márquez|The Metamorphosis:Franz Kafka|Ulysses:James Joyce|Gulliver's Travels:Jonathan Swift|Robinson Crusoe:Daniel Defoe|The Call of the Wild:Jack London|Anne of Green Gables:L. M. Montgomery|The Giver:Lois Lowry|Wonder:R. J. Palacio|Holes:Louis Sachar|The Outsiders:S. E. Hinton|Lord of the Flies:William Golding|The Handmaid's Tale:Margaret Atwood|Beloved:Toni Morrison|The Art of War:Sun Tzu|The Prince:Niccolò Machiavelli|Winnie-the-Pooh:A. A. Milne|The Tale of Peter Rabbit:Beatrix Potter|Where the Wild Things Are:Maurice Sendak|Green Eggs and Ham:Dr. Seuss|The Secret Garden:Frances Hodgson Burnett|Black Beauty:Anna Sewell|Twenty Thousand Leagues Under the Seas:Jules Verne|Around the World in Eighty Days:Jules Verne|The Time Machine:H. G. Wells|The War of the Worlds:H. G. Wells|Dune:Frank Herbert|Murder on the Orient Express:Agatha Christie|The Hound of the Baskervilles:Arthur Conan Doyle|The Book Thief:Markus Zusak|The Fault in Our Stars:John Green`, (b, a) => { PI_(b, "book"); PA("author", b, a); });
+each(`Romeo and Juliet:William Shakespeare|Hamlet:William Shakespeare|Macbeth:William Shakespeare|Othello:William Shakespeare|King Lear:William Shakespeare|A Midsummer Night's Dream:William Shakespeare|The Tempest:William Shakespeare|Julius Caesar:William Shakespeare|Death of a Salesman:Arthur Miller|The Crucible:Arthur Miller|A Streetcar Named Desire:Tennessee Williams|Waiting for Godot:Samuel Beckett|Pygmalion:George Bernard Shaw|The Importance of Being Earnest:Oscar Wilde`, (p, a) => { PI_(p, "play"); PA("author", p, a); });
+each(`Mona Lisa:Leonardo da Vinci|The Last Supper:Leonardo da Vinci|The Starry Night:Vincent van Gogh|Sunflowers:Vincent van Gogh|The Scream:Edvard Munch|Girl with a Pearl Earring:Johannes Vermeer|The Persistence of Memory:Salvador Dalí|Guernica:Pablo Picasso|The Birth of Venus:Sandro Botticelli|The Night Watch:Rembrandt|Water Lilies:Claude Monet|Impression, Sunrise:Claude Monet|American Gothic:Grant Wood|The Great Wave off Kanagawa:Katsushika Hokusai|The Kiss:Gustav Klimt|The Creation of Adam:Michelangelo|The School of Athens:Raphael|Las Meninas:Diego Velázquez|Nighthawks:Edward Hopper|Campbell's Soup Cans:Andy Warhol|The Son of Man:René Magritte|A Sunday Afternoon on the Island of La Grande Jatte:Georges Seurat|The Garden of Earthly Delights:Hieronymus Bosch`, (p, a) => { PI_(p, "painting"); PA("painter", p, a); });
+PS(`the ceiling of the Sistine Chapel was painted by Michelangelo\nDavid was sculpted by Michelangelo\nThe Thinker was sculpted by Auguste Rodin\nthe Mona Lisa is in the Louvre`);
+each(`Symphony No. 9:Ludwig van Beethoven|Für Elise:Ludwig van Beethoven|Moonlight Sonata:Ludwig van Beethoven|Symphony No. 5:Ludwig van Beethoven|The Four Seasons:Antonio Vivaldi|The Magic Flute:Wolfgang Amadeus Mozart|Eine kleine Nachtmusik:Wolfgang Amadeus Mozart|The Nutcracker:Pyotr Ilyich Tchaikovsky|Swan Lake:Pyotr Ilyich Tchaikovsky|Boléro:Maurice Ravel|Clair de lune:Claude Debussy|The Planets:Gustav Holst|Canon in D:Johann Pachelbel|Messiah:George Frideric Handel|The Blue Danube:Johann Strauss II|Rhapsody in Blue:George Gershwin|Brandenburg Concertos:Johann Sebastian Bach|Ride of the Valkyries:Richard Wagner|Carmen:Georges Bizet|The Barber of Seville:Gioachino Rossini|Hungarian Rhapsody No. 2:Franz Liszt|Peter and the Wolf:Sergei Prokofiev|The Rite of Spring:Igor Stravinsky`, (p, a) => { PI_(p, "piece of music"); PA("composer", p, a); });
+
+/* ---------- people: name:what they were:nationality ---------- */
+const PEOPLE = [];
+each(`Albert Einstein:physicist:German-born|Isaac Newton:physicist:English|Marie Curie:physicist:Polish-French|Charles Darwin:naturalist:English|Galileo Galilei:astronomer:Italian|Nikola Tesla:inventor:Serbian-American|Thomas Edison:inventor:American|Leonardo da Vinci:painter:Italian|Michelangelo:painter:Italian|Vincent van Gogh:painter:Dutch|Pablo Picasso:painter:Spanish|Claude Monet:painter:French|Frida Kahlo:painter:Mexican|Rembrandt:painter:Dutch|William Shakespeare:playwright:English|Jane Austen:novelist:English|Charles Dickens:novelist:English|Mark Twain:novelist:American|J. K. Rowling:novelist:British|J. R. R. Tolkien:novelist:English|Homer:poet:Ancient Greek|Emily Dickinson:poet:American|Maya Angelou:poet:American|Ludwig van Beethoven:composer:German|Wolfgang Amadeus Mozart:composer:Austrian|Johann Sebastian Bach:composer:German|Pyotr Ilyich Tchaikovsky:composer:Russian|Frédéric Chopin:composer:Polish|Stephen Hawking:physicist:English|Ada Lovelace:mathematician:English|Alan Turing:mathematician:English|Pythagoras:mathematician:Ancient Greek|Euclid:mathematician:Ancient Greek|Archimedes:mathematician:Ancient Greek|Aristotle:philosopher:Ancient Greek|Plato:philosopher:Ancient Greek|Socrates:philosopher:Ancient Greek|Confucius:philosopher:Chinese|Nicolaus Copernicus:astronomer:Polish|Johannes Kepler:astronomer:German|Edwin Hubble:astronomer:American|Louis Pasteur:chemist:French|Dmitri Mendeleev:chemist:Russian|Rosalind Franklin:chemist:English|Gregor Mendel:biologist:Austrian|Jane Goodall:primatologist:English|Alexander Graham Bell:inventor:Scottish-born|the Wright brothers:inventor:American|Benjamin Franklin:inventor:American|Johannes Gutenberg:inventor:German|Tim Berners-Lee:computer scientist:English|Grace Hopper:computer scientist:American|Christopher Columbus:explorer:Italian|Ferdinand Magellan:explorer:Portuguese|Marco Polo:explorer:Venetian|Neil Armstrong:astronaut:American|Buzz Aldrin:astronaut:American|Yuri Gagarin:cosmonaut:Soviet|Valentina Tereshkova:cosmonaut:Soviet|Sally Ride:astronaut:American|Amelia Earhart:aviator:American|Charles Lindbergh:aviator:American|Edmund Hillary:mountaineer:New Zealand|Tenzing Norgay:mountaineer:Nepali|George Washington:president:American|Abraham Lincoln:president:American|Barack Obama:president:American|Nelson Mandela:president:South African|Winston Churchill:prime minister:British|Mahatma Gandhi:leader:Indian|Martin Luther King Jr.:civil rights leader:American|Rosa Parks:civil rights activist:American|Napoleon Bonaparte:emperor:French|Julius Caesar:Roman leader:Roman|Cleopatra:pharaoh:Egyptian|Queen Victoria:queen:British|Elizabeth II:queen:British|Florence Nightingale:nurse:British|Walt Disney:animator:American|Steve Jobs:entrepreneur:American|Bill Gates:entrepreneur:American|Elvis Presley:singer:American|Michael Jackson:singer:American|The Beatles:band:English|Pelé:footballer:Brazilian|Usain Bolt:sprinter:Jamaican|Serena Williams:tennis player:American|Michael Jordan:basketball player:American|Muhammad Ali:boxer:American`,
+  (p, job, nat) => { PI_(p, job); PA("nationality", p, nat); PEOPLE.push(p); });
+PS(`a physicist is a scientist
+a chemist is a scientist
+a biologist is a scientist
+an astronomer is a scientist
+a naturalist is a scientist
+a primatologist is a scientist
+a computer scientist is a scientist
+a mathematician is a scientist
+a scientist is a person
+a painter is an artist
+an animator is an artist
+an artist is a person
+a playwright is a writer
+a novelist is a writer
+a poet is a writer
+a writer is a person
+a composer is a musician
+a singer is a musician
+a singer-songwriter is a singer
+a songwriter is a musician
+a band is a group of musicians
+a musician is a person
+an inventor is a person
+a philosopher is a person
+an explorer is a person
+an astronaut is a person
+a cosmonaut is an astronaut
+an aviator is a pilot
+a pilot is a person
+a mountaineer is a person
+a president is a leader
+a prime minister is a leader
+a queen is a leader
+an emperor is a leader
+a pharaoh is a leader
+a Roman leader is a leader
+a civil rights leader is a leader
+a civil rights activist is a person
+a leader is a person
+a nurse is a person
+an entrepreneur is a person
+a footballer is an athlete
+a sprinter is an athlete
+a tennis player is an athlete
+a basketball player is an athlete
+a boxer is an athlete
+an athlete is a person
+a person is a human
+George Washington is the first president of the United States
+Abraham Lincoln is the 16th president of the United States
+Barack Obama is the 44th president of the United States
+Neil Armstrong is the first person to walk on the Moon
+Buzz Aldrin is the second person to walk on the Moon
+Yuri Gagarin is the first person in space
+Valentina Tereshkova is the first woman in space
+Sally Ride is the first American woman in space
+Amelia Earhart is the first woman to fly solo across the Atlantic
+Edmund Hillary is one of the first people to climb Mount Everest
+Tenzing Norgay is one of the first people to climb Mount Everest
+Marie Curie is the first woman to win a Nobel Prize
+Ada Lovelace is the first computer programmer
+Albert Einstein was born in 1879
+Isaac Newton was born in 1643
+Marie Curie was born in 1867
+Charles Darwin was born in 1809
+William Shakespeare was born in 1564
+Leonardo da Vinci was born in 1452
+Wolfgang Amadeus Mozart was born in 1756
+Ludwig van Beethoven was born in 1770
+Abraham Lincoln was born in 1809
+George Washington was born in 1732
+Nelson Mandela was born in 1918
+Martin Luther King Jr. was born in 1929
+Mahatma Gandhi was born in 1869
+Galileo Galilei was born in 1564
+Nikola Tesla was born in 1856
+Thomas Edison was born in 1847
+Ada Lovelace was born in 1815
+Alan Turing was born in 1912
+Stephen Hawking was born in 1942
+Frida Kahlo was born in 1907
+Vincent van Gogh was born in 1853
+Pablo Picasso was born in 1881
+Neil Armstrong was born in 1930`);
+
+/* ---------- history: event:when ---------- */
+each(`World War I:1914–1918|World War II:1939–1945|the Moon landing:1969|the fall of the Berlin Wall:1989|the French Revolution:1789–1799|the American Declaration of Independence:1776|the American Civil War:1861–1865|the sinking of the Titanic:1912|Columbus reaching the Americas:1492|the signing of the Magna Carta:1215|the Battle of Hastings:1066|the first powered flight:1903|the end of apartheid in South Africa:1994|the breakup of the Soviet Union:1991|the fall of the Western Roman Empire:476 AD|the Black Death:1347–1351|the start of the Industrial Revolution:about 1760|the Renaissance:about 1300–1600|the first iPhone release:2007|the founding of the United Nations:1945|the first Olympic Games of modern times:1896|the Great Fire of London:1666|the eruption of Mount Vesuvius that buried Pompeii:79 AD|the Wall Street Crash:1929|the first email:1971|the invention of the World Wide Web:1989|the first person in space:1961|the Russian Revolution:1917|the unification of Germany:1871 and 1990|the Chernobyl disaster:1986`,
+  (e, y) => { PI_(e, "historical event"); PA("year", e, y); });
+PS(`World War II is the deadliest war in history
+the Titanic is a famous British passenger ship that sank in 1912
+Pompeii is in Italy
+the Roman Empire is an ancient empire centered on Rome
+the Great Pyramid of Giza was built by the ancient Egyptians
+the Great Wall of China was built in many stages over about 2,000 years`);
+
+/* ---------- opposites ---------- */
+each(`hot:cold|big:small|up:down|in:out|day:night|black:white|happy:sad|fast:slow|old:young|new:old|open:closed|light:dark|high:low|hard:soft|wet:dry|full:empty|rich:poor|strong:weak|early:late|loud:quiet|love:hate|win:lose|push:pull|left:right|north:south|east:west|top:bottom|first:last|give:take|buy:sell|start:finish|true:false|yes:no|good:bad|clean:dirty|thick:thin|long:short|tall:short|near:far|before:after|above:below|inside:outside|question:answer|friend:enemy|laugh:cry|sweet:sour|rough:smooth|alive:dead|front:back|sunrise:sunset|wide:narrow|deep:shallow|easy:difficult|cheap:expensive|polite:rude|sharp:blunt|asleep:awake|arrive:leave|accept:refuse|always:never|entrance:exit|increase:decrease|maximum:minimum|positive:negative|odd:even|add:subtract|multiply:divide|heavy:light|brave:cowardly|safe:dangerous|real:fake|on:off|summer:winter|beginning:end|come:go|remember:forget|private:public|ancient:modern`,
+  (a, b) => { PA("opposite", a, b); PA("opposite", b, a); });
+
+/* ---------- language & misc ---------- */
+PS(`a noun is a word for a person, place or thing
+a verb is an action word
+an adjective is a word that describes a noun
+an adverb is a word that describes a verb
+a synonym is a word that means the same as another word
+an antonym is a word that means the opposite of another word
+a vowel is one of the letters a, e, i, o and u
+English is the most widely spoken language
+Mandarin Chinese has the most native speakers
+a prime number is a number with exactly two factors
+2 is the only even prime number
+zero is neither positive nor negative
+a computer is a machine that follows instructions
+a program is a set of instructions for a computer
+a bit is the smallest unit of data, a 0 or a 1
+a byte has 8 bits
+a kilobyte has 1024 bytes
+an algorithm is a step-by-step method for solving a problem
+the Internet is a global network of computers
+a robot is a machine that can do tasks by itself
+artificial intelligence is computer systems that can learn and reason
+NOVA is a reasoning engine that lives in this page`);
+
+/* surnames as shortcuts ("einstein" -> Albert Einstein), skipping clashes */
+{ const last = {}; PEOPLE.forEach(n => { const w = n.replace(/ Jr\.$/, "").split(" "); if (w.length > 1) { const k = ent0(w.slice(w[w.length - 2] === "van" || w[w.length - 2] === "da" ? -2 : -1).join(" ")); (last[k] = last[k] || []).push(n); } });
+  for (const [k, ns] of Object.entries(last)) if (ns.length === 1 && !DISP.has(k)) alias(k, ns[0]); }
+
+
+// ================= mascot (original pixel character, one look per model) =================
+const cv = document.getElementById("mascot"), cx = cv.getContext("2d"), S = 10;
+const BODY = [
+  "......t.......",
+  "......a.......",
+  "...oooooooo...",
+  "..oooooooooo..",
+  ".oooooooooooo.",
+  ".oooooooooooo.",
+  ".oooooooooooo.",
+  ".oooooooooooo.",
+  ".occoooooocco.",
+  "..oooooooooo..",
+  "...ssssssss...",
+  "...ff....ff...",
+];
+const FACES = {
+  idle:     { e: [[3,5,"w"],[4,5],[3,6],[4,6],[9,5,"w"],[10,5],[9,6],[10,6]], m: [[6,8],[7,8]] },
+  blink:    { e: [[3,6],[4,6],[9,6],[10,6]], m: [[6,8],[7,8]] },
+  think:    { e: [[4,4,"w"],[5,4],[4,5],[5,5],[10,4,"w"],[11,4],[10,5],[11,5]], m: [[7,8]] },
+  happy:    { e: [[2,6],[3,5],[4,6],[9,6],[10,5],[11,6]], m: [[5,8],[8,8],[6,9],[7,9]] },
+  confused: { e: [[3,5,"w"],[4,5],[3,6],[4,6],[10,6]], m: [[5,9],[6,8],[7,9],[8,8]] },
+};
+const GLASSES = [[2,4],[3,4],[4,4],[5,4],[8,4],[9,4],[10,4],[11,4],[6,5],[7,5],[2,5],[2,6],[2,7],[5,5],[5,6],[5,7],[3,7],[4,7],[8,5],[8,6],[8,7],[11,5],[11,6],[11,7],[9,7],[10,7]];
+const BOLT = [[7,0],[6,1],[7,1]];
+let mood = "idle", blinkOn = false, frame = 0;
+const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * k)))); return "#" + c.map(v => v.toString(16).padStart(2, "0")).join(""); };
+function draw() {
+  const base = model.color;
+  const C = { o: base, c: shade(base, 1.18), s: shade(base, .82), f: shade(base, .62), a: "#8f6b58", e: "#231a15", w: "#fff4e8", m: "#231a15" };
+  const glow = mood === "think" ? (frame % 2 ? "#fff1d6" : model.tip) : mood === "happy" ? "#fff1d6" : model.tip;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  const dy = mood === "think" && frame % 2 ? 1 : 0;
+  const px = (x, y, col) => { cx.fillStyle = col; cx.fillRect(x * S, (y + dy) * S, S, S); };
+  BODY.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") px(x, y, ch === "t" ? glow : C[ch]); }));
+  if (model.id === "mini") BOLT.forEach(([x, y]) => px(x, y, glow));
+  if (model.id === "scholar") GLASSES.forEach(([x, y]) => px(x, y, "#3a2a20"));
+  const face = FACES[blinkOn && mood === "idle" ? "blink" : mood];
+  face.e.forEach(([x, y, k]) => px(x, y, k ? C.w : C.e));
+  face.m.forEach(([x, y]) => px(x, y, C.m));
+}
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+setInterval(() => { frame++; if (mood === "think") draw(); }, 220);
+(function blinkLoop() { setTimeout(() => { if (!reduced) { blinkOn = true; draw(); setTimeout(() => { blinkOn = false; draw(); }, 140); } blinkLoop(); }, 2600 + Math.random() * 2400); })();
+let moodTimer;
+function setMood(m, hold) {
+  clearTimeout(moodTimer); mood = m; draw();
+  document.getElementById("tag").textContent = { idle: model.tag, think: "Thinking it through...", happy: "Got it!", confused: "Hmm, I don't know that yet." }[m];
+  if (hold) moodTimer = setTimeout(() => setMood("idle"), hold);
+}
+
+// ================= brain meter =================
+function updateMeter() {
+  const n = packSize() + brainSize(), cells = document.getElementById("cells");
+  document.getElementById("meterLabel").textContent = `BRAIN: ${n.toLocaleString()} FACT${n === 1 ? "" : "S"}`;
+  if (!cells.children.length) for (let i = 0; i < 14; i++) cells.append(document.createElement("i"));
+  const lit = n ? Math.min(14, Math.ceil(Math.log10(n + 1) * 3.5)) : 0;
+  [...cells.children].forEach((c, i) => c.classList.toggle("on", i < lit));
+}
+
+// ================= terminal =================
+const out = document.getElementById("out"), q = document.getElementById("q"), form = document.getElementById("form");
+let queue = Promise.resolve();
+const scroll = () => { out.scrollTop = out.scrollHeight; };
+const wait = ms => new Promise(r => setTimeout(r, reduced ? 0 : ms));
+function print(text, cls, instant) {
+  queue = queue.then(() => new Promise(done => {
+    const el = document.createElement("div"); el.className = "line" + (cls ? " " + cls : ""); out.append(el);
+    if (instant || reduced) { el.textContent = text; scroll(); return done(); }
+    const cur = document.createElement("span"); cur.className = "cursor"; let i = 0;
+    const step = () => { i = Math.min(text.length, i + Math.max(1, Math.round(text.length / 90))); el.textContent = text.slice(0, i); el.append(cur); scroll(); if (i < text.length) setTimeout(step, 12); else { cur.remove(); done(); } };
+    step();
+  }));
+  return queue;
+}
+const later = fn => { queue = queue.then(fn); return queue; };
+
+function handle(text, shown, retried) {
+  const lk = /^(?:look up|lookup|wiki|wikipedia|search for|search|learn about)\s+(.+)$/i.exec(text.trim());
+  if (lk && !retried) { print("> " + text, "you", true); lookUp(lk[1].replace(/[?.!]+$/, "")); return queue; }
+  print("> " + (shown || text), "you", true);
+  later(() => { setMood("think"); return wait(model.id === "mini" ? 120 : 380); });
+  let r; try { r = think(text); } catch (e) { r = { answer: "Something in my circuits went wrong with that one. Try asking it another way.", mood: "confused" }; }
+  if (!r) return queue;
+  if (r.clear) { later(() => { out.textContent = ""; }); print("Screen cleared.", "sys", true); later(() => setMood("idle")); return queue; }
+  if (r.reset) {
+    brain = { facts: [], nums: {} }; save(); rebuild(); DERIVED = countDerived(); updateMeter();
+    print(model.pack ? "Wiped everything you taught me. My knowledge pack stays." : "Brain wiped. I know nothing again.", "ans");
+    later(() => setMood("confused", 2500)); return queue;
+  }
+  const steps = model.steps ? (r.steps || []) : [];
+  steps.forEach(s => { print(s, "step", true); later(() => wait(140)); });
+  const short = r.answer.length < 48 && !r.answer.includes("\n");
+  print(r.answer, "ans" + (short ? " big" : ""));
+  if (r.lookup && autoLearn && net !== false && !retried) {
+    const topic = r.lookup;
+    queue.then(async () => { const ok = await lookUp(topic, true); if (ok) { print("• trying your question again with what I just learned...", "step", true); handle(text, shown, true); } });
+    return queue;
+  }
+  if (r.learned) DERIVED = countDerived();
+  later(() => { updateMeter(); setMood(r.mood === "think" ? "happy" : r.mood || "happy", 2600); });
+  return queue;
+}
+
+let busy = false;
+form.addEventListener("submit", e => { e.preventDefault(); const t = q.value.trim(); if (!t || busy) return; q.value = ""; handle(t); });
+document.querySelectorAll("[data-cmd]").forEach(b => b.addEventListener("click", () => { if (!busy) handle(b.dataset.cmd); q.focus(); }));
+document.querySelector(".screen").addEventListener("click", () => { if (!getSelection().toString()) q.focus(); });
+
+const resetBtn = document.getElementById("reset"); let armed = null;
+resetBtn.addEventListener("click", () => {
+  if (busy) return;
+  if (!armed) { resetBtn.textContent = "SURE? CLICK AGAIN"; armed = setTimeout(() => { armed = null; resetBtn.textContent = "RESET BRAIN"; }, 3000); return; }
+  clearTimeout(armed); armed = null; resetBtn.textContent = "RESET BRAIN"; handle("reset brain");
+});
+
+async function typeIn(line) {
+  await queue; await wait(350);
+  for (let i = 1; i <= line.length; i++) { q.value = line.slice(0, i); await wait(24); }
+  await wait(160); q.value = ""; handle(line); await queue;
+}
+document.getElementById("surprise").addEventListener("click", async () => {
+  if (busy) return;
+  if (!model.pack) { handle("topics"); return; }
+  busy = true; await typeIn(surprise()); busy = false; q.focus();
+});
+const LESSONS = {
+  blank: ["is a cat an animal?", "cats are animals", "animals can breathe", "can a cat breathe?", "tom is taller than sam", "sam is taller than ann", "is ann taller than tom?", "solve 2x + 3 = 11"],
+  scholar: ["what is the capital of japan?", "can a penguin fly?", "how many legs does a tarantula have?", "is jupiter bigger than mars?", "is albert einstein a mammal?", "zorbs are penguins", "can a zorb swim?"],
+  mini: ["what is the capital of kenya?", "who wrote hamlet?", "can a cat breathe?", "is a cat a mammal?"],
+};
+const demoBtn = document.getElementById("demo");
+demoBtn.addEventListener("click", async () => {
+  if (busy) return; busy = true; demoBtn.disabled = true;
+  print(`— DEMO LESSON for ${model.name} —`, "sys", true);
+  for (const line of LESSONS[model.id]) { await typeIn(line); await wait(600); }
+  print("— Your turn. —", "sys", true);
+  busy = false; demoBtn.disabled = false; q.focus();
+});
+
+// ================= internet: Wikipedia =================
+const HOME_URL = "https://jai696856.github.io/m/nova/";
+let net = null, autoLearn = true;
+try { autoLearn = localStorage.getItem("nova-auto") !== "off"; } catch (e) {}
+const autoBtn = document.getElementById("autoBtn");
+const showAuto = () => { autoBtn.textContent = "AUTO-LEARN: " + (autoLearn ? "ON" : "OFF"); autoBtn.setAttribute("aria-pressed", String(autoLearn)); };
+showAuto();
+autoBtn.addEventListener("click", () => { autoLearn = !autoLearn; try { localStorage.setItem("nova-auto", autoLearn ? "on" : "off"); } catch (e) {} showAuto(); print(autoLearn ? "Auto-learn is ON. When I don't know something, I'll look it up on Wikipedia." : "Auto-learn is OFF. I'll only look things up when you ask.", "sys", true); });
+document.getElementById("wikiBtn").addEventListener("click", () => { if (busy) return; q.value = "look up "; q.focus(); });
+async function wikiFetch(topic) {
+  const sr = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&namespace=0&format=json&origin=*`).then(r => r.json());
+  const title = sr && sr[1] && sr[1][0];
+  if (!title) return { missing: true };
+  const j = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, "_"))}?redirect=true`).then(r => r.json());
+  return { title: j.title || title, extract: j.extract || "", disambig: j.type === "disambiguation" };
+}
+async function lookUp(topic, auto) {
+  busy = true;
+  later(() => setMood("think"));
+  print(`• looking up "${topic}" on Wikipedia...`, "step", true);
+  let ok = false;
+  try {
+    const w = await wikiFetch(topic); net = true;
+    if (w.missing) { print(`Wikipedia has no article for "${topic}".`, "ans"); later(() => setMood("confused", 2500)); }
+    else if (w.disambig || !w.extract) { print(`"${w.title}" can mean several things on Wikipedia. Try something more specific.`, "ans"); later(() => setMood("confused", 2500)); }
+    else {
+      print(`• reading the Wikipedia summary of "${w.title}"`, "step", true);
+      const r = readText(w.extract, [topic, w.title]);
+      (r.steps || []).forEach(t => print(t, "step", true));
+      print(r.answer.replace(/^I taught myself/, "From Wikipedia I taught myself"), "ans");
+      ok = !!r.learned;
+      if (ok) DERIVED = countDerived();
+      later(() => { updateMeter(); setMood(ok ? "happy" : "confused", 2600); });
+    }
+  } catch (e) {
+    net = false;
+    print(auto ? "(I tried to look that up, but this page can't reach the internet.)" : "I can't reach the internet from here.", "sys", true);
+    print(`claude.ai blocks pages from going online. To let me use Wikipedia, open my own copy:\n${HOME_URL}`, "ans");
+    later(() => setMood("confused", 2500));
+  }
+  await queue; busy = false;
+  return ok;
+}
+
+// ================= read & learn panel =================
+const reader = document.getElementById("reader"), readBox = document.getElementById("readText");
+const SAMPLES = [
+  "The capybara is a giant cavy rodent native to South America. It is the largest living rodent. It lives in savannas and dense forests near bodies of water. Capybaras are herbivores. A capybara can swim.",
+  "The quokka is a small macropod about the size of a domestic cat. It is a marsupial. It lives on Rottnest Island and Bald Island in Western Australia. Quokkas are herbivores. A quokka has a pouch.",
+  "Minecraft is a sandbox game developed and published by Mojang Studios. It was released in 2011. The game was created by Markus Persson.",
+];
+let sampleIx = 0;
+document.getElementById("readBtn").addEventListener("click", () => { if (busy) return; reader.hidden = false; readBox.focus(); });
+document.getElementById("readCancel").addEventListener("click", () => { reader.hidden = true; q.focus(); });
+document.getElementById("readSample").addEventListener("click", () => { readBox.value = SAMPLES[sampleIx++ % SAMPLES.length]; readBox.focus(); });
+document.getElementById("readGo").addEventListener("click", () => {
+  const t = readBox.value.trim(); if (!t) { readBox.focus(); return; }
+  reader.hidden = true; readBox.value = "";
+  handle("read: " + t, `read: "${t.length > 70 ? t.slice(0, 70) + "..." : t}"`); q.focus();
+});
+
+// ================= models =================
+function boot(id, first) {
+  try { localStorage.setItem("nova-model", id); } catch (e) {}
+  useModel(id); DERIVED = countDerived();
+  document.getElementById("mname").textContent = model.name;
+  document.querySelectorAll("[data-model]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.model === id)));
+  updateMeter(); draw();
+  if (!first) print(`\n— switched to ${model.name} —`, "sys", true);
+  print(`${model.name} ONLINE`, "sys", true);
+  if (model.pack) print(`KNOWLEDGE PACK ... ${packSize().toLocaleString()} FACTS${model.chain ? `   REASONED ... ~${DERIVED.toLocaleString()} MORE` : ""}   TAUGHT BY YOU ... ${brainSize()}`, "sys", true);
+  else print(`BRAIN SCAN ... ${brainSize()} FACTS ${brainSize() ? "TAUGHT BY YOU" : "(EMPTY)"}`, "sys", true);
+  print("READY.\n", "sys", true);
+  const hello = {
+    blank: brainSize() ? `Welcome back. I still remember the ${brainSize()} thing${brainSize() === 1 ? "" : "s"} you taught me.` : "I'm BLANK. I don't know anything yet, not even what a cat is.\nTeach me facts in plain sentences and I'll reason with them. Press DEMO LESSON to watch.",
+    scholar: "I'm SCHOLAR. I know thousands of facts and I show my reasoning.\nAsk me anything from TOPICS, teach me new facts, or press SURPRISE ME.",
+    mini: "I'm MINI. Same knowledge pack as SCHOLAR, but I only answer with facts I know directly. Fast and short.",
+  }[id];
+  print(hello);
+  later(() => setMood(!model.pack && !brainSize() ? "confused" : "idle", 3000));
+}
+document.querySelectorAll("[data-model]").forEach(b => b.addEventListener("click", () => { if (busy || b.dataset.model === model.id) return; boot(b.dataset.model); q.focus(); }));
+let start = "scholar"; try { start = localStorage.getItem("nova-model") || "scholar"; } catch (e) {}
+boot(MODELS[start] ? start : "scholar", true);
+})();
+</script>
+
+</body>
+</html>
