@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="NOVA: a retro reasoning engine that learns facts and looks things up on Wikipedia.">
+<meta name="description" content="NOVA: a retro reasoning engine that learns facts and searches the web.">
 <title>Question Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
@@ -166,7 +166,7 @@ body {
   </div>
   <div class="keys">
     <button class="key hot" type="button" id="readBtn">READ &amp; LEARN</button>
-    <button class="key" type="button" id="wikiBtn">WIKIPEDIA</button>
+    <button class="key" type="button" id="wikiBtn">SEARCH WEB</button>
     <button class="key" type="button" id="autoBtn" aria-pressed="true">AUTO-LEARN: ON</button>
     <button class="key" type="button" id="surprise">SURPRISE ME</button>
     <button class="key" type="button" id="demo">DEMO LESSON</button>
@@ -207,7 +207,7 @@ const DISP = new Map();
 function reg(text) {
   let t = String(text).trim().replace(/[.!?]+$/, ""), p;
   while ((p = t.replace(/^(a|an|the|all|every|each|some|any)\s+/, "")) !== t) t = p; // lowercase articles only
-  const k = ent(t); if (k && !DISP.has(k)) DISP.set(k, t === t.toLowerCase() ? k : t); return k;
+  const k = ent(t); if (k && !DISP.has(k)) DISP.set(k, t === t.toLowerCase() && !/\d/.test(t) ? k : t); return k;
 }
 const disp = k => DISP.get(k) || k;
 
@@ -264,7 +264,7 @@ const PHRASE = {
   painter: "{s} was painted by {o}", sculptor: "{s} was sculpted by {o}", composer: "{s} was composed by {o}",
   discoverer: "{s} was discovered by {o}", "year discovered": "{s} was discovered in {o}", year: "{s} happened in {o}",
   "year built": "{s} was built in {o}", "year born": "{s} was born in {o}", "year written": "{s} was written in {o}",
-  builder: "{s} was built by {o}", creator: "{s} was created by {o}", publisher: "{s} was published by {o}", founder: "{s} was founded by {o}", "year founded": "{s} was founded in {o}", "year died": "{s} died in {o}", director: "{s} was directed by {o}", "year made": "{s} was made in {o}", location: "{s} is in {o}", continent: "{s} is in {o}", job: "the job of the {s} is to {o}",
+  builder: "{s} was built by {o}", meaning: "{s} means: {o}", "next to": "{s} is next to {o}", "head of government": "the head of government of {s} is {o}", birthplace: "{s} was born in {o}", "head of state": "the head of state of {s} is {o}", country: "{s} is in {o}", creator: "{s} was created by {o}", publisher: "{s} was published by {o}", founder: "{s} was founded by {o}", "year founded": "{s} was founded in {o}", "year died": "{s} died in {o}", director: "{s} was directed by {o}", "year made": "{s} was made in {o}", location: "{s} is in {o}", continent: "{s} is in {o}", job: "the job of the {s} is to {o}",
 };
 function objText(f) { if (f.d) return f.d; const o = disp(f.o); return f.a ? an(o) : o; }
 function say(f) {
@@ -336,7 +336,7 @@ function compare(word, a, b) {
   return null;
 }
 function explain(path, conclusion) {
-  const steps = path.map(f => "• " + say(f) + (f.u ? (f.src === "read" ? "  (I read this)" : "  (you told me)") : ""));
+  const steps = path.map(f => "• " + say(f) + (f.u ? (f.src === "read" ? "  (I read this)" : f.src && f.src.startsWith("web:") ? `  (from ${f.src.slice(4)})` : "  (you told me)") : ""));
   if (path.length > 1) steps.push("• chaining these together...");
   if (conclusion) steps.push("∴ " + conclusion);
   return steps;
@@ -545,9 +545,9 @@ function attrAnswer(k, xs, label) {
   if (!r) return dontKnow(`the ${label || k.replace(/^#/, "number of ")} of ${disp(x)}`, k[0] === "#" ? `${disp(x)} has 4 ${plural(k.slice(1))}` : `the ${k} of ${disp(x)} is ...`, xs);
   const S = disp(x);
   const vals = r.vals.length > 1 ? [{ ...r.vals[0], o: r.vals.map(v => disp(v.o)).join(" or ") }] : r.vals;
-  const ans = vals.map(f => { let t = say({ ...f, s: x }); if (/^[a-z]/.test(S) && t.startsWith(S)) t = (k[0] === "#" ? an(S) : "the " + S) + t.slice(S.length); return t; }).join("; ");
+  const ans = vals.map(f => { let t = say({ ...f, s: x }); if (/^[a-z]/.test(S) && t.startsWith(S) && k !== "meaning") t = (k[0] === "#" ? an(S) : "the " + S) + t.slice(S.length); return t; }).join("; ");
   const inherited = r.path.length > r.vals.length;
-  return { steps: inherited ? explain(r.path) : r.vals.some(f => f.u) ? ["• you told me this"] : [], answer: ans.charAt(0).toUpperCase() + ans.slice(1) + "." };
+  return { steps: inherited ? explain(r.path) : r.vals.some(f => f.src && f.src.startsWith("web:")) ? [`• I learned this from ${r.vals[0].src.slice(4)}`] : r.vals.some(f => f.u) ? ["• you told me this"] : [], answer: ans.charAt(0).toUpperCase() + ans.slice(1) + "." };
 }
 
 const HELP = () => [
@@ -563,8 +563,9 @@ const HELP = () => [
   "  which element has the symbol au? · is jupiter bigger than earth? · name some reptiles",
   "READ & LEARN (I teach myself from text you paste):",
   "  read: The quokka is a small marsupial. It lives on Rottnest Island...",
-  "LOOK IT UP (only in your own copy, not on claude.ai):",
-  "  look up komodo dragon · or just ask; I'll check Wikipedia when I don't know",
+  "SEARCH THE WEB (only in your own copy, not on claude.ai):",
+  "  search komodo dragon · look up brazil · or just ask; with AUTO-LEARN on I search",
+  "  Wikipedia, Simple English Wikipedia, Wikidata and Wiktionary when I don't know",
   "SOLVE:",
   "  (12+8)*3 · 15% of 80 · 3 dozen · solve 2x + 3 = 11 · x^2 = 9",
   "OTHER:",
@@ -628,7 +629,8 @@ function think(input) {
       return attrAnswer(kk, m[2], kk);
     }
     if ((m = /^when (?:was|were|did)\s+(.+?)\s+(invented|discovered|built|born|written|published|founded|made|released|die|happen|take place|start|begin)$/.exec(q))) {
-      const k = YEARKEY[m[2]] || "year"; const r = attrQuery(k, ent(m[1])) ? k : k === "year founded" && attrQuery("year built", ent(m[1])) ? "year built" : attrQuery("year", ent(m[1])) ? "year" : k;
+      const k = YEARKEY[m[2]] || "year";
+      const r = [k, "year built", "year founded", "year made", "year invented", "year discovered", "year written", "year"].find(c => attrQuery(c, ent(m[1]))) || k;
       return attrAnswer(r, m[1], "date");
     }
     if ((m = /^when (?:was|were|is)\s+(.+)$/.exec(q))) return attrAnswer("year", m[1], "date");
@@ -644,7 +646,18 @@ function think(input) {
       const hits = obj(v).filter(f => f.r === "attr" && (f.k === k || f.k === "#" + ent0(k)));
       if (hits.length) return { steps: hits.map(f => "• " + say(f)), answer: hits.map(f => disp(f.s)).join(", ") + "." };
     }
+    if ((m = /^(?:what does|what do)\s+(.+?)\s+mean$/.exec(q)) || (m = /^(?:define|definition of|meaning of|what is the meaning of)\s+(.+)$/.exec(q))) { const r = attrAnswer("meaning", m[1], "meaning"); if (r.lookup) r.meaning = true; return r; }
+    if ((m = /^how many people live in\s+(.+)$/.exec(q))) return attrAnswer("population", m[1], "population");
+    if ((m = /^how (tall|high|big|large|heavy|long|old) (?:is|are|was)\s+(.+)$/.exec(q))) {
+      const ks = { tall: ["height", "elevation"], high: ["elevation", "height"], big: ["area", "diameter", "height"], large: ["area", "diameter"], heavy: ["mass"], long: ["length"], old: ["age", "year born", "year built", "year founded"] }[m[1]];
+      return attrAnswer(ks.find(k => attrQuery(k, ent(m[2]))) || ks[0], m[2], ks[0]);
+    }
+    if ((m = /^where (?:was|were)\s+(.+?)\s+born$/.exec(q))) return attrAnswer("birthplace", m[1], "birthplace");
+    if ((m = /^who (?:is|was)\s+(.+?)\s+married to$/.exec(q))) return attrAnswer("spouse", m[1], "spouse");
     if ((m = /^(?:what|who)(?:'s| is| are| was| were)\s+(?:the\s+)?(\w+(?:\s\w+){0,2}?)\s+of\s+(.+)$/.exec(q))) {
+      const KEYSYN = { president: "head of state", king: "head of state", queen: "head of state", leader: "head of government", "prime minister": "head of government", ceo: "chief executive", boss: "chief executive", "main language": "language", "official language": "language", money: "currency", size: "area", weight: "mass", birthday: "year born" };
+      const k0 = clean(m[1]), k1 = KEYSYN[k0];
+      if (k1 && !attrQuery(k0, ent(m[2])) && attrQuery(k1, ent(m[2]))) return attrAnswer(k1, m[2]);
       const r = attrQuery(clean(m[1]), ent(m[2]));
       if (r) return attrAnswer(clean(m[1]), m[2]);
       if (!known(ent(m[1] + " of " + m[2]))) return attrAnswer(clean(m[1]), m[2]);
@@ -766,9 +779,20 @@ function splitSentences(text) {
 function nounPhrase(words, max) {
   const out = [];
   for (let i = 0; i < words.length; i++) { const w = words[i], bare = w.replace(/[,;:.!?)]+$/, ""), nxt = (words[i + 1] || "").toLowerCase();
-    const participle = (/ing$/.test(bare) && bare.length > 5) || (/ed$/.test(bare) && /^(by|and|in|from|for|to|as|at|with|on)$/.test(nxt));
+    const participle = (/ing$/.test(bare) && bare.length > 5) || (/ed$/.test(bare) && /^(by|and|in|from|for|to|as|at|with|on|of|into|mainly|mostly)$/.test(nxt));
     if ((STOPPER.test(bare) || participle) && out.length) break; out.push(bare); if (bare !== w || out.length >= max) break; }
   return out.join(" ").trim();
+}
+// a believable subject: the topic itself, or a short noun phrase that isn't a clause
+function goodSubject(t, topicText, first) {
+  if (!t) return false;
+  if (topicText && ent(t) === ent(topicText)) return true;
+  if (first) return t.split(" ").length <= 8;
+  const w = t.split(" ");
+  if (w.length > 4) return false;
+  if (/^(in|on|at|by|for|during|after|before|since|from|with|very|little|much|many|some|most|there|here|this|that|these|those|such|it|its|their|his|her|one|two|both|each|another|other|however|also|although|while|when)\b/i.test(t)) return false;
+  if (/\b(has|have|had|was|were|is|are|this|of this|of these)\b/i.test(t)) return false;
+  return true;
 }
 const cutAt = s => s.split(/[,;:()]|\s+(?:and|or|which|who|that|where|but|also known as)\s+/)[0].trim().replace(/[.!?]+$/, "");
 
@@ -797,21 +821,22 @@ function learnFromText(raw) {
     if (i === 0 && years && topic) { add({ r: "attr", k: "year born", s: topic, o: reg(years[0]) }); if (years[1]) add({ r: "attr", k: "year died", s: topic, o: reg(years[1]) }); }
 
     const subjText = vm ? cutAt(vm[1]) : null;
-    const S = vm ? reg(subjText) : null;
+    const okSubj = vm && goodSubject(subjText, topicText, i === 0);
+    const S = okSubj ? reg(subjText) : null;
     const rest = vm ? vm[3] : "";
     let m;
 
     // 3. what it is: "X is a/an ... NOUN"
-    if (vm && (m = /^(?:a|an)\s+(.+)$/i.exec(rest))) {
+    if (S && (m = /^(?:a|an)\s+(.+)$/i.exec(rest))) {
       const np = nounPhrase(m[1].replace(/^((?:\w+\s+)?(?:type|kind|species|form|member|genus|variety|breed|subspecies|one|group|family)\s+of\s+(?:the\s+)?)/i, "").split(" "), 4);
       if (np && !/^\d/.test(np)) {
         const o = reg(np); add({ r: "is", s: S, o, a: true, d: an(np) });
-        const ws = np.split(" "); if (ws.length > 1) { const head = ws[ws.length - 1]; if (/^[a-z]/.test(head)) add({ r: "is", s: o, o: reg(head), a: true, d: an(head) }); }
+        const ws = np.split(" "); if (ws.length > 1) { const head = ws[ws.length - 1]; if (/^[a-z]/.test(head) && !/ed$/.test(head) && head.length > 2) add({ r: "is", s: o, o: reg(head), a: true, d: an(head) }); }
       }
-    } else if (vm && (m = /^the\s+(.+)$/i.exec(rest))) {
+    } else if (S && (m = /^the\s+(.+)$/i.exec(rest))) {
       const d = "the " + cutAt(m[1]).split(" ").slice(0, 8).join(" ");
       if (d.split(" ").length >= 2) add({ r: "is", s: S, o: reg(d.replace(/^the /, "")), a: false, d });
-    } else if (vm && /^(?:are|were)$/.test(vm[2]) && (m = /^([a-z][\w-]*(?:\s[a-z][\w-]*){0,2})\b/.exec(rest))) {
+    } else if (S && /^(?:are|were)$/.test(vm[2]) && (m = /^([a-z][\w-]*(?:\s[a-z][\w-]*){0,2})\b/.exec(rest))) {
       const np = nounPhrase(m[1].split(" "), 3); if (np && /s$/.test(np)) add({ r: "is", s: S, o: reg(np), a: true, d: an(ent(np)) });
     }
     // 4. other patterns anywhere in the sentence
@@ -836,10 +861,170 @@ function learnFromText(raw) {
     if ((m = /^(.{2,60}?)\s+(?:is|are|was|were)\s+(\w+er)\s+than\s+([^,.;]{2,40})/.exec(s))) { const { w, flip } = canonCmp(m[2].toLowerCase()); const a = reg(cutAt(m[1])), b = reg(cutAt(m[3])); add({ r: "cmp", w, s: flip ? b : a, o: flip ? a : b }); }
     if ((m = /^(.{2,60}?)\s+(can(?:not|'t)?)\s+([a-z][^,.;]{2,40})/.exec(s))) add({ r: /not|'t/.test(m[2]) ? "cant" : "can", s: reg(cutAt(m[1])), o: canonVerb(cutAt(m[3])) });
     // 5. short simple sentences: read them like a lesson
-    if (facts.length === got && s.split(" ").length <= 10 && !/\?$/.test(orig) && !/^(hello|hi|hey|how|what|why|who|where|when|thanks|thank)\b/i.test(s)) { const f = parseStatement(s); if (f) add(f); }
+    if (facts.length === got && s.split(" ").length <= 10 && !/\?$/.test(orig) && (!vm || okSubj) && !/^(hello|hi|hey|how|what|why|who|where|when|thanks|thank)\b/i.test(s)) { const f = parseStatement(s); if (f) add(f); }
     if (facts.length === got) skipped++;
   });
   return { facts: facts.slice(0, 25), skipped, topic };
+}
+
+/* ================= WEB SEARCH: Wikipedia, Simple Wikipedia, Wikidata, Wiktionary ================= */
+const WD_PROPS = {
+  P31: ["is"], P279: ["is"], P106: ["is"],
+  P36: ["attr", "capital"], P30: ["attr", "continent"], P17: ["attr", "country"], P131: ["attr", "location"], P276: ["attr", "location"],
+  P569: ["attr", "year born", "year"], P570: ["attr", "year died", "year"], P19: ["attr", "birthplace"], P20: ["attr", "place of death"],
+  P27: ["attr", "nationality"], P50: ["attr", "author"], P170: ["attr", "creator"], P61: ["attr", "discoverer"], P112: ["attr", "founder"],
+  P571: ["attr", "year founded", "year"], P577: ["attr", "year made", "year"], P575: ["attr", "year discovered", "year"],
+  P1082: ["attr", "population", "num"], P2046: ["attr", "area", "num"], P2048: ["attr", "height", "num"], P2043: ["attr", "length", "num"], P2067: ["attr", "mass", "num"],
+  P37: ["attr", "language"], P38: ["attr", "currency"], P35: ["attr", "head of state"], P6: ["attr", "head of government"],
+  P175: ["attr", "performer"], P57: ["attr", "director"], P86: ["attr", "composer"], P84: ["attr", "architect"], P176: ["attr", "manufacturer"],
+  P495: ["attr", "country of origin"], P136: ["attr", "genre"], P159: ["attr", "headquarters"], P169: ["attr", "chief executive"], P26: ["attr", "spouse"],
+  P22: ["attr", "father"], P25: ["attr", "mother"], P69: ["attr", "school"], P166: ["attr", "award"], P1376: ["attr", "capital of"], P206: ["attr", "next to"],
+  P2044: ["attr", "elevation", "num"], P1098: ["attr", "number of speakers", "num"], P2250: ["attr", "life expectancy", "num"], P2067: ["attr", "mass", "num"],
+};
+const UNITS = { Q11573: "m", Q828224: "km", Q712226: "km²", Q11570: "kg", Q174728: "cm", Q3710: "ft", Q25343: "m²", Q11229: "%", Q577: "years", Q11574: "seconds", Q191118: "tonnes", Q41803: "g", Q35852: "hectares", Q174789: "mm" };
+const MULTI_OK = { language: 4, award: 3, genre: 3, "is": 4, author: 3, founder: 4, creator: 3, performer: 3, "next to": 4 };
+
+const wdYear = t => { const m = /^([+-])0*(\d+)-/.exec(t || ""); if (!m) return null; return m[1] === "-" ? m[2] + " BC" : m[2]; };
+const wdNum = q => { const n = parseFloat(q.amount); if (!isFinite(n)) return null; const u = (q.unit || "").split("/").pop(); return n.toLocaleString("en-US", { maximumFractionDigits: 2 }) + (UNITS[u] ? " " + UNITS[u] : ""); };
+function bestClaims(list) {
+  const ok = (list || []).filter(c => c.rank !== "deprecated" && c.mainsnak && c.mainsnak.snaktype === "value");
+  const pref = ok.filter(c => c.rank === "preferred"); const use = pref.length ? pref : ok;
+  // for values that change over time, keep the one with the latest "point in time"
+  const time = c => wdYear(c.qualifiers && c.qualifiers.P585 && c.qualifiers.P585[0].datavalue && c.qualifiers.P585[0].datavalue.value.time) || "";
+  return use.slice().sort((a, b) => String(time(b)).localeCompare(String(time(a))));
+}
+
+async function wikidataFacts(get, qid, topicName) {
+  const j = await get(`https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`);
+  const ent1 = j && j.entities && Object.values(j.entities)[0];
+  if (!ent1 || ent1.missing !== undefined || !ent1.claims) return [];
+  const raw = [], need = new Set();
+  for (const [p, spec] of Object.entries(WD_PROPS)) {
+    const cl = bestClaims(ent1.claims[p]); if (!cl.length) continue;
+    const max = spec[0] === "is" ? MULTI_OK.is : (MULTI_OK[spec[1]] || 1);
+    for (const c of cl.slice(0, max)) {
+      const dv = c.mainsnak.datavalue; if (!dv) continue;
+      if (dv.type === "wikibase-entityid") { need.add(dv.value.id); raw.push({ spec, id: dv.value.id }); }
+      else if (dv.type === "time" && spec[2] === "year") { const y = wdYear(dv.value.time); if (y) raw.push({ spec, text: y }); }
+      else if (dv.type === "quantity" && spec[2] === "num") { const n = wdNum(dv.value); if (n) raw.push({ spec, text: n }); }
+    }
+  }
+  const labels = {};
+  const ids = [...need];
+  try {
+    for (let i = 0; i < ids.length; i += 50) {
+      const lj = await get(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${ids.slice(i, i + 50).join("|")}&props=labels&languages=en&format=json&origin=*`);
+      for (const [id, e] of Object.entries((lj && lj.entities) || {})) if (e.labels && e.labels.en) labels[id] = e.labels.en.value;
+    }
+  } catch (e) {
+    // fallback: fetch the most important values one at a time
+    for (const id of ids.slice(0, 12)) { try { const ej = await get(`https://www.wikidata.org/wiki/Special:EntityData/${id}.json`); const en = Object.values(ej.entities)[0]; if (en.labels && en.labels.en) labels[id] = en.labels.en.value; } catch (e2) {} }
+  }
+  const S = reg(topicName), out = [];
+  for (const r of raw) {
+    const val = r.text || labels[r.id]; if (!val || /^Q\d+$/.test(val) || ent(val) === S) continue;
+    if (r.spec[0] === "is") {
+      if (/^(human|taxon|Wikimedia|class of|type of|entity|item|concept)\b/i.test(val) && val !== "human") continue;
+      out.push({ r: "is", s: S, o: reg(val), a: true, d: an(val) });
+    } else out.push({ r: "attr", k: r.spec[1], s: S, o: reg(val) });
+  }
+  const desc = ent1.descriptions && ent1.descriptions.en && ent1.descriptions.en.value;
+  return { facts: out, desc };
+}
+
+async function wiktionaryFacts(get, word) {
+  const j = await get(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word.toLowerCase().replace(/ /g, "_"))}`);
+  const en = j && j.en; if (!en || !en.length) return [];
+  const strip = h => String(h).replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, "").replace(/\.mw-parser-output[\s\S]*$/, "").replace(/\s+/g, " ").trim();
+  const out = [];
+  for (const sense of en.slice(0, 2)) {
+    const d = (sense.definitions || []).map(x => strip(x.definition)).find(t => t && t.length > 3);
+    if (d) out.push({ r: "attr", k: "meaning", s: reg(word), o: reg(`(${sense.partOfSpeech.toLowerCase()}) ${d.replace(/\.$/, "")}`) });
+  }
+  return out;
+}
+
+async function searchTitle(get, host, q) {
+  let pages = [];
+  try { const j = await get(`https://${host}/w/rest.php/v1/search/page?q=${encodeURIComponent(q)}&limit=3`); pages = (j && j.pages) || []; }
+  catch (e) { const o = await get(`https://${host}/w/api.php?action=opensearch&search=${encodeURIComponent(q)}&limit=3&namespace=0&format=json&origin=*`); pages = ((o && o[1]) || []).map(t => ({ title: t })); }
+  if (!pages.length) return null;
+  // prefer a page whose title matches the words asked about
+  const qw = clean(q);
+  const exact = pages.find(p => clean(p.title) === qw || ent(p.title) === ent(qw));
+  return (exact || pages[0]).title;
+}
+async function introText(get, host, title, sentences) {
+  let j;
+  try { j = await get(`https://${host}/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, "_"))}?redirect=true`); }
+  catch (e) { if (/404/.test(e.message)) return null; throw e; }
+  if (!j || !j.extract || j.type === "https://mediawiki.org/wiki/HyperSwitch/errors/not_found") return null;
+  if (j.type === "disambiguation") return { disambig: true, title: j.title };
+  return { title: j.title, qid: j.wikibase_item, text: splitSentences(j.extract.replace(/\n+/g, " ")).slice(0, sentences).join(" ") };
+}
+
+/* search everywhere, read everything, return facts grouped by source */
+async function webLearn(get, query, progress, wantMeaning) {
+  const report = []; let mainTitle = null, topicKey = null;
+  const note = t => progress && progress(t);
+  const words = query.trim().split(/\s+/);
+  // 1. Wikipedia: find the best article
+  note(`searching Wikipedia for "${query}"...`);
+  let title = null, qid = null;
+  try { title = await searchTitle(get, "en.wikipedia.org", query); } catch (e) {
+    try { title = await searchTitle(get, "simple.wikipedia.org", query); } catch (e2) { title = query.trim().replace(/^\w/, c => c.toUpperCase()); }
+  }
+  if (title) {
+    mainTitle = title;
+    // 2. Simple English Wikipedia first (plain sentences), then the full article's intro
+    for (const [host, label, n] of [["simple.wikipedia.org", "Simple English Wikipedia", 8], ["en.wikipedia.org", "Wikipedia", 6]]) {
+      try {
+        note(`reading "${title}" on ${label}...`);
+        const it = await introText(get, host, title, n);
+        if (it && it.disambig) { report.push({ src: label, disambig: it.title }); break; }
+        if (it && it.qid) qid = qid || it.qid;
+        if (it && it.text) { const r = learnFromText(it.text); if (r.topic) topicKey = topicKey || r.topic; report.push({ src: label, title: it.title, facts: r.facts }); }
+      } catch (e) { report.push({ src: label, err: true }); }
+    }
+    // 3. Wikidata: exact structured facts about the same article
+    if (qid) try {
+      note(`checking Wikidata for "${title}"...`);
+      const name = topicKey ? disp(topicKey) : title;
+      const wd = await wikidataFacts(get, qid, name);
+      if (wd && wd.facts) report.push({ src: "Wikidata", title, facts: wd.facts, desc: wd.desc });
+    } catch (e) { report.push({ src: "Wikidata", err: true }); }
+  }
+  // 4. Wiktionary for single words (meanings)
+  const gotWiki = report.some(r => r.facts && r.facts.length);
+  if (words.length <= 2 && (wantMeaning || !gotWiki)) {
+    try { note(`looking up "${query}" in Wiktionary...`); const wf = await wiktionaryFacts(get, query); if (wf.length) report.push({ src: "Wiktionary", facts: wf }); } catch (e) {}
+  }
+  return { report, title: mainTitle, topic: topicKey };
+}
+
+/* save a batch of facts at once (several values for one property can coexist) */
+function addFacts(list) {
+  const inList = new Set(list);
+  for (const f of list) {
+    const opp = NEG[f.r] || POS[f.r];
+    brain.facts = brain.facts.filter(g => inList.has(g) || !((g.s === f.s && g.o === f.o && (g.r === f.r || g.r === opp) && g.w === f.w && g.k === f.k) || (f.r === "attr" && g.r === "attr" && g.k === f.k && g.s === f.s)));
+    brain.facts.push(f);
+  }
+  save(); rebuild();
+}
+function applyWeb(res, query) {
+  const seen = new Set(), bySrc = [];
+  for (const r of res.report) {
+    if (!r.facts || !r.facts.length) continue;
+    const keep = r.facts.filter(f => { const k = [f.r, f.k || "", f.s, f.o].join("|"); if (seen.has(k)) return false; seen.add(k); return true; });
+    keep.forEach(f => { f.u = 1; f.src = "web:" + r.src; });
+    if (keep.length) bySrc.push({ src: r.src, facts: keep });
+  }
+  const all = bySrc.flatMap(b => b.facts);
+  if (all.length) addFacts(all);
+  const name = res.topic ? disp(res.topic) : res.title;
+  if (all.length && name) { learnAlias(query, name); if (res.title) learnAlias(res.title, name); }
+  return { total: all.length, bySrc, name };
 }
 
 /* ================= KNOWLEDGE PACK ================= */
@@ -1735,7 +1920,7 @@ function handle(text, shown, retried) {
   print(r.answer, "ans" + (short ? " big" : ""));
   if (r.lookup && autoLearn && net !== false && !retried) {
     const topic = r.lookup;
-    queue.then(async () => { const ok = await lookUp(topic, true); if (ok) { print("• trying your question again with what I just learned...", "step", true); handle(text, shown, true); } });
+    queue.then(async () => { const ok = await lookUp(topic, true, r.meaning); if (ok) { print("• trying your question again with what I just learned...", "step", true); handle(text, shown, true); } });
     return queue;
   }
   if (r.learned) DERIVED = countDerived();
@@ -1786,37 +1971,42 @@ try { autoLearn = localStorage.getItem("nova-auto") !== "off"; } catch (e) {}
 const autoBtn = document.getElementById("autoBtn");
 const showAuto = () => { autoBtn.textContent = "AUTO-LEARN: " + (autoLearn ? "ON" : "OFF"); autoBtn.setAttribute("aria-pressed", String(autoLearn)); };
 showAuto();
-autoBtn.addEventListener("click", () => { autoLearn = !autoLearn; try { localStorage.setItem("nova-auto", autoLearn ? "on" : "off"); } catch (e) {} showAuto(); print(autoLearn ? "Auto-learn is ON. When I don't know something, I'll look it up on Wikipedia." : "Auto-learn is OFF. I'll only look things up when you ask.", "sys", true); });
-document.getElementById("wikiBtn").addEventListener("click", () => { if (busy) return; q.value = "look up "; q.focus(); });
-async function wikiFetch(topic) {
-  const sr = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&namespace=0&format=json&origin=*`).then(r => r.json());
-  const title = sr && sr[1] && sr[1][0];
-  if (!title) return { missing: true };
-  const j = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, "_"))}?redirect=true`).then(r => r.json());
-  return { title: j.title || title, extract: j.extract || "", disambig: j.type === "disambiguation" };
-}
-async function lookUp(topic, auto) {
+autoBtn.addEventListener("click", () => { autoLearn = !autoLearn; try { localStorage.setItem("nova-auto", autoLearn ? "on" : "off"); } catch (e) {} showAuto(); print(autoLearn ? "Auto-learn is ON. When I don't know something, I'll search the web for it." : "Auto-learn is OFF. I'll only look things up when you ask.", "sys", true); });
+document.getElementById("wikiBtn").addEventListener("click", () => { if (busy) return; q.value = "search "; q.focus(); });
+const webGet = async url => {
+  let r;
+  try { r = await fetch(url); } catch (e) { const err = new Error("offline"); err.offline = true; throw err; }
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+};
+async function lookUp(topic, auto, wantMeaning) {
   busy = true;
   later(() => setMood("think"));
-  print(`• looking up "${topic}" on Wikipedia...`, "step", true);
   let ok = false;
   try {
-    const w = await wikiFetch(topic); net = true;
-    if (w.missing) { print(`Wikipedia has no article for "${topic}".`, "ans"); later(() => setMood("confused", 2500)); }
-    else if (w.disambig || !w.extract) { print(`"${w.title}" can mean several things on Wikipedia. Try something more specific.`, "ans"); later(() => setMood("confused", 2500)); }
-    else {
-      print(`• reading the Wikipedia summary of "${w.title}"`, "step", true);
-      const r = readText(w.extract, [topic, w.title]);
-      (r.steps || []).forEach(t => print(t, "step", true));
-      print(r.answer.replace(/^I taught myself/, "From Wikipedia I taught myself"), "ans");
-      ok = !!r.learned;
-      if (ok) DERIVED = countDerived();
-      later(() => { updateMeter(); setMood(ok ? "happy" : "confused", 2600); });
+    // quick check that this page is allowed online at all
+    if (net === null) { try { await webGet("https://en.wiktionary.org/api/rest_v1/page/definition/test"); } catch (e) { if (e.offline) throw e; } }
+    net = true;
+    print(`• searching the web for "${topic}"...`, "step", true);
+    const res = await webLearn(webGet, topic, t => print("• " + t, "step", true), wantMeaning);
+    const a = applyWeb(res, topic);
+    const failed = res.report.filter(r => r.err).map(r => r.src);
+    if (!a.total) {
+      const dis = res.report.find(r => r.disambig);
+      print(dis ? `"${dis.disambig}" can mean several things. Try something more specific.` : `I searched, but couldn't find facts I understand about "${topic}".` + (failed.length ? ` (${failed.join(", ")} didn't answer; try again in a moment.)` : ""), "ans");
+      later(() => setMood("confused", 2500));
+    } else {
+      const lines = [`I searched the web and taught myself ${a.total} new fact${a.total === 1 ? "" : "s"} about ${a.name || topic}:`];
+      a.bySrc.forEach(b => { lines.push(`[${b.src}]`); b.facts.slice(0, 6).forEach(f => lines.push("• " + say(f))); if (b.facts.length > 6) lines.push(`  ...and ${b.facts.length - 6} more`); });
+      if (failed.length) lines.push(`(${failed.join(", ")} didn't answer this time.)`);
+      print(lines.join("\n"), "ans");
+      ok = true; DERIVED = countDerived();
+      later(() => { updateMeter(); setMood("happy", 2600); });
     }
   } catch (e) {
     net = false;
     print(auto ? "(I tried to look that up, but this page can't reach the internet.)" : "I can't reach the internet from here.", "sys", true);
-    print(`claude.ai blocks pages from going online. To let me use Wikipedia, open my own copy:\n${HOME_URL}`, "ans");
+    print(`claude.ai blocks pages from going online. To let me search the web, open my own copy:\n${HOME_URL}`, "ans");
     later(() => setMood("confused", 2500));
   }
   await queue; busy = false;
