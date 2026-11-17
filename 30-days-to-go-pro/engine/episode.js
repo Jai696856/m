@@ -134,11 +134,12 @@ function dad(expr = 'stern', blink = false, talk = 0) {
 // Small full-body figure, feet at (x, y), height h.
 function fig(x, y, h, who, expr, blink = false, extra = '') {
   const s = h / 420, d = who === 'dad';
-  const sk = d ? '#7a4a30' : '#8a5638', top = d ? 'url(#plaid)' : 'url(#hoodie)';
-  const pants = d ? '#7d6e52' : '#2f4a6e', shoe = d ? '#3a2618' : '#f2f2f2';
-  const browL = { sad: 'M-25,-378 L-7,-385', stern: 'M-25,-386 L-6,-379', det: 'M-25,-386 L-6,-380' }[expr];
-  const browR = { sad: 'M7,-385 L25,-378', stern: 'M6,-379 L25,-386', det: 'M6,-380 L25,-386' }[expr];
-  const mouth = { sad: 'M-12,-338 Q0,-345 12,-338', stern: 'M-12,-340 L12,-340', det: 'M-12,-341 Q2,-335 13,-344' }[expr];
+  const KID = { kid1: ['#c0392b', '#1d1d1d', '#6a3f27'], kid2: ['#1f7ae0', '#2a2a2a', '#c68e6a'], kid3: ['#27ae60', '#1d1d1d', '#4a2c1a'] }[who];
+  const sk = KID ? KID[2] : d ? '#7a4a30' : '#8a5638', top = KID ? KID[0] : d ? 'url(#plaid)' : 'url(#hoodie)';
+  const pants = KID ? KID[1] : d ? '#7d6e52' : '#2f4a6e', shoe = d ? '#3a2618' : '#f2f2f2';
+  const browL = { happy: 'M-25,-384 L-7,-388', smug: 'M-25,-382 L-6,-386', sad: 'M-25,-378 L-7,-385', stern: 'M-25,-386 L-6,-379', det: 'M-25,-386 L-6,-380' }[expr];
+  const browR = { happy: 'M7,-388 L25,-384', smug: 'M6,-380 L25,-386', sad: 'M7,-385 L25,-378', stern: 'M6,-379 L25,-386', det: 'M6,-380 L25,-386' }[expr];
+  const mouth = { happy: 'M-13,-342 Q0,-330 13,-342', smug: 'M-12,-340 Q4,-334 14,-346', sad: 'M-12,-338 Q0,-345 12,-338', stern: 'M-12,-340 L12,-340', det: 'M-12,-341 Q2,-335 13,-344' }[expr];
   let g = `<g transform="translate(${x},${y}) scale(${s})">
   <ellipse cx="0" cy="2" rx="90" ry="15" fill="#000" opacity=".3"/>
   <rect x="-40" y="-178" width="35" height="175" rx="12" fill="${pants}"/><rect x="5" y="-178" width="35" height="175" rx="12" fill="${pants}"/>
@@ -152,7 +153,7 @@ function fig(x, y, h, who, expr, blink = false, extra = '') {
     g += `<rect x="-104" y="-298" width="30" height="148" rx="14" fill="${top}"/><rect x="74" y="-298" width="30" height="148" rx="14" fill="${top}"/>
     <circle cx="-89" cy="-148" r="15" fill="${sk}"/><circle cx="89" cy="-148" r="15" fill="${sk}"/>
     <rect x="-46" y="-222" width="92" height="40" rx="12" fill="#000" opacity=".18"/>
-    <ellipse cx="0" cy="-326" rx="60" ry="26" fill="#474e5d"/>`;
+    ${KID ? '' : '<ellipse cx="0" cy="-326" rx="60" ry="26" fill="#474e5d"/>'}`;
   }
   g += `<rect x="-14" y="-340" width="28" height="22" fill="${sk}"/>
   <ellipse cx="-41" cy="-366" rx="8" ry="13" fill="${sk}"/><ellipse cx="41" cy="-366" rx="8" ry="13" fill="${sk}"/>
@@ -460,11 +461,11 @@ function optionCard(t, y, o, active, appear, art) {
 
 function sceneOptions(t, seg) {
   const opts = TL.filter(o => o.scene === 'options');
-  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>${txt(540, 260, 'WHAT SHOULD', 72, '#fff', 'filter="url(#tsh)"')}${txt(540, 350, 'MARCUS DO?', 72, Y, 'filter="url(#tsh)"')}`;
+  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>${txt(540, 260, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[0], 72, '#fff', 'filter="url(#tsh)"')}${txt(540, 350, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[1], 72, Y, 'filter="url(#tsh)"')}`;
   opts.forEach((o, i) => {
     const appear = eo((t - o.t0) / 0.45);
     if (appear <= 0) return;
-    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, o.icon === 'ball' ? artPitch(t) : artStream(t));
+    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, ({ ball: artPitch, mic: artStream, sprint: artSprint, shoot: artShoot })[o.icon](t));
   });
   return s;
 }
@@ -634,7 +635,117 @@ function sceneReveal(t, seg) {
   ${confetti(t, seg.t0)}`;
 }
 
-const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta, counter: sceneCounter, journey: sceneJourney, thanks: sceneThanks, vote: sceneVote, tie: sceneTie, spin: sceneSpin, reveal: sceneReveal };
+// ----------------------------------------------------------------- day 2 ---
+function kwAll(scene, k) {
+  for (const sg of TL.filter(x => x.scene === scene)) for (const [w, a] of sg.words) if (w.toLowerCase().includes(k.toLowerCase())) return a;
+  return 1e9;
+}
+function artSprint(t) {
+  const run = (t * 1.6) % 1, x = 60 + run * 300, leg = Math.sin(t * 22) * 0.25;
+  return `<rect width="420" height="392" fill="url(#dusk)"/><circle cx="330" cy="250" r="70" fill="#ffd28a" opacity=".8" filter="url(#b6)"/>
+  <polygon points="0,270 420,270 420,392 0,392" fill="#b5462f"/>
+  <g stroke="#fff" stroke-opacity=".8" stroke-width="3">${[290, 320, 355].map(y => `<path d="M0,${y} L420,${y}"/>`).join('')}</g>
+  ${[0, 1, 2, 3].map(i => `<rect x="${(i * 120 - t * 260) % 480 + 420 - 480}" y="226" width="8" height="44" fill="#fff" opacity=".5"/>`).join('')}
+  <g transform="translate(${x},372) skewX(${-12 + leg * 20})">${fig(0, 0, 200, 'marcus', 'det', false)}</g>
+  ${[0, 1, 2].map(i => `<path d="M${x - 70 - i * 18},${280 + i * 22} h-40" stroke="#fff" stroke-width="4" opacity="${.5 - i * .12}" stroke-linecap="round"/>`).join('')}
+  ${txt(70, 40, '5:00 AM', 26, '#fff', 'font-weight="800"')}`;
+}
+function artShoot(t) {
+  const p = (t * 0.9) % 1, bx = lerp(120, 300, p), by = lerp(330, 170, p) - Math.sin(Math.PI * p) * 60;
+  let balls = '';
+  for (let i = 0; i < 7; i++) balls += soccerBall(30 + i * 22, 360 - (i % 2) * 6, 11, i * 40);
+  return `<rect width="420" height="392" fill="url(#night)"/><circle cx="210" cy="40" r="120" fill="#fff6d8" opacity=".25" filter="url(#b6)"/>
+  <polygon points="0,260 420,260 420,392 0,392" fill="#2f7a3c"/>
+  <g transform="translate(220,130)"><g stroke="#fff" stroke-opacity=".4" stroke-width="1.5">${Array.from({ length: 15 }, (_, i) => `<path d="M${i * 12},6 V140"/>`).join('')}${Array.from({ length: 12 }, (_, i) => `<path d="M0,${6 + i * 12} H172"/>`).join('')}</g>
+  <path d="M0,140 V0 H176 V140" stroke="#fff" stroke-width="8" fill="none"/></g>
+  ${balls}${fig(120, 380, 190, 'marcus', 'det', blinking(t, .4))}${p > 0.05 ? soccerBall(bx, by, 14, t * 500) : ''}
+  ${txt(370, 40, '×100', 30, Y, 'font-weight="900"')}`;
+}
+function scenePitch(t, seg) {
+  const lt = t - seg.t0, sc = 2.57, tF = kw(seg, 'fence'), tC = kw(seg, 'cooking');
+  const f = clamp((t - kw(seg, 'touch')) / 0.9);
+  const bx = lerp(390, 560, f), byy = lerp(1600, 1120, eo(f)), br = lerp(30, 13, eo(f));
+  let s = `<rect width="${W}" height="${H}" fill="url(#dusk)"/>
+  <g transform="translate(0,${360}) scale(${sc})">
+    <circle cx="320" cy="240" r="90" fill="#ffd28a" opacity=".55" filter="url(#b6)"/>
+    <g fill="#141a2e">${[[0, 40, 180], [40, 30, 140], [70, 50, 210], [120, 40, 160], [160, 60, 230], [220, 40, 170], [260, 50, 200], [310, 40, 150], [350, 70, 220]].map(([x, w, h]) => `<rect x="${x}" y="${300 - h + 40}" width="${w}" height="${h}"/>`).join('')}</g>
+    <g stroke="#cfd6e6" stroke-opacity=".22" stroke-width="1.5">${Array.from({ length: 22 }, (_, i) => `<path d="M${i * 22 - 120},70 L${i * 22 + 80},290 M${i * 22 + 80},70 L${i * 22 - 120},290"/>`).join('')}</g>
+    <rect x="0" y="66" width="420" height="5" fill="#8a93a8"/>
+    <polygon points="0,290 420,290 420,392 0,392" fill="#2f7a3c"/>
+    <g fill="#3a8a47">${[0, 1, 2, 3, 4, 5].map(i => `<rect x="${i * 70}" y="290" width="35" height="102"/>`).join('')}</g>
+    <path d="M0,300 H420" stroke="#fff" stroke-opacity=".75" stroke-width="3"/>
+  </g>
+  <rect y="1360" width="${W}" height="${H - 1360}" fill="#2a6e36"/>
+  <g fill="#33803f">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<rect x="${i * 140}" y="1360" width="70" height="${H - 1360}"/>`).join('')}</g>
+  <ellipse cx="540" cy="1560" rx="300" ry="70" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="6"/><path d="M0,1560 H1080" stroke="#fff" stroke-opacity=".7" stroke-width="6"/>`;
+  // kids watching on the right, Marcus left
+  const laugh = t > tF ? Math.abs(Math.sin(t * 9)) * 6 : 0;
+  s += soccerBall(bx, byy, br, f * 500, true);
+  s += fig(800, 1420 - laugh, 330, 'kid1', t > tF ? 'happy' : 'smug', blinking(t, .2));
+  s += fig(950, 1440 + laugh * 0.7, 300, 'kid2', t > tF ? 'happy' : 'smug', blinking(t, 1.2));
+  s += fig(660, 1450 - laugh * 0.5, 280, 'kid3', t > tF ? 'happy' : 'smug', blinking(t, 2.2));
+  s += fig(300, 1660, 440, 'marcus', t > tF ? 'sad' : 'det', blinking(t, .6));
+  if (f <= 0) s += soccerBall(380, 1640, 30, 0, true);
+  if (t > tF) {
+    const q = eb((t - tF) / 0.35);
+    s += `<g transform="translate(540,480) rotate(-6) scale(${q})"><rect x="-260" y="-70" width="520" height="140" rx="20" fill="#000" fill-opacity=".55" stroke="${RED}" stroke-width="8"/>${txt(0, 4, 'BRICKED IT', 84, RED)}</g>`;
+  }
+  if (t > tC) {
+    const q = eb((t - tC) / 0.35);
+    s += `<g transform="translate(800,880) scale(${q})"><rect x="-150" y="-55" width="300" height="110" rx="55" fill="#fff" filter="url(#sh)"/>${txt(0, 4, '😂😂😂', 56, '#111')}</g>`;
+  }
+  return s;
+}
+function statCard(t, x, y, sc, reveal, ovr, glow = 0) {
+  const st = EP.stats;
+  let s = `<g transform="translate(${x},${y}) scale(${sc})">
+  <defs><linearGradient id="cardGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a5f6e"/><stop offset=".5" stop-color="#2b2f3a"/><stop offset="1" stop-color="#14161d"/></linearGradient>
+  <linearGradient id="cardRim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9ced9"/><stop offset=".5" stop-color="#6d7385"/><stop offset="1" stop-color="#c9ced9"/></linearGradient></defs>
+  ${glow ? `<rect x="-330" y="-470" width="660" height="940" rx="70" fill="${Y}" opacity="${glow * .35}" filter="url(#b30)"/>` : ''}
+  <path d="M-300,-400 Q-300,-440 -260,-440 L260,-440 Q300,-440 300,-400 L300,330 Q300,380 250,400 L20,450 Q0,455 -20,450 L-250,400 Q-300,380 -300,330Z" fill="url(#cardGold)" stroke="url(#cardRim)" stroke-width="14" filter="url(#sh)"/>
+  <g clip-path="url(#cardFace)"><clipPath id="cardFace"><rect x="-110" y="-425" width="400" height="435"/></clipPath>
+  <g transform="translate(${95 - 300 * 0.62},${-445}) scale(.62)">${marcus(EP.cardExpr || 'sad', blinking(t, .9), 0)}</g></g>
+  ${txt(-200, -330, ovr, 130, '#fff')}${txt(-200, -240, 'OVR', 40, '#c9ced9')}${txt(-200, -180, 'ST', 44, '#c9ced9')}
+  <rect x="-260" y="20" width="520" height="4" fill="#c9ced9" opacity=".5"/>
+  ${txt(0, 70, 'MARCUS', 64, '#fff')}`;
+  st.forEach(([name, val, kwd], i) => {
+    const col = i < 3 ? -130 : 130, row = i % 3, p = reveal(kwd);
+    if (p <= 0) return;
+    const pop = 1 + 0.3 * (1 - eo(p));
+    const c = val < 15 ? '#ff6b5e' : val >= 18 ? '#7ee08a' : '#fff';
+    s += `<g transform="translate(${col},${150 + row * 80}) scale(${pop})" opacity="${clamp(p * 2)}">${txt(-40, 0, val, 56, c)}${txt(45, 0, name, 44, '#c9ced9', 'font-weight="800"')}</g>`;
+  });
+  return s + '</g>';
+}
+function sceneCard(t, seg) {
+  const first = TL.find(x => x.scene === 'card'), lt = t - first.t0;
+  const tOvr = kwAll('card', 'fifteen'), p = eb((lt) / 0.6);
+  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>${rays(540, 900, '#4a5cb0', .25, t)}`;
+  const quoteF = eo(lt / 0.4) * (1 - eo((t - tOvr - 0.8) / 0.4));
+  if (quoteF > 0.01) s += `<g opacity="${quoteF}"><rect x="120" y="230" width="840" height="150" rx="40" fill="#fff"/><path d="M700,378 L760,440 L740,378Z" fill="#fff"/>
+    ${txt(540, 305, '“BRO… YOU’RE LIKE A 15 OVR”', 46, '#111')}</g>`;
+  const ovrShown = t > tOvr ? '15' : '??';
+  s += statCard(t, 540, 1000, 0.95 * p, kwd => (t - kwAll('card', kwd)) / 0.3, ovrShown, t > tOvr && t - tOvr < 1 ? 1 - (t - tOvr) : 0);
+  return s;
+}
+function sceneTrain(t, seg) {
+  const lt = t - seg.t0, p = eo(lt / 0.5), tClimb = kw(seg, 'climb'), tPick = kw(seg, 'pick');
+  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>`;
+  s += statCard(t, lerp(540, 330, p), lerp(1000, 820, p), lerp(0.95, 0.62, p), () => 1, '15');
+  const a = eo((t - tClimb) / 0.6);
+  if (a > 0) {
+    const n = Math.round(lerp(15, 75, a));
+    s += `<g opacity="${a}"><path d="M770,${1150 - a * 380} L770,1150" stroke="${Y}" stroke-width="26" stroke-linecap="round"/>
+      <path d="M700,${1190 - a * 400} L770,${1080 - a * 400} L840,${1190 - a * 400}Z" fill="${Y}"/>
+      ${txt(770, 1260, 'GOAL', 40, '#bbb')}${txt(770, 1340, `${n}+`, 90, Y, 'filter="url(#tsh)"')}${txt(770, 1410, 'TO GO PRO', 34, '#bbb')}</g>`;
+  }
+  const q = eb((t - tPick) / 0.4);
+  if (q > 0) s += `<g transform="translate(540,1520) scale(${q})"><rect x="-330" y="-62" width="660" height="124" rx="62" fill="url(#ybtn)" filter="url(#sh)"/>${txt(0, 4, 'YOU PICK 👇', 64, '#111')}</g>`;
+  s += txt(540, 300, 'TRAINING', 120, '#fff', 'filter="url(#tsh)"') + txt(540, 410, 'TIME', 80, Y);
+  return s;
+}
+
+const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta, counter: sceneCounter, journey: sceneJourney, thanks: sceneThanks, vote: sceneVote, tie: sceneTie, spin: sceneSpin, reveal: sceneReveal, pitch: scenePitch, card: sceneCard, train: sceneTrain };
 
 // --------------------------------------------------------------- overlays ---
 function captions(t) {
