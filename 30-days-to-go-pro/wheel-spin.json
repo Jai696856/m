@@ -1,0 +1,12 @@
+{
+  "day": 1,
+  "title": "Tie Breaker Wheel",
+  "badge": "TIE BREAKER",
+  "spinAngle": 85.5,
+  "winner": "A",
+  "chunks": [
+    {"scene": "tie", "text": "It's a tie. One for soccer... one for streaming. So the wheel decides."},
+    {"scene": "spin", "text": "Here we go..."},
+    {"scene": "reveal", "text": "Soccer! Day two... I'm going pro in soccer. Let's go!"}
+  ]
+}

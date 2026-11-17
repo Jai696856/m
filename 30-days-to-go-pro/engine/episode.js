@@ -573,7 +573,68 @@ function sceneVote(t, seg) {
   return s + confetti(t, tSub, 540, 900, 60);
 }
 
-const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta, counter: sceneCounter, journey: sceneJourney, thanks: sceneThanks, vote: sceneVote };
+// ------------------------------------------------------------ wheel spin ---
+// The wheel's A half covers wheel-angles [0,180), B half [180,360), measured clockwise from the top.
+function wheel(cx, cy, r, rot, glowA = 0, glowB = 0) {
+  let s = `<g transform="translate(${cx},${cy})"><circle r="${r + 26}" fill="#1a1a24" filter="url(#sh)"/><circle r="${r + 14}" fill="#f4f0e6"/>
+  <g transform="rotate(${rot})">`;
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i * 45 - 90) * Math.PI / 180, a1 = ((i + 1) * 45 - 90) * Math.PI / 180, isA = i < 4;
+    const col = isA ? (i % 2 ? '#ffe14d' : '#f2b800') : (i % 2 ? '#6fb8ff' : '#3b8ff0');
+    s += `<path d="M0,0 L${r * Math.cos(a0)},${r * Math.sin(a0)} A${r},${r} 0 0 1 ${r * Math.cos(a1)},${r * Math.sin(a1)}Z" fill="${col}" stroke="#fff" stroke-width="4"/>`;
+    const am = (i * 45 + 22.5);
+    s += `<g transform="rotate(${am}) translate(0,${-r * 0.68}) rotate(${-0})">${txt(0, 0, isA ? 'A' : 'B', 64, isA ? '#3a2c00' : '#0b2448')}</g>`;
+    s += `<g transform="rotate(${am}) translate(0,${-r * 0.36})">${isA ? soccerBall(0, 0, 26, 0) : mic(0, 6, 0.22)}</g>`;
+  }
+  s += `<path d="M0,${-r} V${r}" stroke="#111" stroke-width="10"/>`;
+  s += `</g>`;
+  if (glowA) s += `<path d="M0,${-r} A${r},${r} 0 0 1 0,${r}Z" fill="#fff" opacity="${glowA * 0.25}"/>`;
+  s += `<circle r="${r * 0.14}" fill="#1a1a24" stroke="#f4f0e6" stroke-width="8"/>${txt(0, 2, 'GO', 34, Y)}`;
+  for (let i = 0; i < 24; i++) { const a = i * 15 * Math.PI / 180; s += `<circle cx="${(r + 7) * Math.cos(a)}" cy="${(r + 7) * Math.sin(a)}" r="5" fill="${i % 2 ? Y : '#fff'}"/>`; }
+  s += `</g><path d="M${cx - 40},${cy - r - 60} L${cx + 40},${cy - r - 60} L${cx},${cy - r + 20}Z" fill="${RED}" stroke="#fff" stroke-width="6" stroke-linejoin="round" filter="url(#sh)"/>`;
+  return s;
+}
+function wheelRot(t) {
+  const spinSeg = TL.find(x => x.scene === 'spin'), rev = TL.find(x => x.scene === 'reveal');
+  const tie = TL.find(x => x.scene === 'tie');
+  const t0 = (tie ? kw(tie, 'wheel') + 0.5 : spinSeg.t0), t1 = rev.t0 - 0.05;
+  const finalRot = 360 * 7 + (360 - EP.spinAngle);
+  if (t <= t0) return -8 * Math.sin(t * 3);
+  if (t >= t1) return finalRot;
+  const f = (t - t0) / (t1 - t0);
+  return finalRot * (1 - Math.pow(1 - f, 3.2));
+}
+function sceneTie(t, seg) {
+  const lt = t - seg.t0, p = eb(lt / 0.5);
+  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>
+  <g transform="translate(540,330) scale(${p})">${txt(0, 0, "IT'S A TIE", 130, '#fff', 'filter="url(#tsh)"')}</g>
+  ${txt(540, 450, 'DAY 2 VOTE', 52, Y)}`;
+  const f = eo((lt - 0.3) / 0.5);
+  s += `<g opacity="${f}"><rect x="90" y="560" width="900" height="70" rx="35" fill="#4ea8ff"/><rect x="90" y="560" width="450" height="70" rx="35" fill="${Y}"/>
+  <rect x="440" y="560" width="100" height="70" fill="${Y}"/><circle cx="540" cy="595" r="46" fill="#fff" filter="url(#sh)"/>${txt(540, 597, 'VS', 30, '#111')}
+  ${txt(120, 690, 'A · SOCCER · 1', 40, Y, 'text-anchor="start"')}${txt(960, 690, '1 · STREAMING · B', 40, '#4ea8ff', 'text-anchor="end"')}</g>`;
+  const q = eo((t - kw(seg, 'wheel')) / 0.5);
+  s += `<g opacity="${clamp(q * 1.2)}" transform="translate(0,${(1 - q) * 200})">${wheel(540, 1220, 330, wheelRot(t))}</g>`;
+  if (q > 0) s += `<g opacity="${q}">${txt(540, 790, 'THE WHEEL DECIDES', 64, '#fff', 'filter="url(#tsh)"')}</g>`;
+  return s;
+}
+function sceneSpin(t, seg) {
+  const shake = Math.max(0, 1 - Math.abs((t - (seg.t0 + 0.6)) / 3)) * 3;
+  return `<rect width="${W}" height="${H}" fill="url(#night)"/>${rays(540, 1000, '#4a5cb0', .25, t * 4)}
+  ${txt(540, 330, 'SPINNING…', 110, '#fff', 'filter="url(#tsh)"')}
+  <g transform="translate(${Math.sin(t * 50) * shake},0)">${wheel(540, 1000, 420, wheelRot(t))}</g>`;
+}
+function sceneReveal(t, seg) {
+  const lt = t - seg.t0, p = eb(lt / 0.5), pulse = 0.5 + 0.5 * Math.sin(t * 8);
+  return `<rect width="${W}" height="${H}" fill="url(#gold)"/>${rays(540, 900, Y, .08, t)}
+  <g transform="translate(540,880) scale(${1 - 0.35 * eo(lt / 0.6)}) translate(-540,-880)">${wheel(540, 880, 420, wheelRot(t), pulse)}</g>
+  <g transform="translate(540,300) scale(${p})">${txt(0, 0, 'SOCCER', 170, Y, 'filter="url(#tsh)"')}${txt(0, 130, 'WINS ⚽', 90, '#fff', 'filter="url(#tsh)"')}</g>
+  <g transform="translate(${540 - 300 * 0.8},${1330 + (1 - eo((lt - 0.3) / 0.6)) * 300}) scale(.8)">${marcus('happy', blinking(t, .5), 0)}</g>
+  ${(() => { const q = eb((t - kw(seg, 'two')) / 0.4); return q > 0 ? `<g transform="translate(540,1290) scale(${q})"><rect x="-300" y="-56" width="600" height="112" rx="56" fill="#111" stroke="${Y}" stroke-width="6"/>${txt(0, 4, 'DAY 2: SOCCER', 56, Y)}</g>` : ''; })()}
+  ${confetti(t, seg.t0)}`;
+}
+
+const SCENES = { title: sceneTitle, marcus: sceneMarcus, house: sceneHouse, inventory: sceneInventory, calendar: sceneCalendar, options: sceneOptions, cta: sceneCta, counter: sceneCounter, journey: sceneJourney, thanks: sceneThanks, vote: sceneVote, tie: sceneTie, spin: sceneSpin, reveal: sceneReveal };
 
 // --------------------------------------------------------------- overlays ---
 function captions(t) {
