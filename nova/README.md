@@ -25,4 +25,4 @@ What you teach it is saved in your browser (localStorage).
 3. Pick the branch that contains this folder, choose the **/ (root)** folder, and press **Save**.
 4. After a minute or two, NOVA is live at `https://jai696856.github.io/m/nova/`.
 
-Web search works from that address, or from the file opened directly in a browser. They don't work from the claude.ai copy, because claude.ai blocks pages from going online.
+Web search works from that address, or from the file opened directly in a browser. It doesn't work from the claude.ai copy, because claude.ai blocks pages from going online.
