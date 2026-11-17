@@ -291,10 +291,7 @@ func _page(dir: int) -> void:
 
 func _refresh_card(dir: int) -> void:
 	card.set_level(levels[page], page, dir)
-	var dots := ""
-	for i in levels.size():
-		dots += "●" if i == page else "·"
-	page_label.text = dots
+	page_label.text = "Level %d / %d" % [page + 1, levels.size()]
 	Audio.prefetch(page)
 
 
