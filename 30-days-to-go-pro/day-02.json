@@ -1,22 +1,103 @@
 {
   "day": 2,
   "title": "Day 2: 15 Overall",
-  "votes": [9, 9],
+  "votes": [
+    9,
+    9
+  ],
   "spinAngle": 85.5,
-  "optionsTitle": ["WHAT SHOULD", "MARCUS TRAIN?"],
+  "optionsTitle": [
+    "WHAT SHOULD",
+    "MARCUS TRAIN?"
+  ],
   "cardExpr": "sad",
-  "stats": [["SPD", 15, "speed"], ["SHO", 12, "shooting"], ["PAS", 18, "passing"], ["DRI", 14, "dribbling"], ["DEF", 16, "defense"], ["PHY", 15, "physical"]],
+  "stats": [
+    [
+      "SPD",
+      15,
+      "speed"
+    ],
+    [
+      "SHO",
+      12,
+      "shooting"
+    ],
+    [
+      "PAS",
+      18,
+      "passing"
+    ],
+    [
+      "DRI",
+      14,
+      "dribbling"
+    ],
+    [
+      "DEF",
+      16,
+      "defense"
+    ],
+    [
+      "PHY",
+      15,
+      "physical"
+    ]
+  ],
   "chunks": [
-    {"scene": "title", "text": "Day two."},
-    {"scene": "tie", "text": "You guys tied nine to nine... so the wheel decided."},
-    {"scene": "spin", "text": "Here we go..."},
-    {"scene": "reveal", "text": "Soccer!"},
-    {"scene": "pitch", "text": "So I took my dusty ball to the street pitch. First touch... it rolled straight into the fence. These kids were cooking me."},
-    {"scene": "card", "text": "One of them looked at me and said, \"Bro... you're like a fifteen overall.\""},
-    {"scene": "card", "text": "Fifteen. Speed, fifteen. Shooting, twelve. Passing, eighteen. Dribbling, fourteen. Defense, sixteen. Physical, fifteen."},
-    {"scene": "train", "text": "If I wanna go pro, that number has to climb. So you pick what I train."},
-    {"scene": "options", "letter": "A", "title": "SPEED", "sub": "5 AM sprints · boost SPD", "icon": "sprint", "text": "Option A: I run sprints at five a.m. and boost my speed."},
-    {"scene": "options", "letter": "B", "title": "SHOOTING", "sub": "100 shots a day · boost SHO", "icon": "shoot", "text": "Option B: I take a hundred shots a day and boost my shooting."},
-    {"scene": "cta", "text": "Comment A or B. Whatever wins... that's Day three."}
+    {
+      "scene": "title",
+      "text": "Day two."
+    },
+    {
+      "scene": "tie",
+      "text": "You guys tied nine to nine... so the wheel decided."
+    },
+    {
+      "scene": "spin",
+      "text": "Here we go...",
+      "at": 5.9
+    },
+    {
+      "scene": "reveal",
+      "text": "Soccer!",
+      "at": 7.6
+    },
+    {
+      "scene": "pitch",
+      "text": "So I took my dusty ball to the street pitch. First touch... it rolled straight into the fence. These kids were cooking me.",
+      "at": 8.8
+    },
+    {
+      "scene": "card",
+      "text": "One of them looked at me and said, \"Bro... you're like a fifteen overall.\""
+    },
+    {
+      "scene": "card",
+      "text": "Fifteen. Speed, fifteen. Shooting, twelve. Passing, eighteen. Dribbling, fourteen. Defense, sixteen. Physical, fifteen."
+    },
+    {
+      "scene": "train",
+      "text": "If I wanna go pro, that number has to climb. So you pick what I train."
+    },
+    {
+      "scene": "options",
+      "letter": "A",
+      "title": "SPEED",
+      "sub": "5 AM sprints \u00b7 boost SPD",
+      "icon": "sprint",
+      "text": "Option A: I run sprints at five a.m. and boost my speed."
+    },
+    {
+      "scene": "options",
+      "letter": "B",
+      "title": "SHOOTING",
+      "sub": "100 shots a day \u00b7 boost SHO",
+      "icon": "shoot",
+      "text": "Option B: I take a hundred shots a day and boost my shooting."
+    },
+    {
+      "scene": "cta",
+      "text": "Comment A or B. Whatever wins... that's Day three."
+    }
   ]
 }
