@@ -35,6 +35,10 @@ def build(chunks, audio):
                 guess = best
         bounds.append(guess)
     bounds.append(end)
+    # a chunk may pin its start time ("at": seconds) when pause-snapping guesses wrong
+    for i, c in enumerate(chunks):
+        if i > 0 and "at" in c:
+            bounds[i] = float(c["at"])
     # speech intervals, used to place words only where there is voice
     speech, cur = [], start
     for s, e in sil:

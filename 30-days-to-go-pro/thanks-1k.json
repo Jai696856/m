@@ -29,7 +29,8 @@
     },
     {
       "scene": "vote",
-      "text": "The vote for Day two is still close... soccer or streaming. Drop your vote on Day one, hit subscribe... and I'll see you tomorrow."
+      "text": "The vote for Day two is still close... soccer or streaming. Drop your vote on Day one, hit subscribe... and I'll see you tomorrow.",
+      "at": 12.0
     }
   ]
 }
