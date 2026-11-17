@@ -31,6 +31,11 @@ func _ready() -> void:
 	queue.append("menu")
 	for i in Levels.DEFS.size():
 		queue.append(i)
+	# Browser builds are single-threaded (GitHub Pages can't send the headers threads need),
+	# so there each song is built the first time it is played, behind the screen fade.
+	if OS.has_feature("web"):
+		queue.clear()
+		return
 	thread = Thread.new()
 	thread.start(_worker)
 

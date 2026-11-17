@@ -12,6 +12,18 @@ music and sound effects) is generated from code. The only asset file is the Fred
 
 It uses the Compatibility renderer, so it also exports to Web, Android and iOS.
 
+## Playing in a browser
+
+A web build is committed in `docs/gravity-dash/` (single-threaded, so it runs on GitHub Pages without special
+headers). To rebuild it, install the Godot 4.3 export templates and run:
+
+```
+godot --headless --path gravity-dash-godot --export-release "Web" ../docs/gravity-dash/index.html
+```
+
+To play it online, turn on GitHub Pages for this repository (Settings, Pages, "Deploy from a branch", folder
+`/docs`). The game is then at `https://<user>.github.io/<repo>/gravity-dash/`.
+
 ## Controls
 
 | | |

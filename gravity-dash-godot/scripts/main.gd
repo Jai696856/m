@@ -237,7 +237,7 @@ func _show_menu() -> void:
 	opts.add_child(_toggle("music"))
 	opts.add_child(_toggle("sfx"))
 	_pin(opts, Control.PRESET_BOTTOM_LEFT, 22)
-	var tally := _label("★ %d / %d      Levels %d / %d" % [int(Save.stat("stars")), Levels.total_stars(),
+	var tally := _label("Stars %d / %d      Levels %d / %d" % [int(Save.stat("stars")), Levels.total_stars(),
 		int(Save.stat("completions")), levels.size()], 26, Color("ffe08a"), 9)
 	root.add_child(tally)
 	_pin(tally, Control.PRESET_BOTTOM_RIGHT, 28)
@@ -260,7 +260,7 @@ func _show_levels() -> void:
 		world.set_menu()
 	Audio.play_menu()
 	_back_button(_show_menu)
-	var stars := _label("★ %d / %d" % [int(Save.stat("stars")), Levels.total_stars()], 34, Color("ffe08a"))
+	var stars := _label("Stars %d / %d" % [int(Save.stat("stars")), Levels.total_stars()], 34, Color("ffe08a"))
 	root.add_child(stars)
 	_pin(stars, Control.PRESET_TOP_RIGHT, 30)
 	var center := CenterContainer.new()
@@ -573,7 +573,7 @@ func _show_win_panel() -> void:
 		grid.add_child(cell)
 	var reward: Label = null
 	if int(result.stars) > 0:
-		reward = _label("+%d ★" % int(result.stars), 56, Color("ffd34d"), 14)
+		reward = _label("+%d Stars" % int(result.stars), 56, Color("ffd34d"), 14)
 		v.add_child(reward)
 	else:
 		v.add_child(_label("Already beaten: no new stars", 22, Color(1, 1, 1, 0.6), 6))
