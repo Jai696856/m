@@ -612,7 +612,7 @@ function sceneTie(t, seg) {
   const f = eo((lt - 0.3) / 0.5);
   s += `<g opacity="${f}"><rect x="90" y="560" width="900" height="70" rx="35" fill="#4ea8ff"/><rect x="90" y="560" width="450" height="70" rx="35" fill="${Y}"/>
   <rect x="440" y="560" width="100" height="70" fill="${Y}"/><circle cx="540" cy="595" r="46" fill="#fff" filter="url(#sh)"/>${txt(540, 597, 'VS', 30, '#111')}
-  ${txt(120, 690, 'A · SOCCER · 1', 40, Y, 'text-anchor="start"')}${txt(960, 690, '1 · STREAMING · B', 40, '#4ea8ff', 'text-anchor="end"')}</g>`;
+  ${txt(120, 690, `A · SOCCER · ${EP.votes ? EP.votes[0] : 1}`, 40, Y, 'text-anchor="start"')}${txt(960, 690, `${EP.votes ? EP.votes[1] : 1} · STREAMING · B`, 40, '#4ea8ff', 'text-anchor="end"')}</g>`;
   const q = eo((t - kw(seg, 'wheel')) / 0.5);
   s += `<g opacity="${clamp(q * 1.2)}" transform="translate(0,${(1 - q) * 200})">${wheel(540, 1220, 330, wheelRot(t))}</g>`;
   if (q > 0) s += `<g opacity="${q}">${txt(540, 790, 'THE WHEEL DECIDES', 64, '#fff', 'filter="url(#tsh)"')}</g>`;
