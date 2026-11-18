@@ -1,0 +1,32 @@
+{
+  "day": 3,
+  "title": "Day 3: Both",
+  "style": "comic",
+  "words_file": "audio/day-03.words.json",
+  "optionsTitle": ["DAY 4:", "WHAT'S NEXT?"],
+  "cardExpr": "det",
+  "statsBefore": [["SPD", 15], ["SHO", 12], ["PAS", 18], ["DRI", 14], ["DEF", 16], ["PHY", 15]],
+  "statsAfter": [["SPD", 20, "speed"], ["SHO", 19, "shooting"], ["PAS", 18, ""], ["DRI", 14, ""], ["DEF", 16, ""], ["PHY", 15, ""]],
+  "ovrBefore": 15,
+  "ovrAfter": 17,
+  "comments": {
+    "voice": {"handle": "@Finchiscool", "text": "Do b and also change the voice of the video", "likes": 0, "ago": "5h", "color": "#e67e22"},
+    "workout": {"handle": "@ca1ęb", "text": "how about you do both every single time you don't have the ball in the air you have to run 1 lap around and the ball can't bounce when you shoot it and when after you shoot it", "likes": 5, "ago": "4h", "color": "#16a085"}
+  },
+  "chunks": [
+    {"scene": "c3open", "text": "Day three! And yeah... you asked for a new voice. Here it is."},
+    {"scene": "recap", "text": "You couldn't pick speed or shooting... so one of you said: do both."},
+    {"scene": "rules", "text": "The rules. Every time the ball hits the ground, I run a full lap. And when I shoot... the ball can't bounce. Not before. Not after."},
+    {"scene": "juggle", "lapsBefore": 0, "text": "Round one. Juggling. One... two... three... dropped it. Lap."},
+    {"scene": "juggle", "lapsBefore": 1, "text": "Again. One, two, three, four, five, six, seven... dropped it. Another lap."},
+    {"scene": "laps", "text": "By the tenth lap my legs were jelly. But I hit twelve juggles in a row."},
+    {"scene": "volley", "text": "Round two. Volleys. No bounce allowed. First shot... over the fence. Second... off the post. Third... top bin!"},
+    {"scene": "tally", "text": "Twenty shots. Seven goals. Fourteen laps."},
+    {"scene": "play", "text": "Then the street kids came back. And this time... I nutmegged one of them. They actually let me play."},
+    {"scene": "upgrade", "text": "Okay... let's check the card. Speed: fifteen to twenty. Shooting: twelve to nineteen. Overall... seventeen. Let's go!"},
+    {"scene": "goalbar", "text": "Seventeen. Still a long way from seventy-five. So what's next?"},
+    {"scene": "options", "letter": "A", "title": "TRYOUT", "sub": "Sunday league · real match", "icon": "tryout", "text": "Option A: I join a Sunday league tryout... and play a real match."},
+    {"scene": "options", "letter": "B", "title": "DRIBBLING", "sub": "Train with the street kids", "icon": "dribble", "text": "Option B: I keep training with the street kids... and learn to dribble."},
+    {"scene": "cta3", "text": "Got a crazy workout like today's? Drop it in the comments. Comment A or B... that's Day four."}
+  ]
+}

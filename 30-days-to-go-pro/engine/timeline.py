@@ -75,7 +75,51 @@ def build(chunks, audio):
     return out, dur
 
 
+def norm(w):
+    return re.sub(r"[^a-z0-9]", "", w.lower())
+
+
+def build_from_words(chunks, audio, words_path):
+    """Align chunk words to a transcript with exact per-word times."""
+    dur = audio_duration(audio)
+    tw = [w for w in json.load(open(words_path))["words"]
+          if w.get("type", "word") == "word" and not w["text"].startswith("[")]
+    j, out = 0, []
+    for c in chunks:
+        wt = []
+        for w in c["text"].split():
+            n = norm(w)
+            hit = None
+            for k in range(j, min(j + 8, len(tw))):
+                if norm(tw[k]["text"]) == n:
+                    hit = k
+                    break
+            if hit is not None:
+                wt.append([w, tw[hit]["start"], tw[hit]["end"]])
+                j = hit + 1
+            else:
+                wt.append([w, None, None])
+        # fill any unmatched words by interpolation
+        for i, x in enumerate(wt):
+            if x[1] is None:
+                prev = wt[i - 1][2] if i and wt[i - 1][2] is not None else (out[-1]["words"][-1][2] if out else 0)
+                x[1] = x[2] = prev
+        out.append(dict(c, words=wt))
+    for i, c in enumerate(out):
+        c["t0"] = 0.0 if i == 0 else max(out[i - 1]["words"][-1][2], c["words"][0][1] - 0.12)
+        if "at" in c:
+            c["t0"] = float(c["at"])
+    for i, c in enumerate(out):
+        c["t1"] = out[i + 1]["t0"] if i + 1 < len(out) else dur + 1
+        c["words"][-1][2] = c["t1"]
+    return out, dur
+
+
 if __name__ == "__main__":
     ep = json.load(open(sys.argv[1]))
-    tl, dur = build(ep["chunks"], sys.argv[2])
+    if ep.get("words_file"):
+        import os
+        tl, dur = build_from_words(ep["chunks"], sys.argv[2], os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), ep["words_file"]))
+    else:
+        tl, dur = build(ep["chunks"], sys.argv[2])
     print(json.dumps({"timeline": tl, "duration": dur}))

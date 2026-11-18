@@ -461,11 +461,12 @@ function optionCard(t, y, o, active, appear, art) {
 
 function sceneOptions(t, seg) {
   const opts = TL.filter(o => o.scene === 'options');
-  let s = `<rect width="${W}" height="${H}" fill="url(#night)"/>${txt(540, 260, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[0], 72, '#fff', 'filter="url(#tsh)"')}${txt(540, 350, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[1], 72, Y, 'filter="url(#tsh)"')}`;
+  let s = EP.style === 'comic' ? COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>` : `<rect width="${W}" height="${H}" fill="url(#night)"/>`;
+  s += `${txt(540, 260, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[0], 72, '#fff', 'filter="url(#tsh)"')}${txt(540, 350, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[1], 72, Y, 'filter="url(#tsh)"')}`;
   opts.forEach((o, i) => {
     const appear = eo((t - o.t0) / 0.45);
     if (appear <= 0) return;
-    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, ({ ball: artPitch, mic: artStream, sprint: artSprint, shoot: artShoot })[o.icon](t));
+    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, ({ ball: artPitch, mic: artStream, sprint: artSprint, shoot: artShoot, tryout: (t) => artTryout(t), dribble: (t) => artDribble(t) })[o.icon](t));
   });
   return s;
 }
