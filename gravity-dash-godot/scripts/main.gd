@@ -230,29 +230,36 @@ static func fmt_wait(sec: int) -> String:
 	return "%dm %02ds" % [sec / 60, sec % 60]
 
 
-## A notification banner that slides in at the top (achievements, unlocks).
+## Notification banners (achievements), shown one at a time in the top-left corner, clear of the cube.
 func _toast(title: String, text: String) -> void:
-	var p := panel(Vector2(520, 0), Color("ffd34d"))
+	toasts.append([title, text])
+	if toasts.size() == 1:
+		_next_toast()
+
+
+func _next_toast() -> void:
+	if toasts.is_empty():
+		return
+	var item: Array = toasts[0]
+	var p := panel(Vector2(400, 0), Color("ffd34d"))
 	var v := VBoxContainer.new()
 	p.add_child(v)
-	v.add_child(_label(title, 26, Color("ffd34d"), 8))
-	v.add_child(_label(text, 20, Color.WHITE, 6))
+	v.add_child(_label(str(item[0]), 22, Color("ffd34d"), 7))
+	v.add_child(_label(str(item[1]), 17, Color.WHITE, 5))
 	top.add_child(p)
-	toasts.append(p)
 	await get_tree().process_frame
 	if not is_instance_valid(p):
 		return
-	var vs := get_viewport().get_visible_rect().size
-	p.position = Vector2((vs.x - p.size.x) * 0.5, vs.y + 10)
+	p.position = Vector2(-p.size.x - 20, 96)
 	Audio.sfx("unlock")
 	var tw := p.create_tween()
-	tw.tween_interval((toasts.size() - 1) * 1.2)
-	tw.tween_property(p, "position:y", vs.y - p.size.y - 14.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(2.4)
-	tw.tween_property(p, "position:y", vs.y + 10, 0.3)
+	tw.tween_property(p, "position:x", 16.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(2.2)
+	tw.tween_property(p, "position:x", -p.size.x - 20, 0.25)
 	tw.tween_callback(func():
-		toasts.erase(p)
-		p.queue_free())
+		p.queue_free()
+		toasts.pop_front()
+		_next_toast())
 
 
 func _unhandled_input(e: InputEvent) -> void:

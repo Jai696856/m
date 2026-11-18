@@ -639,12 +639,27 @@ func _draw_level(pulse: float) -> void:
 				draw_circle(c, 8.5, col)
 				draw_circle(c + Vector2(-3, -3), 2.5, Color(1, 1, 1, 0.7))
 			4:
-				var col := Color("ff7af0") if not used.has(b.id) else Color(1, 1, 1, 0.3)
-				var r := Rect2(b.x + 4, b.y, b.w - 8, b.h)
-				draw_rect(r, col)
+				# A big launch pad: a glowing dome on the lane with a bouncing arrow showing where it throws you.
+				var on := not used.has(b.id)
+				var col := Color("ff7af0") if on else Color(1, 1, 1, 0.3)
 				var dir := -1.0 if b.up else 1.0
-				var cy: float = (b.y - 10.0) if b.up else (b.y + b.h + 10.0)
-				draw_colored_polygon(PackedVector2Array([Vector2(b.x + 14, cy - dir * 4), Vector2(b.x + 26, cy - dir * 4), Vector2(b.x + 20, cy + dir * 4)]), Color(col, 0.7))
+				var lane: float = 360.0 if b.up else 40.0
+				var cx: float = b.x + 14.0
+				var dome := PackedVector2Array()
+				for k in 17:
+					var a := PI * k / 16.0
+					dome.append(Vector2(cx - cos(a) * 30.0, lane + dir * sin(a) * 24.0))
+				if on:
+					draw_colored_polygon(dome, Color(col, 0.35 + pulse * 0.25))
+					draw_polyline(dome, Color(col, 0.8), 2.0, true)
+				draw_rect(Rect2(cx - 26.0, lane - (16.0 if b.up else 0.0), 52.0, 16.0), DARK)
+				draw_rect(Rect2(cx - 23.0, lane - (13.0 if b.up else -3.0), 46.0, 10.0), col)
+				draw_rect(Rect2(cx - 23.0, lane - (13.0 if b.up else -3.0), 46.0, 3.0), Color(1, 1, 1, 0.5))
+				var hop := absf(sin(t * 5.0)) * 6.0
+				for k in 2:
+					var ay := lane + dir * (34.0 + k * 13.0 + hop)
+					draw_polyline(PackedVector2Array([Vector2(cx - 11, ay - dir * 7), Vector2(cx, ay + dir * 3), Vector2(cx + 11, ay - dir * 7)]),
+						Color(col, 0.9 - k * 0.35), 4.0, true)
 			5, 6, 7:
 				_draw_portal(b)
 

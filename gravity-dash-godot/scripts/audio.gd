@@ -22,12 +22,14 @@ var bpm := 112.0
 var web := false
 var job = null
 var job_key = null
-var busy_frame := false  # the game sets this while a level is running so the web build doesn't render songs then
+var busy_frame := false
+var unlocked := false  # browsers only allow audio after the first click, tap or key press  # the game sets this while a level is running so the web build doesn't render songs then
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	web = OS.has_feature("web")
+	unlocked = not web
 	music = AudioStreamPlayer.new()
 	add_child(music)
 	for i in 10:
@@ -46,6 +48,21 @@ func _ready() -> void:
 	if not web:
 		thread = Thread.new()
 		thread.start(_worker)
+
+
+func _input(e: InputEvent) -> void:
+	if unlocked:
+		return
+	if (e is InputEventMouseButton or e is InputEventScreenTouch or e is InputEventKey) and e.is_pressed():
+		unlocked = true
+		_restart_current.call_deferred()
+
+
+func _restart_current() -> void:
+	if current != null and Save.setting("music"):
+		var key: String = str(current)
+		current = null
+		play(key, true)
 
 
 func _exit_tree() -> void:
@@ -154,6 +171,8 @@ func play(key: String, restart: bool) -> void:
 	if not Save.setting("music"):
 		music.stop()
 		return
+	if web and not unlocked:
+		return  # started on the first click instead (see _input)
 	var s := _song(key)
 	if s == null:
 		music.stop()
@@ -196,7 +215,7 @@ func music_setting_changed() -> void:
 
 
 func sfx(name: String) -> void:
-	if not Save.setting("sfx"):
+	if not Save.setting("sfx") or (web and not unlocked):
 		return
 	var bank: Dictionary = effects_retro if Save.has_extra("sfx_retro") else effects
 	if not bank.has(name):

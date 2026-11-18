@@ -50,9 +50,10 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 			ci.draw_colored_polygon(poly([0, -9, 9, 0, 0, 9, -9, 0]), c2)
 			ci.draw_rect(Rect2(-2.5, -2.5, 5, 5), DARK)
 		3:
-			ci.draw_rect(Rect2(-15, -7, 30, 11), DARK)
-			ci.draw_rect(Rect2(-12, -5, 24, 7), c2)
-			ci.draw_rect(Rect2(-15, 8, 30, 3), DARK)
+			ci.draw_rect(Rect2(-13, -7, 26, 11), DARK)
+			ci.draw_rect(Rect2(-11, -5, 22, 7), c2)
+			ci.draw_rect(Rect2(-9, -4, 6, 2), Color(1, 1, 1, 0.6))
+			ci.draw_rect(Rect2(-8, 8, 16, 3), DARK)
 		4:
 			ci.draw_circle(Vector2.ZERO, 11.5, DARK)
 			ci.draw_circle(Vector2.ZERO, 8.5, c2)
@@ -126,13 +127,18 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 			for k in 4:
 				ci.draw_rect(Rect2(-8 + k * 4.5, 7, 3, 5), DARK)
 		17:
-			ci.draw_colored_polygon(poly([-15, -15, -6, -15, -15, -6]), DARK)
-			ci.draw_colored_polygon(poly([15, -15, 6, -15, 15, -6]), DARK)
-			ci.draw_colored_polygon(poly([-10, -3, -4, -6, -4, -1]), DARK)
-			ci.draw_colored_polygon(poly([10, -3, 4, -6, 4, -1]), DARK)
-			ci.draw_colored_polygon(poly([-3, 3, 3, 3, 0, 6]), c2)
-			ci.draw_line(Vector2(0, 6), Vector2(-4, 9), DARK, 1.5)
-			ci.draw_line(Vector2(0, 6), Vector2(4, 9), DARK, 1.5)
+			# Cat: two ears inside the top corners, round eyes, a little nose and whiskers
+			for sx in [-1.0, 1.0]:
+				var ear := poly([sx * 13, -13, sx * 13, -4, sx * 5, -13])
+				ci.draw_colored_polygon(ear, DARK)
+				ci.draw_colored_polygon(poly([sx * 11.5, -11.5, sx * 11.5, -6.5, sx * 7, -11.5]), c2)
+				ci.draw_circle(Vector2(sx * 5.5, -1), 3.6, DARK)
+				ci.draw_circle(Vector2(sx * 5.5 + 1, -2), 1.2, Color.WHITE)
+				ci.draw_line(Vector2(sx * 6, 6), Vector2(sx * 13, 4), DARK, 1.2)
+				ci.draw_line(Vector2(sx * 6, 8), Vector2(sx * 13, 9), DARK, 1.2)
+			ci.draw_colored_polygon(poly([-2.5, 4, 2.5, 4, 0, 6.5]), c2)
+			ci.draw_arc(Vector2(-1.5, 7), 1.6, 0.2, PI - 0.2, 6, DARK, 1.2)
+			ci.draw_arc(Vector2(1.5, 7), 1.6, 0.2, PI - 0.2, 6, DARK, 1.2)
 		18:
 			for sx in [-6.5, 6.5]:
 				ci.draw_circle(Vector2(sx, -3), 7.0, DARK)
@@ -150,8 +156,8 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 		20:
 			for row in [-5.0, 5.0]:
 				var w := PackedVector2Array()
-				for k in 13:
-					w.append(Vector2(-14 + k * 2.33, row + sin(k * 0.9) * 4.0))
+				for k in 11:
+					w.append(Vector2(-10 + k * 2.0, row + sin(k * 1.1) * 3.0))
 				ci.draw_polyline(w, DARK, 5.0, true)
 				ci.draw_polyline(w, c2, 2.5, true)
 		21:
@@ -184,11 +190,11 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 			ci.draw_rect(Rect2(-6, 11, 12, 2.5), DARK)
 		26:
 			var sp := PackedVector2Array()
-			for k in 40:
-				var a := k * 0.42
-				sp.append(Vector2(cos(a), sin(a)) * (1.0 + k * 0.3))
-			ci.draw_polyline(sp, DARK, 4.0, true)
-			ci.draw_polyline(sp, c2, 2.0, true)
+			for k in 34:
+				var a := k * 0.45
+				sp.append(Vector2(cos(a), sin(a)) * (1.0 + k * 0.29))
+			ci.draw_polyline(sp, DARK, 3.6, true)
+			ci.draw_polyline(sp, c2, 1.8, true)
 		27:
 			var lines := [[-12, -8, -2, -8, -2, 0], [12, -10, 4, -10, 4, 6, 12, 6], [-12, 8, -6, 8, -6, 12]]
 			for l in lines:
@@ -198,22 +204,23 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 			ci.draw_rect(Rect2(-4, -4, 8, 8), DARK)
 			ci.draw_rect(Rect2(-2, -2, 4, 4), c2)
 		28:
-			ci.draw_rect(Rect2(-15, -15, 30, 30), DARK)
-			ci.draw_circle(Vector2.ZERO, 10.0, c2)
-			ci.draw_circle(Vector2.ZERO, 7.0, DARK)
-			ci.draw_circle(Vector2(2, -2), 2.5, c1)
+			ci.draw_rect(Rect2(-12, -12, 24, 24), DARK)
+			ci.draw_circle(Vector2.ZERO, 9.5, c2)
+			ci.draw_circle(Vector2.ZERO, 6.5, DARK)
+			ci.draw_circle(Vector2(2, -2), 2.4, c1)
 		29:
-			var tri := poly([0, -12, 12, 10, -12, 10])
+			var tri := poly([-3, -11, 8, 10, -14, 10])
 			ci.draw_colored_polygon(tri, DARK)
-			ci.draw_colored_polygon(poly([0, -8, 8, 7, -8, 7]), c2)
+			ci.draw_colored_polygon(poly([-3, -7, 5, 8, -11, 8]), c2)
 			var cols := [Color("ff5c5c"), Color("ffd34d"), Color("5ce1a0"), Color("5c9dff")]
 			for k in 4:
-				ci.draw_line(Vector2(4, -2 + k * 3), Vector2(15, -6 + k * 5), cols[k], 2.0)
+				ci.draw_line(Vector2(2, -1 + k * 2.5), Vector2(13, -5 + k * 4.5), cols[k], 2.0)
 		30:
-			ci.draw_colored_polygon(poly([-14, 10, 2, -6, 8, 0]), Color(c2, 0.6))
-			ci.draw_colored_polygon(poly([-12, 13, 0, 0, 5, 4]), Color(c2, 0.35))
+			ci.draw_colored_polygon(poly([-13, 12, 0, -5, 6, 1]), Color(c2, 0.75))
+			ci.draw_colored_polygon(poly([-13, 12, -3, -1, 2, 4]), Color(1, 1, 1, 0.45))
 			ci.draw_circle(Vector2(5, -3), 7.5, DARK)
 			ci.draw_circle(Vector2(5, -3), 5.5, c2)
+			ci.draw_circle(Vector2(3, -5), 1.8, Color(1, 1, 1, 0.7))
 		31:
 			var cr := poly([-12, 3, -12, -9, -6, -3, 0, -13, 6, -3, 12, -9, 12, 3])
 			ci.draw_colored_polygon(cr, c2)
@@ -237,9 +244,11 @@ static func draw_icon(ci: CanvasItem, pos: Vector2, rot: float, scl: Vector2, id
 				ci.draw_polyline(poly([ox, -9, ox + 6, 0, ox, 9]), DARK, 5.0)
 				ci.draw_polyline(poly([ox, -9, ox + 6, 0, ox, 9]), c2, 2.5)
 		35:
-			ci.draw_rect(Rect2(-8, -8, 16, 16), DARK)
-			ci.draw_rect(Rect2(-6, -6, 12, 12), c2)
-			ci.draw_rect(Rect2(-3, -3, 6, 6), DARK)
+			ci.draw_rect(Rect2(-12, -12, 24, 24), DARK)
+			ci.draw_rect(Rect2(-10, -10, 20, 20), c2)
+			ci.draw_rect(Rect2(-6, -6, 12, 12), DARK)
+			ci.draw_rect(Rect2(-4.5, -4.5, 9, 9), c1)
+			ci.draw_rect(Rect2(-2, -2, 4, 4), DARK)
 		36:
 			ci.draw_colored_polygon(poly([-7, -13, -1, -5, -5, -5, -5, 2, -9, 2, -9, -5, -13, -5]), c2)
 			ci.draw_colored_polygon(poly([7, 13, 13, 5, 9, 5, 9, -2, 5, -2, 5, 5, 1, 5]), c2)
