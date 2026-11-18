@@ -220,10 +220,10 @@ const halftoneFX = () => `<rect width="${W}" height="${H}" fill="url(#ht)" opaci
 function sC3open(t, seg) {
   const lt = t - seg.t0, cm = EP.comments.voice;
   let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cPop)"/>` + speedLines(540, 700, t, '#fff', .35);
-  s += burst(540, 470, `DAY ${EP.day}`, 170, Y, seg.t0, t, -6, 16);
-  s += commentCard(540, 760, 940, cm, kw(seg, 'asked') - 0.2, t, ['change the voice']);
-  s += burst(540, 1300, 'NEW VOICE ✓', 72, '#38c172', kw(seg, 'Here'), t, 5, 12);
-  s += athlete(220, 1720, 0.95, 'marcus', pose(t > kw(seg, 'Here') ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  s += burst(540, 470, `DAY ${EP.day}`, 170, Y, TL.find(x => x.scene === 'c3open').t0, t, -6, 16);
+  s += commentCard(540, 760, 940, cm, kwN(seg, 'asked') - 0.2, t, ['change the voice']);
+  s += burst(540, 1300, 'NEW VOICE ✓', 72, '#38c172', kwN(seg, 'here'), t, 5, 12);
+  s += athlete(220, 1720, 0.95, 'marcus', pose(t > kwN(seg, 'here') ? 'celebrate' : 'idle', t), t, 1, blinking(t));
   return s + halftoneFX();
 }
 
@@ -474,4 +474,22 @@ function sCta3(t, seg) {
   return s + halftoneFX();
 }
 
-Object.assign(SCENES, { c3open: sC3open, recap: sRecap, rules: sRules, juggle: sJuggle, laps: sLaps, volley: sVolley, tally: sTally, play: sPlay, upgrade: sUpgrade, goalbar: sGoalbar, cta3: sCta3 });
+function sSubs25(t, seg) {
+  const lt = t - seg.t0, tHit = kw(seg, 'followers'), tThx = kw(seg, 'Thank');
+  const n = Math.round(25 * eo(clamp((t - kw(seg, 'hit')) / 0.9)));
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cGreen)"/>` + speedLines(540, 720, t, '#fff', .35);
+  let hearts = '';
+  for (let i = 0; i < 12; i++) {
+    const x = 90 + (i * 197) % 900, y = 1650 - ((lt * (180 + (i * 41) % 140) + i * 160) % 1500);
+    hearts += `<path transform="translate(${x},${y}) scale(${0.8 + (i % 3) * 0.3})" d="M0,30 C-60,-10 -40,-60 0,-30 C40,-60 60,-10 0,30Z" fill="${i % 2 ? RED : Y}" ${ink(5)}/>`;
+  }
+  s += hearts;
+  const pop = t > tHit ? 1 + 0.2 * (1 - eo((t - tHit) / 0.35)) : 1;
+  s += `<g transform="translate(540,560) scale(${pop})">${ctext(0, 0, n, 300, Y)}</g>${ctext(540, 780, 'FOLLOWERS', 110, '#fff')}`;
+  s += captionBox(540, 330, 'BEFORE WE START…', seg.t0, t, '#fff');
+  s += burst(540, 1080, 'THANK YOU!! 🙏', 92, RED, tThx, t, -6, 16);
+  s += athlete(540, 1720, 1.05, 'marcus', pose(t > tHit ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  return s + (t > tHit ? confetti(t, tHit, 540, 560, 110) : '') + halftoneFX();
+}
+
+Object.assign(SCENES, { subs25: sSubs25,  c3open: sC3open, recap: sRecap, rules: sRules, juggle: sJuggle, laps: sLaps, volley: sVolley, tally: sTally, play: sPlay, upgrade: sUpgrade, goalbar: sGoalbar, cta3: sCta3 });
