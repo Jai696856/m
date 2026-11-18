@@ -222,7 +222,7 @@ const halftoneFX = () => '';
 // ----------------------------------------------------------------- scenes ---
 function sC3open(t, seg) {
   const lt = t - seg.t0, cm = EP.comments.voice;
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cPop)"/>` + speedLines(540, 700, t, '#fff', .35);
+  let s = COMIC_DEFS + `${bgRect('cPop')}` + speedLines(540, 700, t, '#fff', .35);
   s += burst(540, 470, `DAY ${EP.day}`, 170, Y, TL.find(x => x.scene === 'c3open').t0, t, -6, 16);
   s += commentCard(540, 760, 940, cm, kwN(seg, 'asked') - 0.2, t, ['change the voice']);
   s += burst(540, 1300, 'NEW VOICE ✓', 72, '#38c172', kwN(seg, 'here'), t, 5, 12);
@@ -231,7 +231,7 @@ function sC3open(t, seg) {
 }
 
 function sRecap(t, seg) {
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
+  let s = COMIC_DEFS + `${bgRect('cBlue')}`;
   s += ctext(540, 270, 'DAY 3 VOTE', 110, '#fff');
   const tBoth = kw(seg, 'both');
   const cards = [['A', 'SPEED', '⚡ 5 AM sprints', '#2f80ed'], ['B', 'SHOOTING', '🎯 100 shots a day', '#e74c3c'], ['C', 'BOTH', '💬 from the comments', '#27ae60']];
@@ -251,7 +251,7 @@ function sRecap(t, seg) {
 
 function sRules(t, seg) {
   const cm = EP.comments.workout;
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cDusk)"/>`;
+  let s = COMIC_DEFS + `${bgRect('cDusk')}`;
   s += commentCard(540, 230, 960, cm, seg.t0, t, ['run 1', 'lap around', "can't bounce"]);
   const r1 = kw(seg, 'lap'), r2 = kw(seg, 'bounce');
   const panel = (y, n, label, icon, t0, col) => {
@@ -362,7 +362,7 @@ function sVolley(t, seg) {
 }
 
 function sTally(t, seg) {
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
+  let s = COMIC_DEFS + `${bgRect('cBlue')}`;
   s += ctext(540, 300, 'TODAY’S DAMAGE', 92, Y);
   const rows = [['SHOTS', 20, kw(seg, 'Twenty'), '#2f80ed'], ['GOALS', 7, kw(seg, 'Seven'), '#38c172'], ['LAPS', 14, kw(seg, 'Fourteen'), RED]];
   rows.forEach(([lab, n, a, col], i) => {
@@ -428,7 +428,7 @@ function sUpgrade(t, seg) {
     return [n, Math.round(lerp(before[n], v, f)), f > 0];
   });
   const of = clamp((t - tO) / 0.6), ovr = Math.round(lerp(EP.ovrBefore, EP.ovrAfter, of));
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cPop)"/>` + speedLines(540, 950, t, '#fff', .3);
+  let s = COMIC_DEFS + `${bgRect('cPop')}` + speedLines(540, 950, t, '#fff', .3);
   s += statCardC(t, 540, 960, 0.98 * p, stats, ovr, t > tO && t - tO < 1.2 ? 1 - (t - tO) / 1.2 : 0, of > 0);
   s += burst(820, 520, '+5 SPD', 56, '#2f80ed', tS + 0.5, t, 8);
   s += burst(260, 1480, '+7 SHO', 56, RED, tSh + 0.5, t, -8);
@@ -438,7 +438,7 @@ function sUpgrade(t, seg) {
 
 function sGoalbar(t, seg) {
   const p = eo((t - seg.t0) / 0.8);
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
+  let s = COMIC_DEFS + `${bgRect('cBlue')}`;
   s += ctext(540, 320, 'ROAD TO PRO', 110, Y);
   const x0 = 120, x1 = 960, y = 760, val = 17 / 75;
   s += `<rect x="${x0}" y="${y - 50}" width="${x1 - x0}" height="100" rx="50" fill="#fff" ${ink(10)}/>
@@ -467,7 +467,7 @@ function artDribble(t) {
 
 function sCta3(t, seg) {
   const lt = t - seg.t0, opts = TL.filter(o => o.scene === 'options');
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cPop)"/>` + speedLines(540, 700, t, '#fff', .3);
+  let s = COMIC_DEFS + `${bgRect('cPop')}` + speedLines(540, 700, t, '#fff', .3);
   s += commentCard(540, 230, 940, { handle: '@you', text: 'drop your craziest workout here 💡', likes: '', ago: 'now', color: '#9b59b6' }, seg.t0, t);
   s += ctext(540, 640, 'COMMENT', 140, '#fff');
   opts.forEach((o, i) => {
@@ -484,7 +484,7 @@ function sCta3(t, seg) {
 function sSubs25(t, seg) {
   const lt = t - seg.t0, tHit = kw(seg, 'followers'), tThx = kw(seg, 'Thank');
   const n = Math.round(25 * eo(clamp((t - kw(seg, 'hit')) / 0.9)));
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cGreen)"/>` + speedLines(540, 720, t, '#fff', .35);
+  let s = COMIC_DEFS + `${bgRect('cGreen')}` + speedLines(540, 720, t, '#fff', .35);
   let hearts = '';
   for (let i = 0; i < 12; i++) {
     const x = 90 + (i * 197) % 900, y = 1650 - ((lt * (180 + (i * 41) % 140) + i * 160) % 1500);
@@ -528,7 +528,7 @@ function speedLines(cx, cy, t, col = '#fff', op = .5, n = 26) { return ''; }
 function burst(x, y, label, size, fill, t0, t, rot = -8) {
   const p = (t - t0) / 0.28;
   if (p <= 0) return '';
-  const sc = eb(p), w = label.length * size * 0.62 + 90, h = size * 1.75;
+  const sc = eb(p), w = label.length * size * 0.72 + 90, h = size * 1.75;
   x = clamp(x, w / 2 + 30, W - w / 2 - 30);
   return `<g transform="translate(${x},${y}) rotate(${rot * 0.5}) scale(${sc})"><g filter="url(#dsh)">
   <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${h * 0.32}" fill="${fill}" ${ink(9)}/></g>
@@ -657,4 +657,28 @@ function chromeComic(t) {
     <text x="-125" y="0" font-family="${FONT}" font-size="28" font-weight="800" fill="#c9ced9" dominant-baseline="central">${label}</text>
     <text x="125" y="2" font-family="${FONT}" font-size="54" font-weight="900" fill="${hi ? '#2ecc71' : '#f4b41a'}" text-anchor="end" dominant-baseline="central">${val}</text></g>`;
   return pill(370, 'DAYS LEFT', 30 - EP.day, false) + pill(710, 'OVERALL', ovr, ovr > (EP.ovrBefore ?? 15));
+}
+
+
+// ===================================================================== 2.5D (3D court) MODE
+const use3d = () => EP.render3d && window.bg3d;
+function bgRect(id) { return use3d() ? `<rect width="${W}" height="${H}" fill="url(#${id})" opacity=".45"/>` : `<rect width="${W}" height="${H}" fill="url(#${id})"/>`; }
+const _comicPitch2d = comicPitch;
+comicPitch = function (t, opt = {}) { return use3d() ? '' : _comicPitch2d(t, opt); };
+
+function cam3d(t, seg) {
+  switch (seg.scene) {
+    case 'juggle': {
+      const tDrop = kw(seg, 'dropped') + 0.7;
+      const base = (seg.lapsBefore || 0) * 40;
+      return t > tDrop ? { cam: 'track', x: base + (t - tDrop) * 8, t } : { cam: 'juggle', x: base, t, k: clamp((t - seg.t0) / (tDrop - seg.t0)) };
+    }
+    case 'laps': {
+      const tTw = kw(seg, 'twelve') - 0.2;
+      return t < tTw ? { cam: 'track', x: 80 + (t - seg.t0) * 9, t } : { cam: 'juggle', x: 0, t, k: clamp((t - tTw) / 3) };
+    }
+    case 'volley': return { cam: 'goal', t };
+    case 'play': return { cam: 'track', x: -60 + Math.min(t - seg.t0, kw(seg, 'nutmegged') - seg.t0 + 0.6) * 2.5, t };
+    default: return { cam: 'wide', t, blur: true };
+  }
 }

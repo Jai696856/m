@@ -775,6 +775,7 @@ function render(t) {
   if (i < 0) i = t < TL[0].t0 ? 0 : TL.length - 1;
   const seg = TL[i];
   BALLN = 0;
+  if (EP.render3d && window.bg3d && typeof cam3d === 'function') window.bg3d.render(cam3d(t, seg));
   let body = SCENES[seg.scene](t, seg);
   const since = t - seg.t0, prev = TL[i - 1];
   let fade = 0;

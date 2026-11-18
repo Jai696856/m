@@ -4,3 +4,4 @@
 build/
 # Local hero packs (personal add-ons, never committed or exported)
 /packs/
+node_modules/

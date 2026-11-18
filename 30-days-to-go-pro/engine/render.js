@@ -13,10 +13,13 @@ const path = require('path');
   const { timeline, duration } = JSON.parse(tlJson);
   for (const s of timeline) console.log(s.t0.toFixed(2), s.t1.toFixed(2), s.scene, s.text.slice(0, 40));
 
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ['--allow-file-access-from-files', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
+  page.on('pageerror', e => console.error('PAGE ERROR', e.message));
+  page.on('console', m => { if (m.type() === 'error') console.error('CONSOLE', m.text()); });
   await page.goto('file://' + path.join(__dirname, 'episode.html'));
   await page.evaluate(d => init(d), { timeline, episode });
+  if (episode.render3d) await page.waitForFunction(() => window.bg3dReady === true, null, { timeout: 60000 });
   await page.evaluate(() => document.fonts.ready);
 
   if (out === '--stills') {

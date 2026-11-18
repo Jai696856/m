@@ -159,5 +159,6 @@
       "scene": "cta3",
       "text": "Got a crazy workout like today's? Drop it in the comments. Comment A or B... that's Day four."
     }
-  ]
+  ],
+  "render3d": true
 }
