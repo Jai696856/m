@@ -461,7 +461,7 @@ function optionCard(t, y, o, active, appear, art) {
 
 function sceneOptions(t, seg) {
   const opts = TL.filter(o => o.scene === 'options');
-  let s = EP.style === 'comic' ? COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>` : `<rect width="${W}" height="${H}" fill="url(#night)"/>`;
+  let s = EP.style === 'comic' ? COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>` : `<rect width="${W}" height="${H}" fill="url(#night)"/>`;
   s += `${txt(540, 260, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[0], 72, '#fff', 'filter="url(#tsh)"')}${txt(540, 350, (EP.optionsTitle || ['WHAT SHOULD', 'MARCUS DO?'])[1], 72, Y, 'filter="url(#tsh)"')}`;
   opts.forEach((o, i) => {
     const appear = eo((t - o.t0) / 0.45);
@@ -787,6 +787,6 @@ function render(t) {
     ${body}
     <rect width="${W}" height="${H}" filter="url(#grain)" opacity=".07"/>
     <rect width="${W}" height="${H}" fill="url(#vig)"/>
-    ${chrome()}${captions(t)}
+    ${EP.style === 'comic' && typeof chromeComic === 'function' ? chromeComic(t) : chrome()}${captions(t)}
     <rect width="${W}" height="${H}" fill="#000" opacity="${fade}"/></svg>`;
 }

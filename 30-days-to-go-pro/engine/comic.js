@@ -8,10 +8,13 @@ const COMIC_DEFS = `<defs>
 <linearGradient id="cDusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a1c71"/><stop offset=".55" stop-color="#d76d77"/><stop offset="1" stop-color="#ffaf7b"/></linearGradient>
 <linearGradient id="cPop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset="1" stop-color="#ff9a3d"/></linearGradient>
 <linearGradient id="cBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3c72"/><stop offset="1" stop-color="#2a5298"/></linearGradient>
+<linearGradient id="cSunset" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffa726"/><stop offset=".6" stop-color="#f08a5d"/><stop offset="1" stop-color="#e06d53"/></linearGradient>
+<filter id="bg2"><feGaussianBlur stdDeviation="2.5"/></filter>
+<filter id="dsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="0" flood-color="#0a1432" flood-opacity=".45"/></filter>
 <linearGradient id="cGreen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11998e"/><stop offset="1" stop-color="#38ef7d"/></linearGradient>
 </defs>`;
 
-const ink = (w = 8) => `stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+const ink = (w = 8) => `stroke="${INK}" stroke-width="${Math.max(3, w * 0.6)}" stroke-linejoin="round" stroke-linecap="round"`;
 const ctext = (x, y, s, size, fill, extra = '') =>
   `<text ${extra} x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="900" fill="${fill}" stroke="${INK}" stroke-width="${Math.max(6, size * 0.12)}" stroke-linejoin="round" paint-order="stroke" text-anchor="middle" dominant-baseline="central">${s}</text>`;
 
@@ -153,7 +156,7 @@ function comicHead(x, y, L, expr, blink) {
 // ------------------------------------------------------------ backgrounds ---
 function comicPitch(t, opt = {}) {
   const horizon = opt.horizon || 980, scroll = opt.scroll || 0;
-  let s = `<rect width="${W}" height="${H}" fill="url(#${opt.sky || 'cSky'})"/><rect width="${W}" height="${horizon}" fill="url(#htL)"/>`;
+  let s = `<rect width="${W}" height="${H}" fill="url(#${opt.sky || 'cSky'})"/>`;
   s += `<circle cx="820" cy="${horizon - 330}" r="120" fill="#fff4c2" ${ink(8)}/>`;
   const sky = [[0, 70, 260], [70, 90, 340], [160, 60, 230], [220, 110, 400], [330, 70, 300], [400, 90, 360], [490, 60, 250], [550, 120, 420], [670, 70, 290], [740, 90, 350], [830, 60, 240], [890, 110, 380], [1000, 80, 300]];
   s += `<g transform="translate(${-((scroll * 0.3) % 1080)},0)">`;
@@ -214,7 +217,7 @@ function commentCard(x, y, w, c, t0, t, highlight = []) {
 const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const norm = w => w.toLowerCase().replace(/[^a-z]/g, '');
 const kwN = (seg, k, n = 1) => { let c = 0; for (const [w, a] of seg.words) if (norm(w) === k && ++c === n) return a; return 1e9; };
-const halftoneFX = () => `<rect width="${W}" height="${H}" fill="url(#ht)" opacity=".18"/>`;
+const halftoneFX = () => '';
 
 // ----------------------------------------------------------------- scenes ---
 function sC3open(t, seg) {
@@ -228,7 +231,7 @@ function sC3open(t, seg) {
 }
 
 function sRecap(t, seg) {
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>`;
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
   s += ctext(540, 270, 'DAY 3 VOTE', 110, '#fff');
   const tBoth = kw(seg, 'both');
   const cards = [['A', 'SPEED', '⚡ 5 AM sprints', '#2f80ed'], ['B', 'SHOOTING', '🎯 100 shots a day', '#e74c3c'], ['C', 'BOTH', '💬 from the comments', '#27ae60']];
@@ -248,7 +251,7 @@ function sRecap(t, seg) {
 
 function sRules(t, seg) {
   const cm = EP.comments.workout;
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cDusk)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>`;
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cDusk)"/>`;
   s += commentCard(540, 230, 960, cm, seg.t0, t, ['run 1', 'lap around', "can't bounce"]);
   const r1 = kw(seg, 'lap'), r2 = kw(seg, 'bounce');
   const panel = (y, n, label, icon, t0, col) => {
@@ -359,7 +362,7 @@ function sVolley(t, seg) {
 }
 
 function sTally(t, seg) {
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>`;
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
   s += ctext(540, 300, 'TODAY’S DAMAGE', 92, Y);
   const rows = [['SHOTS', 20, kw(seg, 'Twenty'), '#2f80ed'], ['GOALS', 7, kw(seg, 'Seven'), '#38c172'], ['LAPS', 14, kw(seg, 'Fourteen'), RED]];
   rows.forEach(([lab, n, a, col], i) => {
@@ -435,7 +438,7 @@ function sUpgrade(t, seg) {
 
 function sGoalbar(t, seg) {
   const p = eo((t - seg.t0) / 0.8);
-  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/><rect width="${W}" height="${H}" fill="url(#htL)"/>`;
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="url(#cBlue)"/>`;
   s += ctext(540, 320, 'ROAD TO PRO', 110, Y);
   const x0 = 120, x1 = 960, y = 760, val = 17 / 75;
   s += `<rect x="${x0}" y="${y - 50}" width="${x1 - x0}" height="100" rx="50" fill="#fff" ${ink(10)}/>
@@ -471,7 +474,7 @@ function sCta3(t, seg) {
     const p = eb((t - kwN(seg, 'comment') - i * 0.15) / 0.4);
     if (p <= 0) return;
     const x = 330 + i * 420, yb = 900 + 12 * Math.sin(lt * 4 + i * 1.5);
-    s += `<g transform="translate(${x},${yb}) scale(${p})"><rect x="-140" y="-140" width="280" height="280" rx="40" fill="${Y}" ${ink(12)}/>${ctext(0, 6, o.letter, 190, '#fff')}</g>${ctext(x, 1110, o.title, 54, '#fff')}`;
+    s += `<g transform="translate(${x},${yb}) scale(${p})"><g filter="url(#dsh)"><rect x="-140" y="-140" width="280" height="280" rx="60" fill="${['#2196f3', '#e74c3c'][i]}" ${ink(12)}/></g>${ctext(0, 6, o.letter, 190, '#fff')}</g>${ctext(x, 1110, o.title, 54, '#fff')}`;
   });
   s += burst(540, 1340, `DAY ${EP.day + 1} 👀`, 90, '#38c172', kwN(seg, 'day'), t, -5);
   s += athlete(180, 1720, 0.8, 'marcus', pose('celebrate', t), t, 1);
@@ -497,3 +500,161 @@ function sSubs25(t, seg) {
 }
 
 Object.assign(SCENES, { subs25: sSubs25,  c3open: sC3open, recap: sRecap, rules: sRules, juggle: sJuggle, laps: sLaps, volley: sVolley, tally: sTally, play: sPlay, upgrade: sUpgrade, goalbar: sGoalbar, cta3: sCta3 });
+
+
+// ===================================================================== CHIBI STYLE OVERRIDES
+// Bobblehead proportions, flat colours with 2-tone cel shading, clean outlines, sunset street court.
+Object.assign(LOOKS, {
+  marcus: { top: '#8a93a8', topD: '#6b7489', pants: '#22304d', pantsD: '#18233a', skin: '#a8693f', skinD: '#87512e', hair: '#2e1a11', shoe: '#ffffff', band: '#e53935' },
+  kid1: { top: '#e53935', topD: '#b92b28', pants: '#1d1d1d', pantsD: '#111', skin: '#6a3f27', skinD: '#55311d', hair: '#140c08', shoe: '#ffd60a' },
+  kid2: { top: '#2196f3', topD: '#1769b0', pants: '#2a2a2a', pantsD: '#1a1a1a', skin: '#f2c49b', skinD: '#d9a57b', hair: '#e8c35a', shoe: '#ffffff' },
+  kid3: { top: '#2ecc71', topD: '#22a35a', pants: '#1d1d1d', pantsD: '#111', skin: '#4a2c1a', skinD: '#3a2213', hair: '#0d0806', shoe: '#ff3d6e', curly: true },
+});
+
+function sparkles(cx, cy, t, t0, n = 6, spread = 180, col = '#ffd54f') {
+  if (t < t0) return '';
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4 + t0, r = spread * (0.6 + 0.4 * ((i * 37) % 10) / 10);
+    const tw = Math.abs(Math.sin((t - t0) * 6 + i)), z = (0.5 + 0.7 * tw) * eo((t - t0) / 0.3);
+    s += `<path transform="translate(${cx + Math.cos(a) * r},${cy + Math.sin(a) * r * 0.7}) scale(${z})" d="M0,-30 Q4,-4 30,0 Q4,4 0,30 Q-4,4 -30,0 Q-4,-4 0,-30Z" fill="${col}" stroke="${INK}" stroke-width="3"/>`;
+  }
+  return s;
+}
+
+function speedLines(cx, cy, t, col = '#fff', op = .5, n = 26) { return ''; }
+
+// callout card replaces the comic starburst
+function burst(x, y, label, size, fill, t0, t, rot = -8) {
+  const p = (t - t0) / 0.28;
+  if (p <= 0) return '';
+  const sc = eb(p), w = label.length * size * 0.62 + 90, h = size * 1.75;
+  x = clamp(x, w / 2 + 30, W - w / 2 - 30);
+  return `<g transform="translate(${x},${y}) rotate(${rot * 0.5}) scale(${sc})"><g filter="url(#dsh)">
+  <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${h * 0.32}" fill="${fill}" ${ink(9)}/></g>
+  <rect x="${-w / 2 + 14}" y="${-h / 2 + 10}" width="${w - 28}" height="${h * 0.3}" rx="${h * 0.15}" fill="#fff" opacity=".22"/>
+  ${ctext(0, 4, label, size, '#fff')}</g>${sparkles(x, y, t, t0 + 0.1, 5, w * 0.55)}`;
+}
+
+function captionBox(x, y, label, t0, t, bg = Y, fg = '#111', size = 44) {
+  const p = eb((t - t0) / 0.3);
+  if (p <= 0) return '';
+  const w = label.length * size * 0.64 + 70;
+  return `<g transform="translate(${x},${y}) scale(${p})" filter="url(#dsh)"><rect x="${-w / 2}" y="${-size * 0.85}" width="${w}" height="${size * 1.7}" rx="${size * 0.85}" fill="${bg}" ${ink(8)}/>
+  <text x="0" y="4" font-family="${FONT}" font-size="${size}" font-weight="900" fill="${fg}" text-anchor="middle" dominant-baseline="central">${label}</text></g>`;
+}
+
+function ruleBanner(label, t0, t) {
+  const p = eo((t - t0) / 0.35);
+  if (p <= 0) return '';
+  const w = label.length * 25 + 80;
+  return `<g transform="translate(540,${250 - (1 - p) * 120})" filter="url(#dsh)"><rect x="${-w / 2}" y="-38" width="${w}" height="76" rx="38" fill="#1a1d24" ${ink(6)}/>
+  <text x="0" y="2" font-family="${FONT}" font-size="38" font-weight="900" fill="#f4b41a" text-anchor="middle" dominant-baseline="central">${label}</text></g>`;
+}
+
+function lapMap(x, y, laps, t, running) {
+  const a = running ? t * 3.2 : -Math.PI / 2;
+  return `<g transform="translate(${x},${y})" filter="url(#dsh)"><rect x="-140" y="-100" width="280" height="200" rx="34" fill="#1a1d24" ${ink(6)}/>
+  <ellipse cx="0" cy="-12" rx="92" ry="50" fill="#1b8a44" stroke="#d9572b" stroke-width="18"/>
+  <circle cx="${Math.cos(a) * 92}" cy="${-12 + Math.sin(a) * 50}" r="13" fill="${Y}" ${ink(5)}/>
+  <text x="0" y="70" font-family="${FONT}" font-size="36" font-weight="900" fill="#f4b41a" text-anchor="middle" dominant-baseline="central">LAPS ${laps}</text></g>`;
+}
+
+function comicBall(x, y, r, rot = 0) {
+  return `<g transform="translate(${x},${y})"><circle r="${r + 3}" fill="${INK}"/>${soccerBall(0, 0, r, rot)}</g>`;
+}
+
+function comicHead(x, y, L, expr, blink) {
+  // wide pill-shaped bobblehead, 2-tone cel shading
+  let s = `<g transform="translate(${x},${y})">
+  <ellipse cx="-66" cy="10" rx="13" ry="18" fill="${L.skin}" ${ink(7)}/><ellipse cx="66" cy="10" rx="13" ry="18" fill="${L.skinD}" ${ink(7)}/>
+  <rect x="-68" y="-62" width="136" height="128" rx="62" fill="${L.skin}" ${ink(8)}/>
+  <path d="M30,-58 Q68,-50 68,0 Q68,58 20,66 Q52,40 52,0 Q52,-40 30,-58Z" fill="${L.skinD}"/>
+  <rect x="-68" y="-62" width="136" height="128" rx="62" fill="none" ${ink(8)}/>`;
+  // hair: geometric block with zig-zag edge
+  let zig = '';
+  for (let i = 0; i <= 10; i++) zig += ` L${-62 + i * 12.4},${-30 + (i % 2 ? -10 : 4)}`;
+  if (L.curly) {
+    s += `<path d="M-66,-24 Q-70,-78 0,-80 Q70,-78 66,-24 Z" fill="${L.hair}" ${ink(7)}/>`;
+    for (let i = 0; i < 9; i++) s += `<circle cx="${-56 + i * 14}" cy="${-62 - (i % 2) * 8}" r="13" fill="${L.hair}" ${ink(4)}/>`;
+  } else s += `<path d="M-66,-20 Q-70,-76 0,-78 Q70,-76 66,-20${zig.replace(/^ L[^ ]+/, '')} Z" fill="${L.hair}" ${ink(7)}/>`;
+  if (L.band) s += `<rect x="-69" y="-40" width="138" height="22" rx="4" fill="${L.band}" ${ink(6)}/><path d="M-69,-29 H69" stroke="#fff" stroke-width="3" opacity=".5"/>`;
+  const ey = 6;
+  if (blink || expr === 'tired') s += `<path d="M-38,${ey} q14,6 28,0 M10,${ey} q14,6 28,0" ${ink(6)} fill="none"/>`;
+  else {
+    s += `<path d="M-42,${ey} Q-25,${ey - 18} -8,${ey} Q-25,${ey + 14} -42,${ey}Z" fill="#fff" ${ink(5)}/><path d="M8,${ey} Q25,${ey - 18} 42,${ey} Q25,${ey + 14} 8,${ey}Z" fill="#fff" ${ink(5)}/>
+    <circle cx="-23" cy="${ey + 1}" r="6.5" fill="${INK}"/><circle cx="27" cy="${ey + 1}" r="6.5" fill="${INK}"/>`;
+    if (expr === 'focus' || expr === 'det') s += `<path d="M-44,${ey - 6} Q-25,${ey - 12} -6,${ey - 6} M6,${ey - 6} Q25,${ey - 12} 44,${ey - 6}" stroke="${L.skin}" stroke-width="7" fill="none"/><path d="M-44,${ey - 4} H-6 M6,${ey - 4} H44" ${ink(4)}/>`;
+  }
+  const brow = { det: 'M-44,-16 L-10,-10 M10,-10 L44,-16', focus: 'M-44,-14 L-10,-12 M10,-12 L44,-14', happy: 'M-42,-18 Q-26,-26 -10,-18 M10,-18 Q26,-26 42,-18', sad: 'M-42,-10 L-10,-18 M10,-18 L42,-10', tired: 'M-42,-10 L-10,-16 M10,-16 L42,-10' }[expr] || 'M-42,-14 L-10,-14 M10,-14 L42,-14';
+  if (!L.band || true) s += `<path d="${brow}" ${ink(7)} fill="none"/>`;
+  s += `<path d="M-3,22 q-3,6 4,7" ${ink(4)} fill="none"/>`;
+  s += {
+    det: `<path d="M-16,42 Q0,48 18,38" ${ink(6)} fill="none"/>`,
+    focus: `<path d="M-12,44 H12" ${ink(6)}/>`,
+    happy: `<path d="M-24,36 H24 L16,56 H-16Z" fill="#6b1d12" ${ink(6)}/><path d="M-20,38 H20" stroke="#fff" stroke-width="6"/>`,
+    sad: `<path d="M-16,48 Q0,38 16,48" ${ink(6)} fill="none"/>`,
+    tired: `<ellipse cx="0" cy="46" rx="13" ry="10" fill="#6b1d12" ${ink(5)}/>`,
+  }[expr] || `<path d="M-12,44 H12" ${ink(6)}/>`;
+  if (expr === 'tired') s += `<path d="M76,-20 q9,15 0,22 q-9,-7 0,-22Z" fill="#7fd3ff" ${ink(3)}/><path d="M-82,0 q9,15 0,22 q-9,-7 0,-22Z" fill="#7fd3ff" ${ink(3)}/>`;
+  return s + '</g>';
+}
+
+function athlete(x, y, s, who, ps, t, face = 1, blink = false) {
+  const L = LOOKS[who];
+  const hip = [0, -118 + ps.hipY * 0.6];
+  const sh = P(hip[0], hip[1], 180 - ps.lean, 92);
+  const head = P(sh[0], sh[1], 180 - ps.lean * 0.5, 74);
+  const limb = (a, b, w, col, colD) => `<path d="M${a[0]},${a[1]} L${b[0]},${b[1]}" stroke="${INK}" stroke-width="${w + 9}" stroke-linecap="round"/><path d="M${a[0]},${a[1]} L${b[0]},${b[1]}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/><path d="M${a[0] + w * 0.22},${a[1]} L${b[0] + w * 0.22},${b[1]}" stroke="${colD}" stroke-width="${w * 0.35}" stroke-linecap="round"/>`;
+  const leg = (tA, sA, col, colD, shoe) => {
+    const kn = P(hip[0], hip[1], tA, 60), ft = P(kn[0], kn[1], sA, 56), toe = P(ft[0], ft[1], sA + 90, 18);
+    return limb(hip, kn, 36, col, colD) + limb(kn, ft, 32, col, colD) + `<path d="M${ft[0]},${ft[1]} L${toe[0]},${toe[1]}" stroke="${INK}" stroke-width="34" stroke-linecap="round"/><path d="M${ft[0]},${ft[1]} L${toe[0]},${toe[1]}" stroke="${shoe}" stroke-width="24" stroke-linecap="round"/>`;
+  };
+  const arm = (aA, fA, col, colD) => {
+    const el = P(sh[0], sh[1], aA, 46), hd = P(el[0], el[1], fA, 42);
+    return limb(sh, el, 26, col, colD) + limb(el, hd, 22, col, colD) + `<ellipse cx="${hd[0]}" cy="${hd[1]}" rx="16" ry="14" fill="${L.skin}" ${ink(6)}/>`;
+  };
+  s = s * 1.45;
+  let g = `<g transform="translate(${x},${y}) scale(${s * face},${s})">
+  <ellipse cx="${10 * face}" cy="6" rx="${78 + Math.abs(ps.hipY) * 0.6}" ry="14" fill="#0a1432" opacity=".4"/>`;
+  g += arm(ps.aR, ps.fR, L.topD, L.topD) + leg(ps.tR, ps.sR, L.pantsD, L.pantsD, L.shoe);
+  const tw = 46;
+  g += `<path d="M${hip[0] - tw * 0.85},${hip[1] + 12} L${sh[0] - tw},${sh[1] + 4} Q${sh[0]},${sh[1] - 16} ${sh[0] + tw},${sh[1] + 4} L${hip[0] + tw * 0.85},${hip[1] + 12} Z" fill="${L.top}" ${ink(8)}/>
+  <path d="M${sh[0] + tw * 0.25},${sh[1] - 2} Q${sh[0] + tw},${sh[1] + 4} ${sh[0] + tw},${sh[1] + 6} L${hip[0] + tw * 0.85},${hip[1] + 12} L${hip[0] + tw * 0.3},${hip[1] + 12}Z" fill="${L.topD}"/>
+  <path d="M${hip[0] - tw * 0.85},${hip[1] + 12} L${sh[0] - tw},${sh[1] + 4} Q${sh[0]},${sh[1] - 16} ${sh[0] + tw},${sh[1] + 4} L${hip[0] + tw * 0.85},${hip[1] + 12} Z" fill="none" ${ink(8)}/>`;
+  g += leg(ps.tL, ps.sL, L.pants, L.pantsD, L.shoe);
+  g += comicHead(head[0], head[1] - 18, L, ps.expr, blink);
+  g += arm(ps.aL, ps.fL, L.top, L.topD);
+  return g + '</g>';
+}
+
+function comicPitch(t, opt = {}) {
+  const horizon = opt.horizon || 980, scroll = opt.scroll || 0;
+  let s = `<rect width="${W}" height="${H}" fill="url(#cSunset)"/><circle cx="830" cy="${horizon - 520}" r="110" fill="#ffd27a" opacity=".85"/>`;
+  // background wall + fence, softly blurred for depth
+  s += `<g filter="url(#bg2)"><g transform="translate(${-((scroll * 0.25) % 160)},0)">
+    <rect x="-200" y="${horizon - 520}" width="1600" height="300" fill="#c84b18" stroke="${INK}" stroke-width="6"/>`;
+  for (let r = 0; r < 7; r++) for (let c = -2; c < 22; c++) s += `<rect x="${c * 80 + (r % 2) * 40 - 200}" y="${horizon - 520 + r * 43}" width="76" height="39" fill="${(r * 3 + c) % 5 ? '#d95b26' : '#b8441a'}"/>`;
+  for (const k of [0, 640]) s += `<rect x="${k + 60}" y="${horizon - 480}" width="150" height="100" fill="#2b3a5c" stroke="#2b1408" stroke-width="10"/><rect x="${k + 330}" y="${horizon - 480}" width="150" height="100" fill="#2b3a5c" stroke="#2b1408" stroke-width="10"/>`;
+  s += `</g>
+    <rect y="${horizon - 220}" width="${W}" height="220" fill="#1f2438" opacity=".25"/>`;
+  s += `<g stroke="#1f2438" stroke-width="5" opacity=".85">`;
+  for (let i = -20; i < 40; i++) { const x = i * 44 - (scroll * 0.6 % 44); s += `<path d="M${x},${horizon - 240} L${x + 240},${horizon}"/><path d="M${x + 240},${horizon - 240} L${x},${horizon}"/>`; }
+  s += `</g><rect y="${horizon - 246}" width="${W}" height="14" fill="#1f2438"/></g>`;
+  // floor: blue surround, green pitch, white lines
+  s += `<rect y="${horizon}" width="${W}" height="${H - horizon}" fill="#0f4c81" stroke="${INK}" stroke-width="6"/>
+  <polygon points="-40,${horizon + 40} 1120,${horizon + 40} 1260,${H} -180,${H}" fill="#1b8a44"/>`;
+  for (let i = -3; i < 12; i++) { const x = i * 150 - (scroll % 300); s += `<polygon points="${x},${horizon + 40} ${x + 75},${horizon + 40} ${x + 75 + (x - 540) * 0.25},${H} ${x + (x - 540) * 0.25},${H}" fill="#239b56"/>`; }
+  s += `<path d="M-40,${horizon + 40} H1120" stroke="#fff" stroke-width="8"/><ellipse cx="${540 - (scroll % 2160) * 0}" cy="${horizon + 420}" rx="260" ry="90" fill="none" stroke="#fff" stroke-width="8" opacity=".9"/>`;
+  return s;
+}
+
+function chromeComic(t) {
+  const up = TL.find(x => x.scene === 'upgrade');
+  let ovr = EP.ovrBefore ?? 15;
+  if (up) { const a = kwN(up, 'seventeen'); if (t > a) ovr = EP.ovrAfter; }
+  const pill = (x, label, val, hi) => `<g transform="translate(${x},96)" filter="url(#dsh)"><rect x="-150" y="-44" width="300" height="88" rx="22" fill="#1a1d24" ${ink(6)}/>
+    <text x="-125" y="0" font-family="${FONT}" font-size="28" font-weight="800" fill="#c9ced9" dominant-baseline="central">${label}</text>
+    <text x="125" y="2" font-family="${FONT}" font-size="54" font-weight="900" fill="${hi ? '#2ecc71' : '#f4b41a'}" text-anchor="end" dominant-baseline="central">${val}</text></g>`;
+  return pill(370, 'DAYS LEFT', 30 - EP.day, false) + pill(710, 'OVERALL', ovr, ovr > (EP.ovrBefore ?? 15));
+}
