@@ -483,7 +483,7 @@ function sCta3(t, seg) {
 
 function sSubs25(t, seg) {
   const lt = t - seg.t0, tHit = kw(seg, 'followers'), tThx = kw(seg, 'Thank');
-  const n = Math.round(25 * eo(clamp((t - kw(seg, 'hit')) / 0.9)));
+  const n = Math.round((EP.followers || 25) * eo(clamp((t - kw(seg, 'hit')) / 0.9)));
   let s = COMIC_DEFS + `${bgRect('cGreen')}` + speedLines(540, 720, t, '#fff', .35);
   let hearts = '';
   for (let i = 0; i < 12; i++) {
@@ -493,8 +493,8 @@ function sSubs25(t, seg) {
   s += hearts;
   const pop = t > tHit ? 1 + 0.2 * (1 - eo((t - tHit) / 0.35)) : 1;
   s += `<g transform="translate(540,560) scale(${pop})">${ctext(0, 0, n, 300, Y)}</g>${ctext(540, 780, 'FOLLOWERS', 110, '#fff')}`;
-  s += captionBox(540, 330, 'BEFORE WE START…', seg.t0, t, '#fff');
-  s += burst(540, 1080, 'THANK YOU!! 🙏', 92, RED, tThx, t, -6, 16);
+  s += captionBox(540, 330, EP.followersCaption || 'BEFORE WE START…', seg.t0, t, '#fff');
+  if (kwN(seg, 'thank') < 1e9) s += burst(540, 1080, 'THANK YOU!! 🙏', 92, RED, tThx, t, -6, 16);
   s += athlete(540, 1720, 1.05, 'marcus', pose(t > tHit ? 'celebrate' : 'idle', t), t, 1, blinking(t));
   return s + (t > tHit ? confetti(t, tHit, 540, 560, 110) : '') + halftoneFX();
 }
@@ -682,3 +682,84 @@ function cam3d(t, seg) {
     default: return { cam: 'wide', t, blur: true };
   }
 }
+
+
+// ===================================================================== 50-FOLLOWER TEASER
+function sRide(t, seg) {
+  const tNow = kw(seg, 'fifty'), tThx = kw(seg, 'Thank');
+  let s = COMIC_DEFS + bgRect('cDusk');
+  const p1 = eb((t - seg.t0) / 0.45), p2 = eb((t - tNow) / 0.45);
+  if (p1 > 0) s += `<g transform="translate(540,420) scale(${p1}) rotate(-3)" filter="url(#dsh)"><rect x="-330" y="-120" width="660" height="240" rx="40" fill="#1a1d24" ${ink(8)}/>
+    <text x="0" y="-55" font-family="${FONT}" font-size="40" font-weight="800" fill="#c9ced9" text-anchor="middle" dominant-baseline="central">DAY 1</text>${ctext(0, 30, 'KICKED OUT · $47', 74, '#ff6b5e')}</g>`;
+  if (p2 > 0) s += `<g transform="translate(540,760)">${ctext(0, 0, '⬇', 90, '#fff')}</g><g transform="translate(540,1050) scale(${p2}) rotate(2)" filter="url(#dsh)"><rect x="-360" y="-130" width="720" height="260" rx="44" fill="#2ecc71" ${ink(8)}/>
+    <text x="0" y="-60" font-family="${FONT}" font-size="40" font-weight="800" fill="#0b3d20" text-anchor="middle" dominant-baseline="central">TODAY</text>${ctext(0, 30, '50 OF YOU 🙌', 84, '#fff')}</g>`;
+  s += athlete(880, 1760, 0.85, 'marcus', pose(t > tThx ? 'celebrate' : 'idle', t), t, -1, blinking(t));
+  s += burst(540, 1380, 'THANK YOU!! 🙏', 84, RED, tThx, t, -5);
+  return s + (t > tThx ? confetti(t, tThx, 540, 1300, 70) : '');
+}
+
+function jersey(x, y, sc, t) {
+  return `<g transform="translate(${x},${y}) scale(${sc})" filter="url(#dsh)">
+  <path d="M-150,-170 L-60,-200 Q0,-160 60,-200 L150,-170 L230,-60 L160,0 L130,-40 L130,200 L-130,200 L-130,-40 L-160,0 L-230,-60Z" fill="#f4f4f4" ${ink(10)}/>
+  <path d="M-130,-40 L-130,200 L-60,200 L-60,-190 L-150,-170Z" fill="#d9d9d9"/>
+  <path d="M-150,-170 L-60,-200 Q0,-160 60,-200 L150,-170 L230,-60 L160,0 L130,-40 L130,200 L-130,200 L-130,-40 L-160,0 L-230,-60Z" fill="none" ${ink(10)}/>
+  <path d="M-60,-200 Q0,-150 60,-200" fill="none" ${ink(8)}/>
+  ${ctext(0, 40, '?', 220, '#1a1d24')}
+  <rect x="-160" y="-110" width="320" height="300" fill="url(#ht)" opacity=".0"/></g>`;
+}
+
+function sNews(t, seg) {
+  const t8 = kwN(seg, 'eight'), tTeam = kw(seg, 'special');
+  let s = COMIC_DEFS + bgRect('cBlue');
+  const p = eo((t - seg.t0) / 0.35);
+  s += `<g transform="translate(${-1080 * (1 - p)},0)"><rect x="0" y="240" width="1080" height="120" fill="${RED}" ${ink(8)}/>
+    <text x="540" y="302" font-family="${FONT}" font-size="64" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="central">🚨 BREAKING NEWS 🚨</text></g>`;
+  s += burst(540, 520, 'DAY 8', 130, Y, t8, t, -4);
+  if (t > tTeam - 0.2) s += jersey(540, 1050, eb((t - tTeam + 0.2) / 0.5), t) + sparkles(540, 1000, t, tTeam, 7, 330);
+  s += captionBox(540, 1400, 'SPECIAL TEAM', tTeam + 0.3, t, '#fff', '#111', 64);
+  s += athlete(880, 1760, 0.75, 'marcus', pose(t > tTeam ? 'celebrate' : 'idle', t), t, -1);
+  return s;
+}
+
+function sLegend(t, seg) {
+  const lt = t - seg.t0, tL = kw(seg, 'legend');
+  const flick = 0.85 + 0.15 * Math.sin(t * 23) * Math.sin(t * 7);
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#06070d" opacity=".88"/>`;
+  s += `<defs><radialGradient id="spotL" cx=".5" cy=".2" r=".9"><stop offset="0" stop-color="#fff6d0" stop-opacity="${0.55 * flick}"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient>
+  <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6d0" stop-opacity="${0.45 * flick}"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0.05"/></linearGradient></defs>
+  <polygon points="470,0 610,0 900,1760 180,1760" fill="url(#beam)"/><ellipse cx="540" cy="1760" rx="360" ry="60" fill="url(#spotL)"/>`;
+  // generic mystery silhouette (no identifying details)
+  const sp = eo(lt / 1.2), y = 1760;
+  s += `<g opacity="${sp}" transform="translate(540,${y}) scale(1.35)">
+    <ellipse cx="0" cy="0" rx="120" ry="18" fill="#000" opacity=".6"/>
+    <path d="M-30,-6 L-40,-150 L-10,-150 L-4,-6Z M30,-6 L40,-150 L10,-150 L4,-6Z" fill="#0b0b12"/>
+    <path d="M-62,-150 L-70,-300 Q0,-330 70,-300 L62,-150Z" fill="#0b0b12"/>
+    <path d="M-70,-295 L-130,-200 L-110,-190 L-60,-260Z M70,-295 L130,-200 L110,-190 L60,-260Z" fill="#0b0b12"/>
+    <rect x="-16" y="-340" width="32" height="40" fill="#0b0b12"/>
+    <rect x="-66" y="-470" width="132" height="130" rx="60" fill="#0b0b12"/>
+    <path d="M-70,-300 Q0,-330 70,-300 M-66,-470 Q0,-500 66,-470" stroke="#8e7cff" stroke-width="6" fill="none" opacity="${0.7 * flick}"/>
+  </g>`;
+  s += `<g opacity="${eo((t - tL) / 0.4)}">${ctext(540, 760, '???', 220, Y)}</g>`;
+  s += burst(540, 420, 'A LEGEND', 100, '#7c4dff', tL, t, -4);
+  s += sparkles(540, 1300, t, tL + 0.2, 8, 380, '#ffe082');
+  return s;
+}
+
+function sGuess(t, seg) {
+  const lt = t - seg.t0;
+  let s = COMIC_DEFS + bgRect('cPop');
+  s += ctext(540, 330, 'WHO IS IT? 👀', 110, '#fff');
+  s += commentCard(540, 470, 940, { handle: '@you', text: 'my guess for the legend is…', likes: '', ago: 'now', color: '#7c4dff' }, seg.t0 + 0.2, t);
+  const t8 = kwN(seg, 'eight');
+  s += burst(540, 1050, 'DAY 8 🔥', 130, '#1a1d24', t8, t, -4);
+  s += captionBox(540, 1330, 'DON’T MISS IT', kw(seg, 'miss'), t, Y, '#111', 60);
+  s += athlete(180, 1760, 0.8, 'marcus', pose('celebrate', t), t, 1);
+  return s;
+}
+
+Object.assign(SCENES, { ride: sRide, news: sNews, legend: sLegend, guess: sGuess });
+const _cam3d_prev = cam3d;
+cam3d = function (t, seg) {
+  if (seg.scene === 'legend') return { cam: 'wide', t, blur: true };
+  return _cam3d_prev(t, seg);
+};

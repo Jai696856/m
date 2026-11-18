@@ -1,0 +1,17 @@
+{
+  "day": 3,
+  "title": "50 Followers + Day 8 Teaser",
+  "style": "comic",
+  "render3d": true,
+  "followers": 50,
+  "followersCaption": "WE DID IT!",
+  "ovrBefore": 17,
+  "words_file": "audio/thanks-50.words.json",
+  "chunks": [
+    {"scene": "subs25", "text": "Fifty followers!"},
+    {"scene": "ride", "text": "Yo... a few days ago I got kicked out with forty-seven dollars. Now there's fifty of you riding with me. Thank you. For real."},
+    {"scene": "news", "text": "And because you showed up... I've got news. On Day eight... I'm playing for a special team."},
+    {"scene": "legend", "text": "And I'm gonna meet... a legend."},
+    {"scene": "guess", "text": "Who is it? Drop your guesses in the comments. Day eight. Don't miss it."}
+  ]
+}
