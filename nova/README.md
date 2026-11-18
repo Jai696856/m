@@ -4,7 +4,8 @@ A retro reasoning engine that runs entirely in one web page (`index.html`). It d
 
 Why not Google? Google doesn't let web pages call its search directly, and its search API needs a private key. Putting a key in a public page would let anyone copy and misuse it.
 
-- **Three models:** BLANK starts knowing nothing. SCHOLAR has a knowledge pack of about 4,500 facts and shows its reasoning. MINI gives quick answers from facts it knows directly.
+- **Three models:** BLANK starts knowing nothing. SCHOLAR and MINI come pre-loaded. SCHOLAR shows its reasoning; MINI gives quick answers from facts it knows directly.
+- **Studied Wikipedia ahead of time:** about 24,000 facts on 6,450 topics, collected from Wikidata (the database behind Wikipedia) and built into the page, so they work offline and on claude.ai. They cover about 1,900 famous people, every country (population, area, leaders, languages, currency), about 900 large cities, 1,200 animals, films, books, paintings, video games, albums, companies, mountains, volcanoes, rivers, lakes, islands, seas and everyday things. Together with a hand-made pack of about 4,500 facts, NOVA can reason out roughly 110,000 more answers.
 - **Reasoning:** it chains facts together ("a tarantula is an arachnid" + "an arachnid has 8 legs"), compares things, and solves math and equations step by step.
 - **Teach it:** type plain sentences like `cats are animals` or `x = 5`.
 - **Read & Learn:** paste a paragraph and it pulls out the facts by itself.
