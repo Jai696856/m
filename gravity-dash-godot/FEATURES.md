@@ -137,6 +137,14 @@ recognise, rebuilt with my own designs and names.
   One press flips both, and if either one crashes the run is over. A blue portal merges you back into one.
   Dual sections appear in Double Back, Flipside, Glass Reactor, Hyperloop, the Demon levels, the featured
   level Double Trouble, and in any Forge level with "Dual" switched on.
+- **Three new modes**, each entered through its own portal (a green portal turns you back into a cube):
+  - **Jet** (pink portal): hold to thrust up, let go to fall. Fly through the gaps between pillars.
+  - **Wave** (teal portal): a dart that rises diagonally while you hold and sinks when you let go.
+  - **Hopper** (orange portal): a little saucer. Every tap is a jump, even in mid-air.
+  New levels: Hop Scotch, Jetstream and Signal Wave (now 33 main levels), the Modes Pack, and the featured
+  level Three Ways with all three. Modes also appear in the Demon levels and can be switched on in the Forge.
+- **Bigger, easier yellow orbs**: about 30% bigger, with a much wider reach, a halo that lights up white when a tap
+  would work, and a short grace period so a slightly late tap still counts.
 - **Sound fixes for browsers and iPhone**: sound turns on with your first tap, a "Tap for sound" note shows
   until it does, and the game asks iOS to play it even when the silent switch is on.
 

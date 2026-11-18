@@ -647,7 +647,7 @@ func show_packs() -> void:
 		var done := 0
 		var names := PackedStringArray()
 		for li in pk.levels:
-			var p := Levels.main_params(int(li))
+			var p := Levels.main_params(Levels.main_index(str(li)))
 			names.append(str(p.name))
 			if Save.is_done(p.key):
 				done += 1
@@ -660,8 +660,9 @@ func show_packs() -> void:
 		var reward := int(pk.shards)
 		var first_left := -1
 		for li in pk.levels:
-			if not Save.is_done(Levels.main_params(int(li)).key):
-				first_left = int(li)
+			var ii := Levels.main_index(str(li))
+			if not Save.is_done(Levels.main_params(ii).key):
+				first_left = ii
 				break
 		if Save.claimed(id):
 			h.add_child(m.label("Claimed", 22, Color("8ee53f"), 6))

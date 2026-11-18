@@ -14,8 +14,8 @@ const CEIL := 40.0
 const FLOOR := 360.0
 const T := 40.0
 const START_X := 720.0
-const LONG := ["bar", "ride", "switch", "steps", "orbrun", "squeeze", "dual"]
-const ALL_MECH := ["saw", "orb", "pad", "portal", "speed", "mini", "dual"]
+const LONG := ["bar", "ride", "switch", "steps", "orbrun", "squeeze", "dual", "jet", "wave", "hopper"]
+const ALL_MECH := ["saw", "orb", "pad", "portal", "speed", "mini", "dual", "jet", "wave", "hopper"]
 
 const TIER_SPEED := [390.0, 430.0, 470.0, 500.0, 530.0, 560.0]
 const TIER_M := [1.25, 1.05, 0.92, 0.86, 0.8, 0.74]
@@ -34,11 +34,14 @@ const MAIN := [
 	["Orb Garden", 1, 2, 420, 26, 1.1, 1801, 0.33, 124, 43, 1, "orb"],
 	["Neon Gravity", 1, 2, 440, 28, 1.05, 419, 0.78, 128, 45, 3, "portal"],
 	["Bounce Castle", 1, 3, 430, 28, 1.05, 1907, 0.12, 130, 40, 6, "pad,portal"],
+	["Hop Scotch", 1, 3, 430, 26, 1.08, 3011, 0.1, 128, 43, 1, "hopper,pad"],
+	["Jetstream", 1, 3, 440, 26, 1.05, 3109, 0.6, 130, 41, 3, "jet,orb"],
 	["Hard Ceiling", 2, 3, 500, 34, 0.88, 101, 0.95, 144, 42, 4, "saw"],
 	["Saw Mill", 2, 3, 450, 30, 1.0, 523, 0.08, 136, 41, 2, "saw"],
 	["Tiny Planet", 2, 3, 450, 28, 1.0, 2003, 0.5, 134, 45, 0, "mini,saw"],
 	["Flipside", 2, 4, 470, 30, 0.95, 631, 0.45, 138, 44, 5, "saw,portal,dual"],
 	["Turbo Lane", 2, 4, 470, 30, 0.95, 2111, 0.15, 150, 42, 3, "speed,pad"],
+	["Signal Wave", 2, 4, 470, 30, 0.95, 3203, 0.42, 142, 44, 5, "wave,saw"],
 	["Static Drift", 3, 5, 480, 32, 0.92, 733, 0.66, 140, 39, 4, "saw,pad,speed"],
 	["Copper Sky", 3, 5, 480, 32, 0.92, 2213, 0.07, 138, 41, 2, "saw,orb,mini"],
 	["Zero G", 3, 6, 490, 34, 0.9, 839, 0.53, 140, 46, 0, "orb,saw"],
@@ -68,23 +71,31 @@ const TRIALS := [
 
 const FEATURED := [
 	["Sugar Rush", 1, 0.93, "pad"], ["Deep Freeze", 2, 0.55, "saw,orb"], ["Brass Engine", 2, 0.09, "speed,saw"],
-	["Night Market", 3, 0.75, "pad,portal"], ["Coral Drift", 3, 0.47, "orb,mini"], ["Thunderhead", 4, 0.62, "all"],
+	["Night Market", 3, 0.75, "pad,portal"], ["Three Ways", 2, 0.3, "jet,wave,hopper"], ["Coral Drift", 3, 0.47, "orb,mini"], ["Thunderhead", 4, 0.62, "all"],
 	["Lantern Path", 1, 0.1, "orb"], ["Black Hole Sun", 5, 0.02, "all"], ["Double Trouble", 2, 0.4, "dual,pad"],
 ]
 
 ## Packs of main levels. Beat every level in a pack for its reward.
 const PACKS := [
-	{"name": "Starter Pack", "levels": [0, 1, 2, 3], "shards": 150, "hue": 0.55},
-	{"name": "Bounce Pack", "levels": [4, 5, 6], "shards": 200, "hue": 0.12},
-	{"name": "Blade Pack", "levels": [7, 8, 10], "shards": 300, "hue": 0.02},
-	{"name": "Velocity Pack", "levels": [11, 12, 16], "shards": 400, "hue": 0.15},
-	{"name": "Orbit Pack", "levels": [14, 15, 19], "shards": 500, "hue": 0.6},
-	{"name": "Dark Pack", "levels": [24, 25, 26], "shards": 900, "hue": 0.78},
+	{"name": "Starter Pack", "levels": ["Lift Off", "Polar Shift", "Double Back", "Upside Town"], "shards": 150, "hue": 0.55},
+	{"name": "Bounce Pack", "levels": ["Orb Garden", "Neon Gravity", "Bounce Castle"], "shards": 200, "hue": 0.12},
+	{"name": "Modes Pack", "levels": ["Hop Scotch", "Jetstream", "Signal Wave"], "shards": 250, "hue": 0.4},
+	{"name": "Blade Pack", "levels": ["Hard Ceiling", "Saw Mill", "Flipside"], "shards": 300, "hue": 0.02},
+	{"name": "Velocity Pack", "levels": ["Turbo Lane", "Static Drift", "Glass Reactor"], "shards": 400, "hue": 0.15},
+	{"name": "Orbit Pack", "levels": ["Zero G", "Pendulum", "Magnetar"], "shards": 500, "hue": 0.6},
+	{"name": "Dark Pack", "levels": ["Antimatter", "Singularity", "Nullspace"], "shards": 900, "hue": 0.78},
 ]
+
+
+static func main_index(name: String) -> int:
+	for i in MAIN.size():
+		if MAIN[i][0] == name:
+			return i
+	return 0
 
 ## The first layout attempt that the solver can finish, per fixed level (filled in by tools/check_levels.gd --offsets).
 ## Only a speed-up: build_verified() still checks and keeps searching if a layout changes.
-const OFFSETS := {"main:antimatter": 1, "main:final-fall": 1, "main:singularity": 1, "trial:2:2": 1}
+const OFFSETS := {"main:antimatter": 1, "main:final-fall": 4, "main:singularity": 1, "trial:2:2": 1}
 
 const WORDS_A := ["Neon", "Pulse", "Hyper", "Velvet", "Echo", "Prism", "Quantum", "Lunar", "Solar", "Crystal",
 	"Shadow", "Nova", "Glitch", "Cobalt", "Ember", "Frost", "Zenith", "Orbit", "Paper", "Rocket"]
@@ -253,7 +264,7 @@ static func build(p: Dictionary, seed_offset := 0) -> Dictionary:
 			kind = "squeeze"
 		else:
 			kind = pool[rng.randi_range(0, pool.size() - 1)]
-			while (kind == last and kind in LONG) or (kind == "dual" and mini):
+			while (kind == last and kind in LONG) or (kind in ["dual", "jet", "wave", "hopper"] and mini):
 				kind = pool[rng.randi_range(0, pool.size() - 1)]
 		last = kind
 		x += _chunk(kind, x, o, rng, v, m, tier)
@@ -277,8 +288,18 @@ static func build_verified(p: Dictionary) -> Dictionary:
 	var lv: Dictionary = {}
 	var first: int = OFFSETS.get(p.key, 0)
 	for attempt in range(first, first + 12):
-		lv = build(p, attempt)
-		var r: Dictionary = Sim.solve(lv, 1500000)
+		var q := p
+		if attempt >= 2 and str(p.mech) != "":
+			# After two failed layouts, leave the jet, wave and hopper sections out: the rest is quick to verify.
+			q = p.duplicate()
+			var keep := []
+			for mm in _mech(p):
+				if not mm in ["jet", "wave", "hopper"]:
+					keep.append(mm)
+			q.mech = ",".join(keep)
+		lv = build(q, attempt)
+		lv.p = p
+		var r: Dictionary = Sim.solve(lv, 700000)
 		if r.ok:
 			lv.solution = r.path
 			lv["attempt"] = attempt
@@ -296,7 +317,8 @@ static func _place_pickups(lv: Dictionary) -> void:
 	var s = Sim.State.new()
 	var trace: Array = []
 	while not s.won and not s.dead:
-		Sim.step(s, lv, press.has(s.f))
+		var input := press.has(s.f)
+		Sim.step(s, lv, input and s.mode in ["cube", "hopper"], input and s.mode in ["jet", "wave"])
 		trace.append(Vector3(s.x + s.ps * 0.5, s.y + s.ps * 0.5, 0.0 if s.ground else 1.0))
 	var n := trace.size()
 	var coins: Array = []
@@ -336,6 +358,9 @@ static func _pool(tier: int, mech: Array) -> Array:
 		pool.append_array(["gportal", "gportal"])
 	if "dual" in mech:
 		pool.append_array(["dual", "dual"])
+	for mode in ["jet", "wave", "hopper"]:
+		if mode in mech:
+			pool.append_array([mode, mode])
 	return pool
 
 
@@ -356,7 +381,7 @@ static func _saw(o: Array, cx: float, cy: float, r: float) -> void:
 
 
 static func _orb(o: Array, cx: float, cy: float) -> void:
-	o.append({"k": 3, "x": cx - 14.0, "y": cy - 14.0, "w": 28.0, "h": 28.0, "r": 14.0, "cx": cx, "cy": cy})
+	o.append({"k": 3, "x": cx - 18.0, "y": cy - 18.0, "w": 36.0, "h": 36.0, "r": 18.0, "cx": cx, "cy": cy})
 
 
 static func _pad(o: Array, x: float, up: bool) -> void:
@@ -511,6 +536,41 @@ static func _chunk(kind: String, x: float, o: Array, rng: RandomNumberGenerator,
 			var ex := cx + _snap(v * 0.15)
 			_special(o, ex, 8, {"dual": false})
 			return ex - x + 16.0
+		"jet", "wave":
+			# Fly through a series of gates: a pillar from the floor and one from the ceiling with an opening between.
+			_special(o, x, 5, {"dir": 1})
+			_special(o, x + T, 9, {"mode": kind})
+			var jet := kind == "jet"
+			var open_h: float = maxf(110.0 if jet else 100.0, (155.0 if jet else 135.0) - tier * 8.0)
+			var spacing := _snap(v * (0.75 if jet else 0.68))
+			var n := rng.randi_range(3, mini(6, 3 + tier / 2))
+			var cx := x + T + _snap(v * 0.45)
+			var cy := 200.0
+			for i in n:
+				var reach := minf(130.0, spacing * (0.55 if jet else 0.7))
+				cy = clampf(cy + rng.randf_range(-reach, reach), CEIL + open_h * 0.5 + 20.0, FLOOR - open_h * 0.5 - 20.0)
+				var top := cy - open_h * 0.5
+				var bot := cy + open_h * 0.5
+				_block(o, cx, CEIL, 2 * T, top - CEIL)
+				_block(o, cx, bot, 2 * T, FLOOR - bot)
+				cx += 2 * T + spacing
+			_special(o, cx, 9, {"mode": "cube"})
+			return cx - x + 16.0
+		"hopper":
+			# Hop over runs of floor spikes; you can jump again in mid-air.
+			_special(o, x, 5, {"dir": 1})
+			_special(o, x + T, 9, {"mode": "hopper"})
+			var cx := x + T + _snap(v * 0.4)
+			var n := rng.randi_range(3, mini(6, 3 + tier / 2))
+			for i in n:
+				var run := rng.randi_range(2, mini(4, 2 + tier / 2))
+				for k in run:
+					_spike(o, cx + k * T, FLOOR - T, true)
+				if tier >= 2 and rng.randf() < 0.4:
+					_block(o, cx, CEIL, run * T, 80.0)
+				cx += run * T + _snap(v * 0.45)
+			_special(o, cx, 9, {"mode": "cube"})
+			return cx - x + 16.0
 		"squeeze":
 			# Only a mini cube fits under (or over) this wall.
 			var fl := rng.randf() < 0.5

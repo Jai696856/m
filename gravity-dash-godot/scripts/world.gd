@@ -16,6 +16,7 @@ const T := 40.0
 const DARK := Color(0.04, 0.024, 0.11)
 const ROSE := Color(1.0, 0.36, 0.54)
 const WIN_TEXT := "LEVEL COMPLETE!"
+const MODE_COLORS := {"cube": Color("7ee04a"), "jet": Color("ff6ad5"), "wave": Color("3dffc8"), "hopper": Color("ffa63d")}
 
 var mode := "menu"  # menu, play, paused, dead, win
 var lv: Dictionary = {}
@@ -216,10 +217,14 @@ func _physics_process(_delta: float) -> void:
 	prev = s.copy()
 	var was_ground: bool = s.ground
 	var press := pending
+	var hold := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_key_pressed(KEY_SPACE) \
+		or Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W)
 	if not autopilot.is_empty():
-		press = autopilot.has(s.f)
+		var input := autopilot.has(s.f)
+		press = input and s.mode in ["cube", "hopper"]
+		hold = input and s.mode in ["jet", "wave"]
 	pending = false
-	Sim.step(s, lv, press)
+	Sim.step(s, lv, press, hold)
 	level_time += Sim.DT
 	Save.add_stat("distance", float(lv.speed) * s.spd * Sim.DT / T)
 	if s.flipped:
@@ -240,6 +245,13 @@ func _physics_process(_delta: float) -> void:
 		"portal", "speed", "size":
 			Save.add_stat("portals", 1)
 			Audio.sfx("portal")
+		"hop":
+			Audio.sfx("flip_up")
+			_puff(s.g)
+		"mode":
+			Save.add_stat("portals", 1)
+			Audio.sfx("portal")
+			rings.append({"p": Vector2(s.x + s.ps * 0.5, s.y + s.ps * 0.5), "r": 6.0, "v": 240.0, "w": 5.0, "life": 0.4, "max": 0.4, "col": MODE_COLORS.get(s.mode, Color.WHITE)})
 		"dual":
 			Save.add_stat("portals", 1)
 			Audio.sfx("portal")
@@ -651,13 +663,20 @@ func _draw_level(pulse: float) -> void:
 				draw_circle(c, rr * 0.34, ROSE)
 				draw_circle(c, rr * 0.16, DARK)
 			3:
+				# Big yellow orb. The faint halo shows how close you need to be; it lights up when a tap would work.
 				var c := Vector2(b.cx, b.cy)
 				var on := not used.has(b.id)
 				var col := Color("ffe14d") if on else Color(1, 1, 1, 0.25)
-				draw_arc(c, 14.0 + pulse * 3.0, 0.0, TAU, 24, Color(col, 0.5), 3.0, true)
-				draw_circle(c, 11.0, DARK)
-				draw_circle(c, 8.5, col)
-				draw_circle(c + Vector2(-3, -3), 2.5, Color(1, 1, 1, 0.7))
+				var rr: float = b.r
+				var ready: bool = on and s.orb == int(b.id) and s.orb_t > 0.0
+				if on:
+					draw_circle(c, rr + Sim.ORB_REACH, Color(col, 0.22 if ready else 0.08))
+					draw_arc(c, rr + Sim.ORB_REACH, 0.0, TAU, 40, Color(Color.WHITE if ready else col, 0.6 if ready else 0.25), 2.0, true)
+				draw_arc(c, rr + 5.0 + pulse * 4.0, 0.0, TAU, 32, Color(col, 0.55), 4.0, true)
+				draw_circle(c, rr, DARK)
+				draw_circle(c, rr - 3.0, col)
+				draw_circle(c, rr * 0.45, col.lightened(0.35))
+				draw_circle(c + Vector2(-rr * 0.35, -rr * 0.35), rr * 0.22, Color(1, 1, 1, 0.75))
 			4:
 				# A big launch pad: a glowing dome on the lane with a bouncing arrow showing where it throws you.
 				var on := not used.has(b.id)
@@ -680,7 +699,7 @@ func _draw_level(pulse: float) -> void:
 					var ay := lane + dir * (34.0 + k * 13.0 + hop)
 					draw_polyline(PackedVector2Array([Vector2(cx - 11, ay - dir * 7), Vector2(cx, ay + dir * 3), Vector2(cx + 11, ay - dir * 7)]),
 						Color(col, 0.9 - k * 0.35), 4.0, true)
-			5, 6, 7, 8:
+			5, 6, 7, 8, 9:
 				_draw_portal(b)
 
 
@@ -698,6 +717,8 @@ func _draw_portal(b: Dictionary) -> void:
 			col = Color("ff7af0") if b.mini else Color("b07aff")
 		8:
 			col = Color("ff9a3d") if b.dual else Color("5ce1ff")
+		9:
+			col = MODE_COLORS.get(str(b.mode), Color.WHITE)
 	var cx: float = b.x + 8.0
 	var pts := PackedVector2Array()
 	for k in 33:
@@ -724,6 +745,17 @@ func _draw_portal(b: Dictionary) -> void:
 				draw_line(mid + Vector2(0, -12), mid + Vector2(0, 12), Color(1, 1, 1, 0.6), 2.0)
 			else:
 				draw_rect(Rect2(mid + Vector2(-7, -7), Vector2(14, 14)), col)
+		9:
+			match str(b.mode):
+				"jet":
+					draw_colored_polygon(PackedVector2Array([mid + Vector2(-10, 6), mid + Vector2(10, 0), mid + Vector2(-10, -6), mid + Vector2(-5, 0)]), col)
+				"wave":
+					draw_polyline(PackedVector2Array([mid + Vector2(-10, 6), mid + Vector2(-4, -6), mid + Vector2(3, 6), mid + Vector2(10, -6)]), col, 3.0, true)
+				"hopper":
+					draw_arc(mid + Vector2(0, 2), 8.0, PI, TAU, 12, col, 3.0, true)
+					draw_line(mid + Vector2(-11, 3), mid + Vector2(11, 3), col, 3.0)
+				_:
+					draw_rect(Rect2(mid + Vector2(-7, -7), Vector2(14, 14)), col)
 
 
 func _draw_bands(pulse: float, y_top: float, y_bot: float) -> void:
@@ -835,7 +867,11 @@ func _draw_player(ix: float, iy: float) -> void:
 		draw_circle(center, 22.0 * k * ps / 30.0, Color(c1, 0.16))
 	var sq := squash * 0.22
 	var scl := ps / 30.0
-	Skins.draw_icon(self, _screen(center), spin, Vector2(sc * k * scl * (1.0 + sq), sc * k * scl * (1.0 - sq)), Save.icon(), c1, c2)
+	var vehicle: String = s.mode if mode in ["play", "paused", "win"] else "cube"
+	if vehicle == "cube":
+		Skins.draw_icon(self, _screen(center), spin, Vector2(sc * k * scl * (1.0 + sq), sc * k * scl * (1.0 - sq)), Save.icon(), c1, c2)
+	else:
+		_draw_vehicle(vehicle, center, scl * k, c1, c2)
 	_tf(cam_x)
 	if s.twin != null and mode in ["play", "paused"]:
 		var tw = s.twin
@@ -858,10 +894,59 @@ func _draw_player(ix: float, iy: float) -> void:
 		var tg: float = tw.g
 		var tay := (ty - 12.0) if tg > 0.0 else (ty + ps + 12.0)
 		draw_colored_polygon(PackedVector2Array([Vector2(tc.x - 6, tay - 4 * tg), Vector2(tc.x + 6, tay - 4 * tg), Vector2(tc.x, tay + 4 * tg)]), Color(c2, 0.6))
-	if mode == "play" or mode == "menu" or mode == "paused":
+	if (mode == "play" or mode == "menu" or mode == "paused") and vehicle == "cube":
 		var ax := center.x
 		var ay := (py - 12.0) if g > 0.0 else (py + ps + 12.0)
 		draw_colored_polygon(PackedVector2Array([Vector2(ax - 6, ay - 4 * g), Vector2(ax + 6, ay - 4 * g), Vector2(ax, ay + 4 * g)]), Color(c1, 0.6))
+
+
+## The three extra modes, drawn around a small copy of your icon.
+func _draw_vehicle(v: String, center: Vector2, scl: float, c1: Color, c2: Color) -> void:
+	var gd: float = s.g
+	var tilt := clampf(atan2(float(s.vy), float(lv.speed) * float(s.spd)), -1.0, 1.0) if not lv.is_empty() else 0.0
+	match v:
+		"jet":
+			# A jet sled: your icon rides on a swept hull with a flame that lights while you hold.
+			var rot_a := tilt * 0.7
+			if s.hold and mode == "play":
+				var fl := PackedVector2Array([Vector2(-22, 4 * gd), Vector2(-40 - randf() * 10.0, 8 * gd), Vector2(-22, 12 * gd)])
+				var flame := PackedVector2Array()
+				for q in fl:
+					flame.append(center + (q * scl).rotated(rot_a))
+				draw_colored_polygon(flame, Color("ffb13d"))
+			var hull := PackedVector2Array()
+			for q in [Vector2(-24, 2), Vector2(22, 4), Vector2(28, 10), Vector2(16, 16), Vector2(-24, 14)]:
+				hull.append(center + (Vector2(q.x, q.y * gd) * scl).rotated(rot_a))
+			draw_colored_polygon(hull, c1)
+			draw_polyline(Skins.closed(hull), DARK, 3.0, true)
+			Skins.draw_icon(self, _screen(center + (Vector2(-2, -8 * gd) * scl).rotated(rot_a)), rot_a, Vector2.ONE * sc * scl * 0.6, Save.icon(), c1, c2)
+			_tf(cam_x)
+		"wave":
+			# A dart that points where you're heading, trailing a solid line.
+			if trail.size() > 1:
+				var line := PackedVector2Array()
+				for tr in trail:
+					line.append(Vector2(tr.x + tr.z * 0.5, tr.y + tr.z * 0.5))
+				line.append(center)
+				draw_polyline(line, Color(c1, 0.5), 7.0 * scl, true)
+			var dart := PackedVector2Array()
+			for q in [Vector2(18, 0), Vector2(-12, -12), Vector2(-6, 0), Vector2(-12, 12)]:
+				dart.append(center + (q * scl).rotated(tilt))
+			draw_colored_polygon(dart, c1)
+			draw_polyline(Skins.closed(dart), DARK, 3.0, true)
+			draw_circle(center + (Vector2(2, 0) * scl).rotated(tilt), 4.0 * scl, c2)
+		"hopper":
+			# A little saucer: a glass dome over your icon, with blinking lights on the rim.
+			var up := -gd
+			Skins.draw_icon(self, _screen(center + Vector2(0, -3 * gd) * scl), 0.0, Vector2.ONE * sc * scl * 0.55, Save.icon(), c1, c2)
+			_tf(cam_x)
+			draw_arc(center + Vector2(0, -2 * gd) * scl, 14.0 * scl, PI if up < 0 else 0.0, TAU if up < 0 else PI, 16, Color(Color("bdeeff"), 0.8), 2.5, true)
+			var disc := Rect2(center.x - 22 * scl, center.y + (6 * gd - 4) * scl, 44 * scl, 9 * scl)
+			draw_rect(disc.grow(2.0), DARK)
+			draw_rect(disc, c1)
+			for i in 4:
+				var on := int(t * 6.0 + i) % 2 == 0
+				draw_circle(Vector2(disc.position.x + (7 + i * 10) * scl, disc.get_center().y), 2.2 * scl, c2 if on else Color(c2, 0.3))
 
 
 ## The big letter-by-letter "LEVEL COMPLETE!" that slams in, then rises to make room for the results.

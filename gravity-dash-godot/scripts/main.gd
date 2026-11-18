@@ -672,7 +672,7 @@ func show_settings() -> void:
 			go(show_menu))
 	v.add_child(reset)
 	v.add_child(confirm)
-	var help := _label("Click, tap or Space flips. Z / X add or remove a practice checkpoint. R restarts. Esc pauses.", 17, Color(1, 1, 1, 0.6), 5)
+	var help := _label("Click, tap or Space flips. Hold to fly in jet and wave modes. Z / X add or remove a practice checkpoint. R restarts. Esc pauses.", 17, Color(1, 1, 1, 0.6), 5)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(help)
 

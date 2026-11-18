@@ -28,7 +28,9 @@ To play it online, turn on GitHub Pages for this repository (Settings, Pages, "D
 
 | | |
 |---|---|
-| Flip gravity | Left click, tap, Space, W/S or Up/Down |
+| Flip gravity (cube) | Left click, tap, Space, W/S or Up/Down |
+| Jet and wave modes | Hold to rise, let go to fall |
+| Hopper mode | Tap to jump, even in mid-air |
 | Pause / resume | Esc or P, or the pause button |
 | Restart the level | R |
 | Practice checkpoints | Z to place, X to remove (or the on-screen buttons) |
@@ -42,12 +44,13 @@ See [FEATURES.md](FEATURES.md) for the full numbered list. In short:
 
 - **Main menu**: Icon Kit, Play and Explore in the middle. Bottom left: music, sound and settings. Bottom right:
   achievements, statistics and the Market. Top right: a lock that takes secret codes.
-- **30 main levels** from Easy to Demon, each with 3 secret coins and 16 shards to collect, normal and practice
+- **33 main levels** from Easy to Demon, each with 3 secret coins and 16 shards to collect, normal and practice
   progress, and a ghost of your best run.
 - **Explore**: a grid of 15 tiles. Forge (build a level), Saved, Records, Quests, Ghost Race, Star Map, Daily,
   Weekly, Event, Trials, Featured, Chests, Paths, Packs and Search.
 - **Objects**: spikes, saws, blocks, gravity orbs, gravity pads, gravity portals, speed portals, mini portals and
-  dual portals (two mirrored cubes; one press flips both, and if either crashes you crash).
+  dual portals (two mirrored cubes; one press flips both, and if either crashes you crash), and mode portals for the
+  jet, wave and hopper.
 - **Currency**: shards (common) and prisms (rare). Earn them from levels, pickups, coins, quests, chests, paths,
   packs, trials, achievements and codes.
 - **Four shops** that unlock as you play: Cube Bazaar, Trail Studio, Sound Shack and Prism Vault.

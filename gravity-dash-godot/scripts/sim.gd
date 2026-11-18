@@ -2,7 +2,9 @@ extends RefCounted
 ## Deterministic cube physics, shared by the game and the level checker. Runs at a fixed 120 steps per second.
 ##
 ## Object kinds (k): 0 block, 1 spike, 2 saw, 3 gravity orb, 4 gravity pad,
-## 5 gravity portal, 6 speed portal, 7 size portal, 8 dual portal.
+## 5 gravity portal, 6 speed portal, 7 size portal, 8 dual portal, 9 mode portal.
+## Modes: "cube" (tap to flip gravity), "jet" (hold to thrust, release to fall),
+## "wave" (hold to rise diagonally, release to sink) and "hopper" (every tap is a jump, even in mid-air).
 ## Dual mode: a mirrored twin cube runs on the opposite lane with opposite gravity. One press flips both;
 ## if either one crashes, the run is over.
 
@@ -17,6 +19,14 @@ const BUFFER := 0.13
 const DT := 1.0 / 120.0
 const CEIL := 40.0
 const FLOOR := 360.0
+const ORB_REACH := 20.0     # how far outside an orb you can still use it
+const ORB_GRACE := 0.1      # seconds after leaving an orb that a tap still counts
+const JET_THRUST := 2500.0
+const JET_G := 1900.0
+const JET_V := 460.0
+const WAVE_SLOPE := 1.0
+const HOP_V := 820.0
+const HOP_G := 3400.0
 
 
 class State:
@@ -34,6 +44,9 @@ class State:
 	var spd := 1.0
 	var ps := 30.0
 	var orb := -1
+	var orb_t := 0.0
+	var mode := "cube"
+	var hold := false
 	var event := ""
 	var used := {}
 	var path: Array = []
@@ -56,6 +69,9 @@ class State:
 		c.spd = spd
 		c.ps = ps
 		c.orb = orb
+		c.orb_t = orb_t
+		c.mode = mode
+		c.hold = hold
 		c.event = event
 		c.used = used.duplicate()
 		c.path = path.duplicate()
@@ -108,11 +124,11 @@ static func _flip(s, kick: float, ev: String) -> void:
 	s.event = ev
 
 
-static func step(s, lv: Dictionary, press: bool) -> void:
+static func step(s, lv: Dictionary, press: bool, hold := false) -> void:
 	var o: Array = lv.objs
 	var i0 := first_idx(o, float(s.x) - float(lv.max_w) - 20.0)
 	s.x += float(lv.speed) * s.spd * DT
-	_body(s, lv, press, i0, true)
+	_body(s, lv, press, i0, true, hold)
 	if s.dead:
 		return
 	if s.twin != null:
@@ -134,20 +150,38 @@ static func step(s, lv: Dictionary, press: bool) -> void:
 
 
 ## Moves one cube vertically and checks it against everything. The primary cube also handles portals.
-static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool) -> void:
+static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool, hold := false) -> void:
 	s.flipped = false
 	s.event = ""
 	if press:
 		s.buf = BUFFER
 	if s.buf > 0.0:
-		if s.orb >= 0:
+		if s.orb >= 0 and s.orb_t > 0.0 and s.mode in ["cube", "hopper"]:
 			s.used[s.orb] = true
 			s.orb = -1
+			s.orb_t = 0.0
 			_flip(s, KICK * 1.6, "orb")
-		elif s.coy > 0.0:
+		elif s.mode == "cube" and s.coy > 0.0:
 			_flip(s, KICK, "flip")
+		elif s.mode == "hopper":
+			s.vy = -s.g * HOP_V
+			s.buf = 0.0
+			s.event = "hop"
 	s.buf -= DT
-	s.vy = clampf(s.vy + s.g * G * DT, -VMAX, VMAX)
+	s.hold = hold
+	match s.mode:
+		"jet":
+			if hold:
+				s.vy -= s.g * JET_THRUST * DT
+			else:
+				s.vy += s.g * JET_G * DT
+			s.vy = clampf(s.vy, -JET_V, JET_V)
+		"wave":
+			s.vy = (-s.g if hold else s.g) * float(lv.speed) * s.spd * WAVE_SLOPE
+		"hopper":
+			s.vy = clampf(s.vy + s.g * HOP_G * DT, -VMAX, VMAX)
+		_:
+			s.vy = clampf(s.vy + s.g * G * DT, -VMAX, VMAX)
 
 	var o: Array = lv.objs
 	var ps: float = s.ps
@@ -207,7 +241,7 @@ static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool) -> voi
 	var hx: float = px + inset
 	var hy: float = s.y + inset
 	var hw := ps - inset * 2.0
-	s.orb = -1
+	var orb_now := -1
 	i = i0
 	while i < o.size():
 		var b: Dictionary = o[i]
@@ -228,8 +262,8 @@ static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool) -> voi
 					s.dead = true
 					return
 			3:
-				if not s.used.has(b.id) and _circle_hit(b.cx, b.cy, float(b.r) + 8.0, px, s.y, ps):
-					s.orb = b.id
+				if not s.used.has(b.id) and _circle_hit(b.cx, b.cy, float(b.r) + ORB_REACH, px, s.y, ps):
+					orb_now = b.id
 			4:
 				if not s.used.has(b.id) and _hit(px, s.y - 2.0, ps + 4.0, b) and ((b.up and s.g > 0.0) or (not b.up and s.g < 0.0)):
 					s.used[b.id] = true
@@ -276,6 +310,23 @@ static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool) -> voi
 						s.twin = t
 					elif not b.dual:
 						s.twin = null
+			9:
+				if not s.used.has(b.id) and px + ps > b.x:
+					s.used[b.id] = true
+					s.event = "mode"
+					if s.mode != str(b.mode):
+						s.mode = str(b.mode)
+						s.twin = null
+						if s.mode != "cube":
+							s.vy *= 0.3
+	# Orbs stay usable for a moment after you leave them.
+	if orb_now >= 0:
+		s.orb = orb_now
+		s.orb_t = ORB_GRACE
+	else:
+		s.orb_t -= DT
+		if s.orb_t <= 0.0:
+			s.orb = -1
 
 
 static func _circle_hit(cx: float, cy: float, r: float, rx: float, ry: float, rw: float) -> bool:
@@ -294,22 +345,35 @@ static func solve(lv: Dictionary, budget := 3000000) -> Dictionary:
 	while not stack.is_empty() and n < budget:
 		var s = stack.pop_back()
 		while not s.dead and not s.won and not _can_act(s):
-			step(s, lv, false)
+			if s.hold and s.mode in ["jet", "wave"]:
+				s.path.append(s.f)
+			step(s, lv, false, s.hold and s.mode in ["jet", "wave"])
 			n += 1
 		far = maxf(far, s.x)
 		if s.won:
 			return {"ok": true, "n": n, "path": s.path, "end": lv.end}
 		if s.dead:
 			continue
-		var key := Vector4i(int(s.x / 4.0), int(s.y), int(s.g) * 2 + (1 if s.orb >= 0 else 0), (int(s.twin.y) * 4 + int(s.twin.g) + 2) if s.twin != null else -1)
+		var twin_key: int = (int(s.twin.y) * 4 + int(s.twin.g) + 2) if s.twin != null else -1
+		if s.mode != "cube":
+			twin_key = int(s.vy / 40.0) * 8 + (1 if s.hold else 0) + 100000
+		var key := Vector4i(int(s.x / 4.0), int(s.y), int(s.g) * 2 + (1 if s.orb >= 0 else 0), twin_key)
 		if seen.has(key):
 			continue
 		seen[key] = true
 		var a = s.copy()
-		a.path.append(a.f)
-		step(a, lv, true)
 		var b = s.copy()
-		step(b, lv, false)
+		if s.mode in ["jet", "wave"]:
+			# Branch on holding or releasing for the next few frames (orbs still use a tap).
+			a.hold = true
+			a.path.append(a.f)
+			step(a, lv, false, true)
+			b.hold = false
+			step(b, lv, false, false)
+		else:
+			a.path.append(a.f)
+			step(a, lv, true)
+			step(b, lv, false)
 		n += 2
 		stack.append(a)
 		stack.append(b)
@@ -317,6 +381,8 @@ static func solve(lv: Dictionary, budget := 3000000) -> Dictionary:
 
 
 static func _can_act(s) -> bool:
+	if s.mode != "cube":
+		return s.f % 6 == 0 or (s.mode == "hopper" and s.orb >= 0 and s.f % 2 == 0)
 	if (s.coy > 0.0 and s.f % 4 == 0) or (s.orb >= 0 and s.f % 2 == 0):
 		return true
 	if s.twin != null:
