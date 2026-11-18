@@ -31,27 +31,29 @@ To play it online, turn on GitHub Pages for this repository (Settings, Pages, "D
 | Flip gravity | Left click, tap, Space, W/S or Up/Down |
 | Pause / resume | Esc or P, or the pause button |
 | Restart the level | R |
+| Practice checkpoints | Z to place, X to remove (or the on-screen buttons) |
 | Level select | Left/Right arrows, Enter to play |
 
 You can only flip while touching a surface. A press slightly early or just after leaving an edge still counts.
 
 ## What's in it
 
-- **Main menu**: Icon Kit on the left, a big Play button in the middle and Stats on the right, with a cube
-  flipping along the floor behind them and the colours slowly cycling. Music and sound toggles sit bottom left.
-- **Level select**: one big card per level with a difficulty face (Easy, Normal, Hard, Harder, Insane, Demon),
-  stars, your best % on a Normal Mode bar, attempts and best time. Use the arrows to flip between levels.
-- **18 levels**: the 3 from the browser version plus 15 new ones. New hazards are spinning saws, staircases and
-  "switch" sections where you ride a block on the floor and then one on the ceiling.
-- **Level complete**: the camera stops, the cube spins into the finish gate and bursts, the screen flashes,
-  fireworks go off and **LEVEL COMPLETE!** slams in letter by letter. A results panel then drops in with your
-  attempts, flips, time, stars earned and anything you unlocked.
-- **Music**: every level has its own looping song, synthesised at start-up from the level's tempo, key and
-  scale. Harder levels get busier drums. The scenery pulses on the beat. The song restarts on every attempt.
-- **Skins**: 16 cube icons and 16 colours, each usable as the main or second colour. Most are unlocked by
-  playing: flips, attempts, crashes, stars, levels completed, or beating a level on its first attempt.
-- **Statistics**: attempts, flips, crashes, levels and stars, first-try clears, time played, distance,
-  flips per attempt and unlocks, plus a per-level list of best %, tries and completion.
+See [FEATURES.md](FEATURES.md) for the full numbered list. In short:
+
+- **Main menu**: Icon Kit, Play and Explore in the middle. Bottom left: music, sound and settings. Bottom right:
+  achievements, statistics and the Market. Top right: a lock that takes secret codes.
+- **30 main levels** from Easy to Demon, each with 3 secret coins and 16 shards to collect, normal and practice
+  progress, and a ghost of your best run.
+- **Explore**: a grid of 15 tiles. Forge (build a level), Saved, Records, Quests, Ghost Race, Star Map, Daily,
+  Weekly, Event, Trials, Featured, Chests, Paths, Packs and Search.
+- **Objects**: spikes, saws, blocks, gravity orbs, gravity pads, gravity portals, speed portals and mini portals.
+- **Currency**: shards (common) and prisms (rare). Earn them from levels, pickups, coins, quests, chests, paths,
+  packs, trials, achievements and codes.
+- **Four shops** that unlock as you play: Cube Bazaar, Trail Studio, Sound Shack and Prism Vault.
+- **Icon kit**: 40 icons, 24 colours, 8 trails, 6 crash effects and 6 menu themes.
+- **Music**: every level and menu theme has its own song, synthesised in code in one of six styles.
+- **Win animation**: the cube spins into the gate, the screen flashes, fireworks go off, "LEVEL COMPLETE!" slams in
+  letter by letter, then a results panel drops in with your rewards.
 
 Progress is saved to `user://gravity_dash_save.json`.
 
@@ -61,31 +63,36 @@ This version is **1.964739957393× harder** than the browser prototype. The cons
 `scripts/levels.gd` divides every reaction window (the gap between hazards) by that number, so you get about
 half the time to react. Levels are also faster and longer as you go up the list.
 
-Every level is built from a seed, and `tools/check_levels.gd` runs a search bot over each one to prove it
-can be finished:
+Every level is built from a seed. When a level loads, a search bot plays it, and if it can't be finished the
+layout is re-rolled. The bot's winning route is also where the secret coins and shards go.
+`tools/check_levels.gd` runs the bot over every main, trial and featured level, a week of dailies, the weekly
+and the event:
 
 ```
 godot --headless --path gravity-dash-godot -s res://tools/check_levels.gd
 ```
 
-`tools/tour.gd` clicks through every screen, plays a level to the end with the bot's recorded inputs and
-saves screenshots (it needs a display, for example `xvfb-run`):
+`tools/tour.gd` erases the save, clicks through every screen, buys from a shop, opens a chest, enters a code,
+plays a level to the end with the bot's inputs and saves screenshots (it needs a display, for example `xvfb-run`):
 
 ```
-xvfb-run godot --path gravity-dash-godot -s res://tools/tour.gd -- /tmp/shots 0
+xvfb-run godot --path gravity-dash-godot -s res://tools/tour.gd -- /tmp/shots 4
 ```
 
 ## Files
 
 | | |
 |---|---|
-| `scripts/main.gd` | Screens: menu, level select, icon kit, stats, pause and results |
-| `scripts/world.gd` | Draws and runs a level, the death burst and the win animation |
+| `scripts/main.gd` | Screen flow, main menu, level select, playing, pause, results, settings, codes |
+| `scripts/screens_hub.gd` | The Explore grid and every screen behind it |
+| `scripts/screens_shop.gd` | Icon kit, the Market and shops, jukebox, achievements, statistics |
+| `scripts/world.gd` | Draws and runs a level: scenery, objects, coins, practice, ghost, trails, crash and win effects |
 | `scripts/sim.gd` | Fixed-step physics (120 Hz) and the solver bot |
-| `scripts/levels.gd` | Level list and the chunk-based generator |
-| `scripts/skins.gd` | Icons, colours, unlock rules and difficulty faces |
+| `scripts/levels.gd` | Every level's parameters and the generator |
+| `scripts/catalog.gd` | Items, shops, achievements, quests, paths and codes |
+| `scripts/skins.gd` | Drawing for icons, difficulty faces and all symbols |
 | `scripts/synth.gd`, `scripts/audio.gd` | Music and sound synthesis and playback |
-| `scripts/save.gd` | Save data and statistics |
-| `scripts/ui/` | Buttons, the logo, level card, icon tiles and small widgets |
+| `scripts/save.gd` | Save data, wallet, stats, unlocks, quests and chests |
+| `scripts/ui/` | Buttons, tiles, the logo, level card and small widgets |
 
 The font is [Fredoka](https://fonts.google.com/specimen/Fredoka) under the SIL Open Font License (`fonts/FREDOKA-OFL.txt`).

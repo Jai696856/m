@@ -1,14 +1,16 @@
 extends Control
-## The big level card on the level select screen. Click it to play.
+## The big level card on the level select and list screens. Click it to play.
 
 signal chosen
 
 const FONT = preload("res://fonts/Fredoka-Bold.ttf")
 const Skins = preload("res://scripts/skins.gd")
+const Levels = preload("res://scripts/levels.gd")
 const DARK := Color(0.05, 0.03, 0.12)
+const MECH_NAMES := {"saw": "Saws", "orb": "Orbs", "pad": "Pads", "portal": "Portals", "speed": "Speed", "mini": "Mini"}
 
 var lv: Dictionary = {}
-var idx := 0
+var subtitle := ""
 var hover := false
 var slide := 0.0:
 	set(v):
@@ -54,9 +56,9 @@ func _gui_input(e: InputEvent) -> void:
 		accept_event()
 
 
-func set_level(l: Dictionary, i: int, dir: int) -> void:
+func set_level(l: Dictionary, dir: int, sub := "") -> void:
 	lv = l
-	idx = i
+	subtitle = sub
 	if dir != 0:
 		slide = 240.0 * dir
 		modulate.a = 0.0
@@ -77,57 +79,80 @@ static func fmt_time(sec: float) -> String:
 	return "%d:%04.1f" % [int(sec) / 60, fmod(sec, 60.0)]
 
 
+func _bar(r: Rect2, pct: int, col: Color) -> void:
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = Color(0, 0, 0, 0.5)
+	bsb.set_corner_radius_all(int(r.size.y * 0.5))
+	bsb.border_color = DARK
+	bsb.set_border_width_all(3)
+	draw_style_box(bsb, r)
+	if pct > 0:
+		var fsb := StyleBoxFlat.new()
+		fsb.bg_color = col
+		fsb.set_corner_radius_all(int(r.size.y * 0.5) - 3)
+		var fw := maxf(r.size.y - 6.0, (r.size.x - 6) * pct / 100.0)
+		draw_style_box(fsb, Rect2(r.position + Vector2(3, 3), Vector2(fw, r.size.y - 6)))
+	_text("%d%%" % pct, Vector2(r.position.x, r.position.y + r.size.y * 0.5 + 8), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+
+
 func _draw() -> void:
 	if lv.is_empty():
 		return
 	draw_set_transform(Vector2(slide, 0), 0.0, Vector2.ONE)
-	var d: Dictionary = lv.def
-	var tier: int = d.tier
+	var p: Dictionary = lv.p
+	var key: String = p.key
+	var tier: int = p.tier
 	var tc := Color(Skins.TIER_COLORS[tier])
 	var w := size.x
-	var h := size.y
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.03, 0.02, 0.09, 0.78)
-	sb.set_corner_radius_all(26)
+	sb.bg_color = Color(0.03, 0.02, 0.09, 0.8)
+	sb.set_corner_radius_all(24)
 	sb.border_color = tc if hover else tc.darkened(0.3)
-	sb.set_border_width_all(6)
-	sb.shadow_color = Color(0, 0, 0, 0.4)
-	sb.shadow_offset = Vector2(0, 8)
+	sb.set_border_width_all(5)
+	sb.shadow_color = Color(0, 0, 0, 0.35)
+	sb.shadow_offset = Vector2(0, 6)
 	draw_style_box(sb, Rect2(Vector2.ZERO, size))
 
-	Skins.draw_face(self, Vector2(135, 135), 72.0, tier)
-	_text(Skins.TIER_NAMES[tier], Vector2(35, 262), 32, tc, HORIZONTAL_ALIGNMENT_CENTER, 200)
-	_text("LEVEL %d" % (idx + 1), Vector2(260, 78), 24, Color(1, 1, 1, 0.65))
-	_text(str(d.name), Vector2(260, 140), 58, Color.WHITE)
+	Skins.draw_face(self, Vector2(125, 125), 66.0, tier)
+	_text(Skins.TIER_NAMES[tier], Vector2(25, 240), 30, tc, HORIZONTAL_ALIGNMENT_CENTER, 200)
+	_text(subtitle, Vector2(250, 66), 22, Color(1, 1, 1, 0.6))
+	_text(str(p.name), Vector2(250, 120), 52, Color.WHITE)
 
-	# Stars for beating it
-	var star_c := Vector2(w - 70, 66)
-	var st := Skins.star(star_c, 26.0, 11.0)
-	draw_colored_polygon(st, Color("ffd34d") if Save.is_done(idx) else Color(1, 1, 1, 0.25))
-	draw_polyline(Skins.closed(st), DARK, 4.0, true)
-	_text(str(d.stars), Vector2(w - 150, 78), 34, Color("ffe08a"), HORIZONTAL_ALIGNMENT_RIGHT, 50)
+	# Star reward and coins
+	Skins.symbol(self, "star", Vector2(w - 50, 56), 20.0)
+	_text(str(p.stars), Vector2(w - 140, 66), 30, Color("ffe08a"), HORIZONTAL_ALIGNMENT_RIGHT, 60)
+	var coins: Array = Save.coins_of(key)
+	for i in 3:
+		var c := Vector2(w - 140 + i * 34, 104)
+		if coins[i]:
+			Skins.symbol(self, "coin", c, 13.0)
+		else:
+			draw_circle(c, 13.0, Color(0, 0, 0, 0.4))
+			draw_arc(c, 12.0, 0, TAU, 20, Color(1, 1, 1, 0.3), 2.0, true)
 
-	# Normal mode progress bar
-	var best := Save.best(idx)
-	_text("Normal Mode", Vector2(260, 200), 22, Color(1, 1, 1, 0.7))
-	var bar := Rect2(260, 214, w - 300, 36)
-	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = Color(0, 0, 0, 0.5)
-	bsb.set_corner_radius_all(18)
-	bsb.border_color = DARK
-	bsb.set_border_width_all(4)
-	draw_style_box(bsb, bar)
-	if best > 0:
-		var fsb := StyleBoxFlat.new()
-		fsb.bg_color = tc
-		fsb.set_corner_radius_all(14)
-		var fw := maxf(28.0, (bar.size.x - 8) * best / 100.0)
-		draw_style_box(fsb, Rect2(bar.position + Vector2(4, 4), Vector2(fw, bar.size.y - 8)))
-	_text("%d%%" % best, Vector2(bar.position.x, bar.position.y + 27), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bar.size.x)
+	var best := Save.best(key)
+	var practice := int(Save.level(key).practice) if Save.has_level(key) else 0
+	_text("Normal", Vector2(250, 166), 20, Color(1, 1, 1, 0.7))
+	_bar(Rect2(340, 148, w - 380, 28), best, tc)
+	_text("Practice", Vector2(250, 206), 20, Color(1, 1, 1, 0.7))
+	_bar(Rect2(340, 188, w - 380, 28), practice, Color("7ee04a"))
 
-	var secs := int(float(lv.end) / float(lv.speed))
-	var line := "Attempts %d     Best time %s     %ds long" % [Save.level_attempts(idx), fmt_time(Save.best_time(idx)), secs]
-	_text(line, Vector2(260, 296), 21, Color(1, 1, 1, 0.75))
-	if Save.is_done(idx):
-		_text("COMPLETE", Vector2(w - 230, 140), 26, Color("8ee53f"), HORIZONTAL_ALIGNMENT_RIGHT, 200)
+	var secs: float = float(lv.end) / float(lv.speed)
+	var rec := Save.level(key) if Save.has_level(key) else {}
+	var line := "%s (%ds)     Attempts %d     Best time %s" % [Levels.length_name(secs), int(secs), int(rec.get("attempts", 0)), fmt_time(float(rec.get("time", 0.0)))]
+	_text(line, Vector2(250, 252), 19, Color(1, 1, 1, 0.75))
+	# Mechanic chips
+	var x := 250.0
+	var mech: Array = Levels._mech(p)
+	for m in mech:
+		var label: String = MECH_NAMES.get(m, m)
+		var tw := FONT.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 18
+		var chip := StyleBoxFlat.new()
+		chip.bg_color = Color(1, 1, 1, 0.12)
+		chip.set_corner_radius_all(10)
+		draw_style_box(chip, Rect2(x, 266, tw, 24))
+		draw_string(FONT, Vector2(x + 9, 284), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.85))
+		x += tw + 8
+	if Save.is_done(key):
+		_text("COMPLETE", Vector2(w - 230, 150 - 20), 22, Color("8ee53f"), HORIZONTAL_ALIGNMENT_RIGHT, 200)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

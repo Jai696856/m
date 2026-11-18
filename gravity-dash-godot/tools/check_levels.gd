@@ -1,20 +1,34 @@
 extends SceneTree
-## Proves every level can be finished.
+## Proves every main, trial and featured level (and a week of dailies) can be finished.
 ## godot --headless --path gravity-dash-godot -s res://tools/check_levels.gd
 
 func _init() -> void:
-	var Levels = load("res://scripts/levels.gd")
-	var Sim = load("res://scripts/sim.gd")
+	var L = load("res://scripts/levels.gd")
+	var params: Array = []
+	for i in L.main_count():
+		params.append(L.main_params(i))
+	for t in L.TRIALS.size():
+		for j in 3:
+			params.append(L.trial_params(t, j))
+	for i in L.FEATURED.size():
+		params.append(L.featured_params(i))
+	for d in 7:
+		params.append(L.daily_params("2026-11-%02d" % (10 + d)))
+	params.append(L.weekly_params("2026-W47"))
+	params.append(L.event_params("2026-W47"))
 	var ok := true
-	for i in Levels.DEFS.size():
-		var lv: Dictionary = Levels.build(i)
+	var offsets := {}
+	for p in params:
 		var t0 := Time.get_ticks_msec()
-		var r: Dictionary = Sim.solve(lv)
+		var lv: Dictionary = L.build_verified(p)
+		var dt := Time.get_ticks_msec() - t0
 		var secs: float = float(lv.end) / float(lv.speed)
-		print("%2d %-15s %s  %4.0fs long  %5d objects  %d flips in solution  (%d ms)" % [
-			i + 1, lv.def.name, "OK  " if r.ok else "FAIL", secs, lv.objs.size(), r.path.size(), Time.get_ticks_msec() - t0])
-		if not r.ok:
-			print("    got stuck at x=%d of %d" % [int(r.far), int(r.end)])
+		print("%-26s %-16s %s  tier %d  %3.0fs  %4d objs  %3d presses  %5d ms" % [
+			p.key, p.name, "OK  " if lv.verified else "FAIL", p.tier, secs, lv.objs.size(), lv.solution.size(), dt])
+		if not lv.verified:
 			ok = false
+		elif int(lv.attempt) > 0 and not str(p.key).begins_with("daily") and not str(p.key).begins_with("weekly") and not str(p.key).begins_with("event"):
+			offsets[p.key] = int(lv.attempt)
+	print("OFFSETS ", JSON.stringify(offsets))
 	print("ALL LEVELS BEATABLE" if ok else "SOME LEVELS ARE IMPOSSIBLE")
 	quit(0 if ok else 1)

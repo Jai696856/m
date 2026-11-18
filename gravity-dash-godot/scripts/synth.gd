@@ -1,12 +1,29 @@
 extends RefCounted
-## A small software synth. It writes each level's looping song and all sound effects
-## into 16-bit WAV streams at start-up, so the project ships no audio files.
+## A small software synth. Writes each level's looping song and all sound effects into 16-bit WAV streams.
+## A song is rendered one bar at a time (begin_song, then render_bar until done), so the single-threaded web
+## build can spread the work over many frames.
+##
+## Genres: 0 chiptune, 1 synthwave, 2 breakbeat, 3 house, 4 half-time, 5 ambient.
 
 const RATE := 22050
-const MENU := {"name": "Menu", "tier": 0, "bpm": 112, "root": 45, "scale": [0, 2, 3, 7, 10], "seed": 4242, "menu": true}
+const GENRE_NAMES := ["Chiptune", "Synthwave", "Breakbeat", "House", "Half-time", "Ambient"]
 
 var buf := PackedFloat32Array()
 var noise := PackedFloat32Array()
+
+# Song state
+var d: Dictionary
+var bars := 12
+var bar := 0
+var st := 0.125
+var scale: Array
+var root := 45
+var genre := 0
+var tier := 0
+var prog: Array
+var mel_a: Array
+var mel_b: Array
+var kick_slide := 1.0
 
 
 func _init() -> void:
@@ -21,14 +38,14 @@ static func midi(n: float) -> float:
 	return 440.0 * pow(2.0, (n - 69.0) / 12.0)
 
 
-static func deg(scale: Array, d: int) -> int:
-	var n := scale.size()
-	return int(scale[posmod(d, n)]) + 12 * int(floor(float(d) / n))
+static func deg(sc: Array, x: int) -> int:
+	var n := sc.size()
+	return int(sc[posmod(x, n)]) + 12 * int(floor(float(x) / n))
 
 
-## wave: 0 square, 1 saw, 2 triangle, 3 sine, 4 noise, 5 bright noise.
-## tau is the decay time constant; slide multiplies the pitch every sample; lp < 1 adds a low-pass.
-func tone(t0: float, dur: float, freq: float, wave: int, vol: float, tau: float, slide := 1.0, lp := 1.0) -> void:
+## wave: 0 square, 1 saw, 2 triangle, 3 sine, 4 noise, 5 bright noise, 6 pulse 25%.
+## tau is the decay time constant; slide multiplies the pitch every sample; lp < 1 adds a low-pass; vib adds vibrato.
+func tone(t0: float, dur: float, freq: float, wave: int, vol: float, tau: float, slide := 1.0, lp := 1.0, attack := 60, vib := 0.0) -> void:
 	var start := int(t0 * RATE)
 	var end := mini(start + int(dur * RATE), buf.size())
 	if start >= end:
@@ -38,6 +55,7 @@ func tone(t0: float, dur: float, freq: float, wave: int, vol: float, tau: float,
 	var env := 1.0
 	var k := exp(-1.0 / (tau * RATE))
 	var y := 0.0
+	var vph := 0.0
 	for i in range(start, end):
 		var v: float
 		if wave == 0:
@@ -50,21 +68,27 @@ func tone(t0: float, dur: float, freq: float, wave: int, vol: float, tau: float,
 			v = sin(TAU * ph)
 		elif wave == 4:
 			v = noise[i & 16383]
-		else:
+		elif wave == 5:
 			v = noise[i & 16383] - noise[(i + 7) & 16383]
+		else:
+			v = 1.0 if ph < 0.25 else -1.0
 		if lp < 1.0:
 			y += (v - y) * lp
 			v = y
 		var a := env
 		var j := i - start
-		if j < 60:
-			a *= j / 60.0
+		if j < attack:
+			a *= float(j) / attack
 		var left := end - i
 		if left < 200:
 			a *= left / 200.0
 		buf[i] += v * a * vol
 		env *= k
-		ph += inc
+		if vib > 0.0:
+			vph += 5.5 / RATE
+			ph += inc * (1.0 + sin(TAU * vph) * vib)
+		else:
+			ph += inc
 		if ph >= 1.0:
 			ph -= 1.0
 		inc *= slide
@@ -94,95 +118,203 @@ func to_wav(loop: bool, normalize: bool) -> AudioStreamWAV:
 	return w
 
 
-## An 8-bar loop: drums, bass on the chord root, a seeded melody and (later bars) an arpeggio.
-## Harder tiers get busier drums and octave-jumping bass.
-func song(d: Dictionary) -> AudioStreamWAV:
+# ---------- Songs ----------
+
+## Sets up a song. Then call render_bar() until done() and take the result with finish().
+## Shape: 2 intro bars, a 4-bar A section, a 4-bar B section with a new melody and arpeggios, 2 bars turnaround.
+func begin_song(p: Dictionary) -> void:
+	d = p
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(d.seed) * 31 + 5
-	var bpm := float(d.bpm)
-	var st := 60.0 / bpm / 4.0
-	var bars := 8
+	rng.seed = int(p.seed) * 31 + 5
+	genre = int(p.get("genre", 0))
+	tier = int(p.get("tier", 0))
+	scale = p.scale
+	root = int(p.root)
+	st = 60.0 / float(p.bpm) / 4.0
+	bars = 12
+	bar = 0
 	buf = PackedFloat32Array()
 	buf.resize(int(bars * 16 * st * RATE))
-	var scale: Array = d.scale
-	var root := int(d.root)
-	var tier := int(d.tier)
-	var menu: bool = d.has("menu")
-	var progs := [[0, 0, 3, 4], [0, 5, 3, 4], [0, 3, 4, 3], [0, 4, 5, 3], [0, 2, 3, 4], [0, 5, 2, 4]]
-	var prog: Array = progs[rng.randi_range(0, progs.size() - 1)]
+	var progs := [[0, 0, 3, 4], [0, 5, 3, 4], [0, 3, 4, 3], [0, 4, 5, 3], [0, 2, 3, 4], [0, 5, 2, 4], [0, 3, 5, 4]]
+	prog = progs[rng.randi_range(0, progs.size() - 1)]
+	mel_a = _melody(rng)
+	mel_b = _melody(rng)
+	kick_slide = pow(45.0 / 150.0, 1.0 / (0.1 * RATE))
+
+
+func _melody(rng: RandomNumberGenerator) -> Array:
 	var mel: Array = []
 	var dg := 4
 	for k in 16:
 		if rng.randf() < 0.25:
 			mel.append(-99)
 		else:
-			dg = clampi(dg + rng.randi_range(-2, 2), 0, 8)
+			dg = clampi(dg + rng.randi_range(-2, 2), 0, 9)
 			mel.append(dg)
-	var kick_slide := pow(45.0 / 150.0, 1.0 / (0.1 * RATE))
-	var lead_wave := 2 if (tier == 0 or menu) else 0
-	for bar in bars:
-		var t0 := bar * 16 * st
-		var chord: int = prog[bar % 4]
-		for k in 16:
-			var tt := t0 + k * st
-			var kick := k % 4 == 0
-			if tier >= 3 and k == 14:
-				kick = true
-			if tier >= 4 and k == 7:
-				kick = true
-			if menu:
-				kick = k == 0 or k == 6 or k == 10
-			if kick:
-				tone(tt, 0.18, 150.0, 3, 0.9, 0.08, kick_slide)
-			if k == 4 or k == 12:
-				tone(tt, 0.16, 0.0, 4, 0.32, 0.05, 1.0, 0.55)
-				tone(tt, 0.08, 185.0, 2, 0.22, 0.04)
-			var hat := k % 4 == 2
-			if tier >= 2 and k % 2 == 1 and not menu:
-				hat = true
-			if hat:
-				tone(tt, 0.04, 0.0, 5, 0.09, 0.012)
-		for k in 8:
-			if menu and k % 2 == 1:
-				continue
+	return mel
+
+
+func done() -> bool:
+	return bar >= bars
+
+
+func render_bar() -> void:
+	if done():
+		return
+	var b := bar
+	bar += 1
+	var t0 := b * 16 * st
+	var chord: int = prog[b % 4]
+	var intro := b < 2
+	var section_b := b >= 6 and b < 10
+	var turn := b >= 10
+	_drums(b, t0, intro, turn)
+	# Bass
+	if not (intro and genre == 5):
+		var steps := [0, 2, 4, 6, 8, 10, 12, 14]
+		if genre == 3:
+			steps = [2, 6, 10, 14]
+		elif genre == 4:
+			steps = [0, 7, 10]
+		elif genre == 5:
+			steps = [0, 8]
+		for k in steps:
 			var note := root + deg(scale, chord)
-			if tier >= 2 and k % 2 == 1:
+			if genre in [1, 2] and k % 4 == 2:
 				note += 12
-			tone(t0 + k * 2 * st, st * 1.8, midi(note), 1, 0.3, 0.14, 1.0, 0.2)
-		if bar >= 2 or menu:
-			for k in 8:
-				var md: int = mel[(bar % 2) * 8 + k]
-				if md == -99:
-					continue
-				tone(t0 + k * 2 * st, st * 1.7, midi(root + 24 + deg(scale, md + chord)), lead_wave, 0.1 if lead_wave == 0 else 0.18, 0.2)
-		if bar >= 4 and not menu:
-			for k in 16:
-				var a: int = [0, 2, 4, 2][k % 4]
-				tone(t0 + k * st, st * 0.9, midi(root + 36 + deg(scale, chord + a)), 3, 0.06, 0.06)
+			var wave := 0 if genre == 0 else 1
+			tone(t0 + k * st, st * (3.6 if genre == 5 else 1.8), midi(note), wave, 0.3, 0.16 if genre != 5 else 0.8, 1.0, 0.2 if wave == 1 else 0.5)
+	# Chords (pads or stabs)
+	if genre in [1, 3, 5] and not intro:
+		for a in [0, 2, 4]:
+			var n := midi(root + 12 + deg(scale, chord + a))
+			if genre == 3:
+				for k in [2, 6, 10, 14]:
+					tone(t0 + k * st, st * 0.9, n, 1, 0.05, 0.08, 1.0, 0.35)
+			else:
+				tone(t0, 16 * st, n, 2, 0.045, 1.6, 1.0, 1.0, 2000)
+	# Lead melody
+	if not intro:
+		var mel: Array = mel_b if section_b else mel_a
+		var lead_wave: int = [0, 1, 6, 0, 1, 2][genre]
+		var vib := 0.006 if genre in [1, 5] else 0.0
+		for k in 8:
+			var md: int = mel[(b % 2) * 8 + k]
+			if md == -99 or (genre == 5 and k % 2 == 1):
+				continue
+			var len := st * (3.4 if genre == 5 else 1.7)
+			var vol := 0.09 if lead_wave in [0, 1, 6] else 0.16
+			tone(t0 + k * 2 * st, len, midi(root + 24 + deg(scale, md + chord)), lead_wave, vol, 0.25, 1.0, 0.45 if lead_wave == 1 else 1.0, 60, vib)
+	# Arpeggio in the B section and turnaround
+	if section_b or turn:
+		for k in 16:
+			var a: int = [0, 2, 4, 2][k % 4]
+			tone(t0 + k * st, st * 0.9, midi(root + 36 + deg(scale, chord + a)), 3, 0.055, 0.06)
+
+
+func _drums(b: int, t0: float, intro: bool, turn: bool) -> void:
+	var kicks: Array
+	var snares: Array
+	var hats: Array
+	match genre:
+		0:
+			kicks = [0, 8]
+			snares = [4, 12]
+			hats = [2, 6, 10, 14]
+		1:
+			kicks = [0, 4, 8, 12]
+			snares = [4, 12]
+			hats = [2, 6, 10, 14]
+		2:
+			kicks = [0, 6, 10]
+			snares = [4, 12, 15]
+			hats = range(0, 16, 2)
+		3:
+			kicks = [0, 4, 8, 12]
+			snares = [4, 12]
+			hats = [2, 6, 10, 14, 3, 11]
+		4:
+			kicks = [0, 3, 10]
+			snares = [8]
+			hats = range(0, 16)
+		_:
+			kicks = [0]
+			snares = []
+			hats = [4, 12]
+	if tier >= 3 and genre != 5:
+		kicks = kicks + [14]
+	if intro:
+		snares = []
+		if genre != 5:
+			kicks = [0, 8]
+	for k in kicks:
+		tone(t0 + k * st, 0.18, 150.0, 3, 0.9, 0.08, kick_slide)
+	for k in snares:
+		tone(t0 + k * st, 0.16, 0.0, 4, 0.3, 0.05, 1.0, 0.55)
+		tone(t0 + k * st, 0.08, 185.0, 2, 0.2, 0.04)
+	for k in hats:
+		tone(t0 + k * st, 0.04, 0.0, 5, 0.08 if k % 2 == 0 else 0.05, 0.012)
+	if turn and b == 11:
+		for k in [12, 13, 14, 15]:
+			tone(t0 + k * st, 0.1, 0.0, 4, 0.25, 0.04, 1.0, 0.6)
+	if b == 2 or b == 6:
+		tone(t0, 0.9, 0.0, 5, 0.12, 0.35)
+
+
+func finish() -> AudioStreamWAV:
 	return to_wav(true, true)
 
+
+func song(p: Dictionary) -> AudioStreamWAV:
+	begin_song(p)
+	while not done():
+		render_bar()
+	return finish()
+
+
+# ---------- Sound effects ----------
 
 func _fx(dur: float) -> void:
 	buf = PackedFloat32Array()
 	buf.resize(int(dur * RATE))
 
 
-func effects() -> Dictionary:
+## Two sound packs: the default (soft) one and the "retro" one sold in the Sound Shack.
+func effects(retro := false) -> Dictionary:
 	var out := {}
+	var w := 0 if retro else 2
 	_fx(0.12)
-	tone(0.0, 0.1, 520.0, 2, 0.55, 0.06, pow(1.9, 1.0 / (0.08 * RATE)))
+	tone(0.0, 0.1, 520.0, w, 0.45 if retro else 0.55, 0.06, pow(1.9, 1.0 / (0.08 * RATE)))
 	out["flip_up"] = to_wav(false, false)
 	_fx(0.12)
-	tone(0.0, 0.1, 780.0, 2, 0.55, 0.06, pow(0.55, 1.0 / (0.08 * RATE)))
+	tone(0.0, 0.1, 780.0, w, 0.45 if retro else 0.55, 0.06, pow(0.55, 1.0 / (0.08 * RATE)))
 	out["flip_down"] = to_wav(false, false)
+	_fx(0.18)
+	tone(0.0, 0.16, 660.0, w, 0.4, 0.08, pow(2.2, 1.0 / (0.12 * RATE)))
+	tone(0.0, 0.16, 990.0, 3, 0.2, 0.06)
+	out["orb"] = to_wav(false, false)
+	_fx(0.16)
+	tone(0.0, 0.14, 300.0, w, 0.45, 0.06, pow(3.0, 1.0 / (0.1 * RATE)))
+	out["pad"] = to_wav(false, false)
+	_fx(0.4)
+	tone(0.0, 0.35, 220.0, 3, 0.35, 0.15, pow(2.5, 1.0 / (0.3 * RATE)))
+	tone(0.0, 0.3, 0.0, 5, 0.1, 0.12)
+	out["portal"] = to_wav(false, false)
+	_fx(0.25)
+	tone(0.0, 0.2, 1320.0, 3, 0.3, 0.08)
+	tone(0.05, 0.18, 1760.0, 3, 0.3, 0.08)
+	out["coin"] = to_wav(false, false)
+	_fx(0.08)
+	tone(0.0, 0.06, 1480.0, 3, 0.18, 0.03)
+	out["shard"] = to_wav(false, false)
 	_fx(0.5)
 	tone(0.0, 0.45, 0.0, 4, 0.8, 0.12, 1.0, 0.25)
-	tone(0.0, 0.35, 220.0, 1, 0.35, 0.12, pow(0.22, 1.0 / (0.3 * RATE)), 0.3)
+	tone(0.0, 0.35, 220.0, 0 if retro else 1, 0.35, 0.12, pow(0.22, 1.0 / (0.3 * RATE)), 0.3)
 	out["die"] = to_wav(false, false)
 	_fx(1.5)
 	var chord := [0, 4, 7, 12, 16]
 	for i in chord.size():
-		tone(i * 0.08, 1.1, midi(72 + chord[i]), 2, 0.3, 0.4)
+		tone(i * 0.08, 1.1, midi(72 + chord[i]), w, 0.3, 0.4)
 		tone(i * 0.08, 0.5, midi(60 + chord[i]), 0, 0.06, 0.2)
 	tone(0.0, 0.7, 0.0, 5, 0.12, 0.25)
 	out["win"] = to_wav(false, false)
@@ -205,4 +337,17 @@ func effects() -> Dictionary:
 	tone(0.0, 0.3, 0.0, 4, 0.45, 0.07, 1.0, 0.5)
 	tone(0.0, 0.12, 300.0, 3, 0.2, 0.05, pow(0.5, 1.0 / (0.1 * RATE)))
 	out["pop"] = to_wav(false, false)
+	_fx(0.3)
+	tone(0.0, 0.25, 880.0, 2, 0.3, 0.1)
+	tone(0.08, 0.2, 1175.0, 2, 0.25, 0.1)
+	out["checkpoint"] = to_wav(false, false)
+	_fx(0.6)
+	for i in 3:
+		tone(i * 0.07, 0.4, midi(79 + [0, 4, 7][i]), 3, 0.3, 0.2)
+	out["buy"] = to_wav(false, false)
+	_fx(0.9)
+	tone(0.0, 0.25, 0.0, 4, 0.5, 0.08, 1.0, 0.4)
+	for i in 4:
+		tone(0.2 + i * 0.07, 0.6, midi(72 + [0, 4, 7, 12][i]), 2, 0.25, 0.3)
+	out["chest"] = to_wav(false, false)
 	return out

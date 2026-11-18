@@ -109,55 +109,11 @@ func _draw() -> void:
 		draw_string(FONT, base, label, HORIZONTAL_ALIGNMENT_CENTER, w, font_size, Color.WHITE)
 
 
-func _shape(pts: PackedVector2Array) -> void:
-	draw_polyline(Skins.closed(pts), DARK, 7.0, true)
-	draw_colored_polygon(pts, Color.WHITE)
-
-
-func _bar(r: Rect2) -> void:
-	draw_rect(r.grow(3.0), DARK)
-	draw_rect(r, Color.WHITE)
-
-
 func _icon(n: String, c: Vector2, s: float) -> void:
-	match n:
-		"play":
-			_shape(PackedVector2Array([c + Vector2(-0.55, -0.8) * s, c + Vector2(0.85, 0) * s, c + Vector2(-0.55, 0.8) * s]))
-		"left", "back":
-			_shape(PackedVector2Array([c + Vector2(-0.8, 0) * s, c + Vector2(0.15, -0.75) * s, c + Vector2(0.15, -0.3) * s,
-				c + Vector2(0.8, -0.3) * s, c + Vector2(0.8, 0.3) * s, c + Vector2(0.15, 0.3) * s, c + Vector2(0.15, 0.75) * s]))
-		"right":
-			_shape(PackedVector2Array([c + Vector2(0.8, 0) * s, c + Vector2(-0.15, 0.75) * s, c + Vector2(-0.15, 0.3) * s,
-				c + Vector2(-0.8, 0.3) * s, c + Vector2(-0.8, -0.3) * s, c + Vector2(-0.15, -0.3) * s, c + Vector2(-0.15, -0.75) * s]))
-		"pause":
-			_bar(Rect2(c + Vector2(-0.6, -0.7) * s, Vector2(0.4, 1.4) * s))
-			_bar(Rect2(c + Vector2(0.2, -0.7) * s, Vector2(0.4, 1.4) * s))
-		"list":
-			for k in 3:
-				_bar(Rect2(c + Vector2(-0.75, -0.65 + k * 0.5) * s, Vector2(1.5, 0.3) * s))
-		"chart":
-			var hs := [0.6, 1.1, 1.6]
-			for k in 3:
-				var h: float = hs[k]
-				_bar(Rect2(c + Vector2(-0.8 + k * 0.6, 0.8 - h) * s, Vector2(0.4, h) * s))
-		"restart":
-			draw_arc(c, s * 0.62, 0.9, TAU - 0.3, 24, DARK, s * 0.42, true)
-			draw_arc(c, s * 0.62, 0.9, TAU - 0.3, 24, Color.WHITE, s * 0.24, true)
-			var tip := c + Vector2(cos(0.9), sin(0.9)) * s * 0.62
-			_shape(PackedVector2Array([tip + Vector2(-0.45, -0.1) * s, tip + Vector2(0.4, -0.35) * s, tip + Vector2(0.15, 0.5) * s]))
-		"cube":
-			Skins.draw_icon(self, c, 0.0, Vector2.ONE * s / 15.0 * 0.95, Save.icon(), Save.c1(), Save.c2())
-		"music":
-			draw_line(c + Vector2(0.35, 0.5) * s, c + Vector2(0.35, -0.75) * s, DARK, s * 0.36)
-			draw_circle(c + Vector2(0.05, 0.5) * s, s * 0.36, DARK)
-			draw_line(c + Vector2(0.35, 0.5) * s, c + Vector2(0.35, -0.75) * s, Color.WHITE, s * 0.16)
-			draw_circle(c + Vector2(0.05, 0.5) * s, s * 0.24, Color.WHITE)
-			_shape(PackedVector2Array([c + Vector2(0.35, -0.8) * s, c + Vector2(0.85, -0.45) * s, c + Vector2(0.35, -0.3) * s]))
-		"sound":
-			_shape(PackedVector2Array([c + Vector2(-0.8, -0.3) * s, c + Vector2(-0.35, -0.3) * s, c + Vector2(0.15, -0.75) * s,
-				c + Vector2(0.15, 0.75) * s, c + Vector2(-0.35, 0.3) * s, c + Vector2(-0.8, 0.3) * s]))
-			if not crossed:
-				draw_arc(c + Vector2(0.15, 0) * s, s * 0.5, -0.8, 0.8, 10, Color.WHITE, s * 0.16, true)
+	if n == "cube":
+		Skins.draw_icon(self, c, 0.0, Vector2.ONE * s / 15.0 * 0.95, Save.icon(), Save.c1(), Save.c2())
+	else:
+		Skins.symbol(self, n, c, s)
 	if crossed:
 		draw_line(c + Vector2(-0.85, -0.85) * s, c + Vector2(0.85, 0.85) * s, DARK, s * 0.4)
 		draw_line(c + Vector2(-0.85, -0.85) * s, c + Vector2(0.85, 0.85) * s, Color("ff4a4a"), s * 0.2)
