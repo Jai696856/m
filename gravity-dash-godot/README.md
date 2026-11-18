@@ -46,7 +46,8 @@ See [FEATURES.md](FEATURES.md) for the full numbered list. In short:
   progress, and a ghost of your best run.
 - **Explore**: a grid of 15 tiles. Forge (build a level), Saved, Records, Quests, Ghost Race, Star Map, Daily,
   Weekly, Event, Trials, Featured, Chests, Paths, Packs and Search.
-- **Objects**: spikes, saws, blocks, gravity orbs, gravity pads, gravity portals, speed portals and mini portals.
+- **Objects**: spikes, saws, blocks, gravity orbs, gravity pads, gravity portals, speed portals, mini portals and
+  dual portals (two mirrored cubes; one press flips both, and if either crashes you crash).
 - **Currency**: shards (common) and prisms (rare). Earn them from levels, pickups, coins, quests, chests, paths,
   packs, trials, achievements and codes.
 - **Four shops** that unlock as you play: Cube Bazaar, Trail Studio, Sound Shack and Prism Vault.

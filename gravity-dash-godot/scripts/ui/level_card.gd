@@ -7,7 +7,7 @@ const FONT = preload("res://fonts/Fredoka-Bold.ttf")
 const Skins = preload("res://scripts/skins.gd")
 const Levels = preload("res://scripts/levels.gd")
 const DARK := Color(0.05, 0.03, 0.12)
-const MECH_NAMES := {"saw": "Saws", "orb": "Orbs", "pad": "Pads", "portal": "Portals", "speed": "Speed", "mini": "Mini"}
+const MECH_NAMES := {"saw": "Saws", "orb": "Orbs", "pad": "Pads", "portal": "Portals", "speed": "Speed", "mini": "Mini", "dual": "Dual"}
 
 var lv: Dictionary = {}
 var subtitle := ""

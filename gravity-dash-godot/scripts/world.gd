@@ -37,6 +37,7 @@ var squash := 0.0
 var shake := 0.0
 var flash := 0.0
 var trail: Array = []
+var twin_trail: Array = []
 var parts: Array = []
 var rings: Array = []
 var t := 0.0
@@ -142,6 +143,7 @@ func reset_run() -> void:
 	pending = false
 	cp_timer = 0.0
 	trail.clear()
+	twin_trail.clear()
 	parts.clear()
 	rings.clear()
 	rec = PackedVector2Array()
@@ -238,6 +240,12 @@ func _physics_process(_delta: float) -> void:
 		"portal", "speed", "size":
 			Save.add_stat("portals", 1)
 			Audio.sfx("portal")
+		"dual":
+			Save.add_stat("portals", 1)
+			Audio.sfx("portal")
+			for cube in [s, s.twin]:
+				if cube != null:
+					rings.append({"p": Vector2(cube.x + cube.ps * 0.5, cube.y + cube.ps * 0.5), "r": 6.0, "v": 220.0, "w": 5.0, "life": 0.4, "max": 0.4, "col": Color("ff9a3d")})
 	if not was_ground and s.ground and not s.dead:
 		squash = 1.0
 		_puff(s.g)
@@ -245,6 +253,12 @@ func _physics_process(_delta: float) -> void:
 		trail.append(Vector3(s.x, s.y, s.ps))
 		if trail.size() > 16:
 			trail.pop_front()
+		if s.twin != null:
+			twin_trail.append(Vector3(s.twin.x, s.twin.y, s.twin.ps))
+			if twin_trail.size() > 16:
+				twin_trail.pop_front()
+		elif not twin_trail.is_empty():
+			twin_trail.pop_front()
 	if s.f % 6 == 0 and not practice:
 		rec.append(Vector2(s.x, s.y))
 	_collect()
@@ -261,7 +275,12 @@ func _physics_process(_delta: float) -> void:
 
 
 func _collect() -> void:
-	var c := Vector2(s.x + s.ps * 0.5, s.y + s.ps * 0.5)
+	_collect_at(Vector2(s.x + s.ps * 0.5, s.y + s.ps * 0.5))
+	if s.twin != null:
+		_collect_at(Vector2(s.twin.x + s.ps * 0.5, s.twin.y + s.ps * 0.5))
+
+
+func _collect_at(c: Vector2) -> void:
 	var reach: float = s.ps * 0.5 + 14.0
 	if not practice:
 		for i in lv.coins.size():
@@ -298,7 +317,8 @@ func _die() -> void:
 		Save.save_ghost(p.key, rec)
 	Save.add_stat("deaths", 1)
 	Save.save_data()
-	_death_effect(Vector2(s.x + s.ps * 0.5, s.y + s.ps * 0.5))
+	var who = s.twin if (s.twin_died and s.twin != null) else s
+	_death_effect(Vector2(who.x + who.ps * 0.5, who.y + who.ps * 0.5))
 	died.emit(pc, nb)
 
 
@@ -660,7 +680,7 @@ func _draw_level(pulse: float) -> void:
 					var ay := lane + dir * (34.0 + k * 13.0 + hop)
 					draw_polyline(PackedVector2Array([Vector2(cx - 11, ay - dir * 7), Vector2(cx, ay + dir * 3), Vector2(cx + 11, ay - dir * 7)]),
 						Color(col, 0.9 - k * 0.35), 4.0, true)
-			5, 6, 7:
+			5, 6, 7, 8:
 				_draw_portal(b)
 
 
@@ -676,6 +696,8 @@ func _draw_portal(b: Dictionary) -> void:
 			label = ">" if m < 0.95 else (">>" if m < 1.1 else (">>>" if m < 1.25 else ">>>>"))
 		7:
 			col = Color("ff7af0") if b.mini else Color("b07aff")
+		8:
+			col = Color("ff9a3d") if b.dual else Color("5ce1ff")
 	var cx: float = b.x + 8.0
 	var pts := PackedVector2Array()
 	for k in 33:
@@ -694,6 +716,14 @@ func _draw_portal(b: Dictionary) -> void:
 		7:
 			var sz := 8.0 if b.mini else 16.0
 			draw_rect(Rect2(mid - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), col)
+		8:
+			# Dual portal: two cubes (one on each side); the exit portal shows one.
+			if b.dual:
+				draw_rect(Rect2(mid + Vector2(-6, -26), Vector2(12, 12)), col)
+				draw_rect(Rect2(mid + Vector2(-6, 14), Vector2(12, 12)), Color("5ce1ff"))
+				draw_line(mid + Vector2(0, -12), mid + Vector2(0, 12), Color(1, 1, 1, 0.6), 2.0)
+			else:
+				draw_rect(Rect2(mid + Vector2(-7, -7), Vector2(14, 14)), col)
 
 
 func _draw_bands(pulse: float, y_top: float, y_bot: float) -> void:
@@ -807,6 +837,27 @@ func _draw_player(ix: float, iy: float) -> void:
 	var scl := ps / 30.0
 	Skins.draw_icon(self, _screen(center), spin, Vector2(sc * k * scl * (1.0 + sq), sc * k * scl * (1.0 - sq)), Save.icon(), c1, c2)
 	_tf(cam_x)
+	if s.twin != null and mode in ["play", "paused"]:
+		var tw = s.twin
+		var a := Engine.get_physics_interpolation_fraction() if mode == "play" else 1.0
+		var ty: float = tw.y
+		if prev.twin != null:
+			ty = lerpf(prev.twin.y, tw.y, a)
+		var tc := Vector2(px + ps * 0.5, ty + ps * 0.5)
+		# The twin: swapped colours, mirrored spin and its own trail, joined to you by a faint tether.
+		var saved := trail
+		trail = twin_trail
+		_draw_trail(c2, c1, 1.0)
+		trail = saved
+		for d in 10:
+			var q := center.lerp(tc, (d + 0.5) / 10.0)
+			draw_circle(q, 2.0, Color(1, 1, 1, 0.18))
+		draw_circle(tc, 24.0, Color(c2, 0.14))
+		Skins.draw_icon(self, _screen(tc), -spin, Vector2(sc * scl, sc * scl), Save.icon(), c2, c1)
+		_tf(cam_x)
+		var tg: float = tw.g
+		var tay := (ty - 12.0) if tg > 0.0 else (ty + ps + 12.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(tc.x - 6, tay - 4 * tg), Vector2(tc.x + 6, tay - 4 * tg), Vector2(tc.x, tay + 4 * tg)]), Color(c2, 0.6))
 	if mode == "play" or mode == "menu" or mode == "paused":
 		var ax := center.x
 		var ay := (py - 12.0) if g > 0.0 else (py + ps + 12.0)

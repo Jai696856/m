@@ -14,8 +14,8 @@ const CEIL := 40.0
 const FLOOR := 360.0
 const T := 40.0
 const START_X := 720.0
-const LONG := ["bar", "ride", "switch", "steps", "orbrun", "squeeze"]
-const ALL_MECH := ["saw", "orb", "pad", "portal", "speed", "mini"]
+const LONG := ["bar", "ride", "switch", "steps", "orbrun", "squeeze", "dual"]
+const ALL_MECH := ["saw", "orb", "pad", "portal", "speed", "mini", "dual"]
 
 const TIER_SPEED := [390.0, 430.0, 470.0, 500.0, 530.0, 560.0]
 const TIER_M := [1.25, 1.05, 0.92, 0.86, 0.8, 0.74]
@@ -29,7 +29,7 @@ const SCALES := [[0, 3, 5, 7, 10], [0, 2, 4, 7, 9], [0, 2, 3, 5, 7, 8, 10], [0, 
 const MAIN := [
 	["Lift Off", 0, 1, 380, 22, 1.3, 7, 0.72, 120, 45, 0, ""],
 	["Polar Shift", 0, 1, 390, 24, 1.25, 211, 0.58, 118, 43, 1, ""],
-	["Double Back", 1, 2, 440, 28, 1.05, 23, 0.55, 132, 38, 2, "pad"],
+	["Double Back", 1, 2, 440, 28, 1.05, 23, 0.55, 132, 38, 2, "pad,dual"],
 	["Upside Town", 1, 2, 420, 26, 1.12, 307, 0.9, 126, 40, 6, "pad"],
 	["Orb Garden", 1, 2, 420, 26, 1.1, 1801, 0.33, 124, 43, 1, "orb"],
 	["Neon Gravity", 1, 2, 440, 28, 1.05, 419, 0.78, 128, 45, 3, "portal"],
@@ -37,18 +37,18 @@ const MAIN := [
 	["Hard Ceiling", 2, 3, 500, 34, 0.88, 101, 0.95, 144, 42, 4, "saw"],
 	["Saw Mill", 2, 3, 450, 30, 1.0, 523, 0.08, 136, 41, 2, "saw"],
 	["Tiny Planet", 2, 3, 450, 28, 1.0, 2003, 0.5, 134, 45, 0, "mini,saw"],
-	["Flipside", 2, 4, 470, 30, 0.95, 631, 0.45, 138, 44, 5, "saw,portal"],
+	["Flipside", 2, 4, 470, 30, 0.95, 631, 0.45, 138, 44, 5, "saw,portal,dual"],
 	["Turbo Lane", 2, 4, 470, 30, 0.95, 2111, 0.15, 150, 42, 3, "speed,pad"],
 	["Static Drift", 3, 5, 480, 32, 0.92, 733, 0.66, 140, 39, 4, "saw,pad,speed"],
 	["Copper Sky", 3, 5, 480, 32, 0.92, 2213, 0.07, 138, 41, 2, "saw,orb,mini"],
 	["Zero G", 3, 6, 490, 34, 0.9, 839, 0.53, 140, 46, 0, "orb,saw"],
 	["Pendulum", 3, 6, 500, 34, 0.88, 941, 0.02, 142, 40, 5, "orb,pad,portal"],
-	["Glass Reactor", 3, 6, 500, 34, 0.88, 2309, 0.48, 144, 44, 5, "orb,portal,speed"],
+	["Glass Reactor", 3, 6, 500, 34, 0.88, 2309, 0.48, 144, 44, 5, "orb,portal,speed,dual"],
 	["Overturn", 4, 7, 520, 36, 0.85, 1049, 0.8, 146, 43, 3, "saw,orb,portal,speed"],
 	["Midnight Signal", 4, 7, 520, 36, 0.85, 2417, 0.7, 146, 39, 4, "saw,pad,mini,speed"],
 	["Magnetar", 4, 8, 530, 38, 0.82, 1153, 0.63, 148, 38, 2, "orb,pad,speed"],
 	["Inversion", 4, 8, 540, 38, 0.8, 1259, 0.35, 150, 45, 4, "saw,orb,portal,mini"],
-	["Hyperloop", 4, 8, 540, 38, 0.8, 2521, 0.56, 156, 46, 3, "speed,orb,portal"],
+	["Hyperloop", 4, 8, 540, 38, 0.8, 2521, 0.56, 156, 46, 3, "speed,orb,portal,dual"],
 	["Event Horizon", 4, 9, 550, 40, 0.78, 1361, 0.04, 152, 41, 5, "saw,orb,pad,portal,speed"],
 	["Pixel Storm", 4, 9, 550, 40, 0.78, 2633, 0.86, 150, 43, 0, "all"],
 	["Antimatter", 5, 10, 560, 42, 0.75, 1471, 0.76, 155, 44, 4, "saw,orb,pad,portal,speed,mini"],
@@ -69,7 +69,7 @@ const TRIALS := [
 const FEATURED := [
 	["Sugar Rush", 1, 0.93, "pad"], ["Deep Freeze", 2, 0.55, "saw,orb"], ["Brass Engine", 2, 0.09, "speed,saw"],
 	["Night Market", 3, 0.75, "pad,portal"], ["Coral Drift", 3, 0.47, "orb,mini"], ["Thunderhead", 4, 0.62, "all"],
-	["Lantern Path", 1, 0.1, "orb"], ["Black Hole Sun", 5, 0.02, "all"],
+	["Lantern Path", 1, 0.1, "orb"], ["Black Hole Sun", 5, 0.02, "all"], ["Double Trouble", 2, 0.4, "dual,pad"],
 ]
 
 ## Packs of main levels. Beat every level in a pack for its reward.
@@ -84,7 +84,7 @@ const PACKS := [
 
 ## The first layout attempt that the solver can finish, per fixed level (filled in by tools/check_levels.gd --offsets).
 ## Only a speed-up: build_verified() still checks and keeps searching if a layout changes.
-const OFFSETS := {"main:antimatter": 1, "main:final-fall": 1, "trial:2:2": 1}
+const OFFSETS := {"main:antimatter": 1, "main:final-fall": 1, "main:singularity": 1, "trial:2:2": 1}
 
 const WORDS_A := ["Neon", "Pulse", "Hyper", "Velvet", "Echo", "Prism", "Quantum", "Lunar", "Solar", "Crystal",
 	"Shadow", "Nova", "Glitch", "Cobalt", "Ember", "Frost", "Zenith", "Orbit", "Paper", "Rocket"]
@@ -253,7 +253,7 @@ static func build(p: Dictionary, seed_offset := 0) -> Dictionary:
 			kind = "squeeze"
 		else:
 			kind = pool[rng.randi_range(0, pool.size() - 1)]
-			while kind == last and kind in LONG:
+			while (kind == last and kind in LONG) or (kind == "dual" and mini):
 				kind = pool[rng.randi_range(0, pool.size() - 1)]
 		last = kind
 		x += _chunk(kind, x, o, rng, v, m, tier)
@@ -334,6 +334,8 @@ static func _pool(tier: int, mech: Array) -> Array:
 		pool.append_array(["padflip", "padflip"])
 	if "portal" in mech:
 		pool.append_array(["gportal", "gportal"])
+	if "dual" in mech:
+		pool.append_array(["dual", "dual"])
 	return pool
 
 
@@ -494,6 +496,21 @@ static func _chunk(kind: String, x: float, o: Array, rng: RandomNumberGenerator,
 				else:
 					_spike(o, sx + i * T, FLOOR - T, true)
 			return sx - x + n * T
+		"dual":
+			# Dual portal: a mirrored twin appears on the other lane. Single spikes on either lane mean whoever is on
+			# that lane must be in the air as it passes, so time one flip that swaps both cubes over it.
+			_special(o, x, 8, {"dual": true})
+			var sx := x + _snap(v * 0.5)
+			var gap := _snap(v * (0.42 + 0.3 * m / DIFFICULTY))
+			var n := rng.randi_range(3, mini(6, 3 + tier / 2))
+			var cx := sx
+			for i in n:
+				var fl := rng.randf() < 0.5
+				_spike(o, cx, (FLOOR - T) if fl else CEIL, fl)
+				cx += T + gap
+			var ex := cx + _snap(v * 0.15)
+			_special(o, ex, 8, {"dual": false})
+			return ex - x + 16.0
 		"squeeze":
 			# Only a mini cube fits under (or over) this wall.
 			var fl := rng.randf() < 0.5

@@ -131,6 +131,15 @@ recognise, rebuilt with my own designs and names.
 49. Locked buttons greyed out with a padlock
 50. Currency rewards for beating levels
 
+## Added since
+
+- **Dual portal**: an orange portal splits you into two mirrored cubes, one on each lane with opposite gravity.
+  One press flips both, and if either one crashes the run is over. A blue portal merges you back into one.
+  Dual sections appear in Double Back, Flipside, Glass Reactor, Hyperloop, the Demon levels, the featured
+  level Double Trouble, and in any Forge level with "Dual" switched on.
+- **Sound fixes for browsers and iPhone**: sound turns on with your first tap, a "Tap for sound" note shows
+  until it does, and the game asks iOS to play it even when the silent switch is on.
+
 ## Not included
 
 - A free-form block editor. The Forge generates levels from your settings instead.

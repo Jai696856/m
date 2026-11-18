@@ -2,7 +2,9 @@ extends RefCounted
 ## Deterministic cube physics, shared by the game and the level checker. Runs at a fixed 120 steps per second.
 ##
 ## Object kinds (k): 0 block, 1 spike, 2 saw, 3 gravity orb, 4 gravity pad,
-## 5 gravity portal, 6 speed portal, 7 size portal.
+## 5 gravity portal, 6 speed portal, 7 size portal, 8 dual portal.
+## Dual mode: a mirrored twin cube runs on the opposite lane with opposite gravity. One press flips both;
+## if either one crashes, the run is over.
 
 const PS := 30.0
 const MINI := 16.0
@@ -35,6 +37,8 @@ class State:
 	var event := ""
 	var used := {}
 	var path: Array = []
+	var twin = null        # the second cube while in dual mode
+	var twin_died := false
 
 	func copy():
 		var c = get_script().new()
@@ -55,6 +59,8 @@ class State:
 		c.event = event
 		c.used = used.duplicate()
 		c.path = path.duplicate()
+		c.twin = twin.copy() if twin != null else null
+		c.twin_died = twin_died
 		return c
 
 
@@ -103,6 +109,32 @@ static func _flip(s, kick: float, ev: String) -> void:
 
 
 static func step(s, lv: Dictionary, press: bool) -> void:
+	var o: Array = lv.objs
+	var i0 := first_idx(o, float(s.x) - float(lv.max_w) - 20.0)
+	s.x += float(lv.speed) * s.spd * DT
+	_body(s, lv, press, i0, true)
+	if s.dead:
+		return
+	if s.twin != null:
+		var t = s.twin
+		t.x = s.x
+		t.spd = s.spd
+		t.ps = s.ps
+		_body(t, lv, press, i0, false)
+		if t.dead:
+			s.dead = true
+			s.twin_died = true
+			return
+		if t.flipped and not s.flipped:
+			s.flipped = true
+			s.event = t.event
+	if float(s.x) >= float(lv.end):
+		s.won = true
+	s.f += 1
+
+
+## Moves one cube vertically and checks it against everything. The primary cube also handles portals.
+static func _body(s, lv: Dictionary, press: bool, i0: int, primary: bool) -> void:
 	s.flipped = false
 	s.event = ""
 	if press:
@@ -119,8 +151,6 @@ static func step(s, lv: Dictionary, press: bool) -> void:
 
 	var o: Array = lv.objs
 	var ps: float = s.ps
-	var i0 := first_idx(o, float(s.x) - float(lv.max_w) - 20.0)
-	s.x += float(lv.speed) * s.spd * DT
 	var px: float = s.x
 
 	# Horizontal move: small overlaps snap onto a block, anything else is a crash.
@@ -184,7 +214,10 @@ static func step(s, lv: Dictionary, press: bool) -> void:
 		if b.x >= px + ps:
 			break
 		i += 1
-		match int(b.k):
+		var k := int(b.k)
+		if k >= 5 and not primary:
+			continue
+		match k:
 			1:
 				var sy: float = (b.y + 12.0) if b.up else b.y
 				if hx < b.x + 27.0 and hx + hw > b.x + 13.0 and hy < sy + 28.0 and hy + hw > sy:
@@ -225,9 +258,24 @@ static func step(s, lv: Dictionary, press: bool) -> void:
 							s.y += s.ps - n
 						s.ps = n
 					s.event = "size"
-	if px >= float(lv.end):
-		s.won = true
-	s.f += 1
+			8:
+				if not s.used.has(b.id) and px + ps > b.x:
+					s.used[b.id] = true
+					s.event = "dual"
+					if b.dual and s.twin == null:
+						# The twin appears mirrored: same height from the opposite lane, opposite gravity.
+						var t = State.new()
+						t.x = s.x
+						t.ps = s.ps
+						t.spd = s.spd
+						t.y = CEIL + FLOOR - s.y - s.ps
+						t.vy = -s.vy
+						t.g = -s.g
+						t.ground = false
+						t.coy = 0.0
+						s.twin = t
+					elif not b.dual:
+						s.twin = null
 
 
 static func _circle_hit(cx: float, cy: float, r: float, rx: float, ry: float, rw: float) -> bool:
@@ -245,7 +293,7 @@ static func solve(lv: Dictionary, budget := 3000000) -> Dictionary:
 	var far := 0.0
 	while not stack.is_empty() and n < budget:
 		var s = stack.pop_back()
-		while not s.dead and not s.won and not ((s.coy > 0.0 and s.f % 4 == 0) or (s.orb >= 0 and s.f % 2 == 0)):
+		while not s.dead and not s.won and not _can_act(s):
 			step(s, lv, false)
 			n += 1
 		far = maxf(far, s.x)
@@ -253,7 +301,7 @@ static func solve(lv: Dictionary, budget := 3000000) -> Dictionary:
 			return {"ok": true, "n": n, "path": s.path, "end": lv.end}
 		if s.dead:
 			continue
-		var key := Vector3i(int(s.x / 4.0), int(s.y), int(s.g) * 2 + (1 if s.orb >= 0 else 0))
+		var key := Vector4i(int(s.x / 4.0), int(s.y), int(s.g) * 2 + (1 if s.orb >= 0 else 0), (int(s.twin.y) * 4 + int(s.twin.g) + 2) if s.twin != null else -1)
 		if seen.has(key):
 			continue
 		seen[key] = true
@@ -266,3 +314,11 @@ static func solve(lv: Dictionary, budget := 3000000) -> Dictionary:
 		stack.append(a)
 		stack.append(b)
 	return {"ok": false, "n": n, "far": far, "end": lv.end, "path": []}
+
+
+static func _can_act(s) -> bool:
+	if (s.coy > 0.0 and s.f % 4 == 0) or (s.orb >= 0 and s.f % 2 == 0):
+		return true
+	if s.twin != null:
+		return (s.twin.coy > 0.0 and s.f % 4 == 0) or (s.twin.orb >= 0 and s.f % 2 == 0)
+	return false
