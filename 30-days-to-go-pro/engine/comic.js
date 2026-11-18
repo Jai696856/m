@@ -401,8 +401,12 @@ function statCardC(t, x, y, sc, stats, ovr, glow, ovrUp) {
   if (glow) s += `<rect x="-340" y="-480" width="680" height="960" rx="70" fill="${Y}" opacity="${glow * .5}" filter="url(#b30)"/>`;
   s += `<path d="M-300,-400 Q-300,-440 -260,-440 L260,-440 Q300,-440 300,-400 L300,330 Q300,380 250,400 L20,450 Q0,455 -20,450 L-250,400 Q-300,380 -300,330Z" fill="#ffe08a" ${ink(14)}/>
   <path d="M-300,-400 Q-300,-440 -260,-440 L260,-440 Q300,-440 300,-400 L300,330 Q300,380 250,400 L20,450 Q0,455 -20,450 L-250,400 Q-300,380 -300,330Z" fill="url(#ht)" opacity=".5"/>
-  <g transform="translate(90,-150)">${comicHead(0, -80, LOOKS.marcus, ovrUp ? 'happy' : 'det', blinking(t, .9))}
-  <path d="M-110,90 Q0,20 110,90 L120,140 H-120Z" fill="${LOOKS.marcus.top}" ${ink(7)}/></g>
+  <g transform="translate(95,-120) scale(1.5)">
+  <path d="M-108,40 Q-100,-6 -30,-14 L30,-14 Q100,-6 108,40 L112,80 H-112Z" fill="${LOOKS.marcus.top}" ${ink(6)}/>
+  <path d="M-36,-14 Q0,14 36,-14" fill="none" stroke="${LOOKS.marcus.topD}" stroke-width="8"/>
+  <path d="M-12,4 L-16,46 M12,4 L16,46" stroke="#e8e8e8" stroke-width="5" stroke-linecap="round"/>
+  <rect x="-15" y="-52" width="30" height="44" fill="${LOOKS.marcus.skin}" ${ink(5)}/>
+  ${comicHead(0, -96, LOOKS.marcus, ovrUp ? 'happy' : 'det', blinking(t, .9))}</g>
   ${ctext(-200, -330, ovr, 130, ovrUp ? '#38c172' : '#fff')}${ctext(-200, -230, 'OVR', 44, '#fff')}${ctext(-200, -170, 'ST', 44, '#fff')}
   <rect x="-260" y="20" width="520" height="8" fill="${INK}"/>${ctext(0, 75, 'MARCUS', 66, '#fff')}`;
   stats.forEach(([name, val, up], i) => {
