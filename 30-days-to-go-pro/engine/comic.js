@@ -650,9 +650,10 @@ function comicPitch(t, opt = {}) {
 }
 
 function chromeComic(t) {
-  const up = TL.find(x => x.scene === 'upgrade');
+  const up = TL.find(x => x.scene === 'upgrade'), up4 = TL.find(x => x.scene === 'upgrade4');
   let ovr = EP.ovrBefore ?? 15;
   if (up) { const a = kwN(up, 'seventeen'); if (t > a) ovr = EP.ovrAfter; }
+  if (up4) { const a = kwN(up4, 'overall') + 0.9; if (t > a) ovr = EP.ovrAfter; }
   const pill = (x, label, val, hi) => `<g transform="translate(${x},96)" filter="url(#dsh)"><rect x="-150" y="-44" width="300" height="88" rx="22" fill="#1a1d24" ${ink(6)}/>
     <text x="-125" y="0" font-family="${FONT}" font-size="28" font-weight="800" fill="#c9ced9" dominant-baseline="central">${label}</text>
     <text x="125" y="2" font-family="${FONT}" font-size="54" font-weight="900" fill="${hi ? '#2ecc71' : '#f4b41a'}" text-anchor="end" dominant-baseline="central">${val}</text></g>`;
@@ -762,4 +763,216 @@ const _cam3d_prev = cam3d;
 cam3d = function (t, seg) {
   if (seg.scene === 'legend') return { cam: 'wide', t, blur: true };
   return _cam3d_prev(t, seg);
+};
+
+// ===================================================================== DAY 4: TRYOUT
+Object.assign(LOOKS, {
+  coach: { top: '#1a1d24', topD: '#0f1116', pants: '#1a1d24', pantsD: '#0f1116', skin: '#c68e6a', skinD: '#a8734f', hair: '#9aa0a6', shoe: '#ffffff', band: null },
+  big: { top: '#ffd60a', topD: '#d1ae00', pants: '#111', pantsD: '#000', skin: '#6a3f27', skinD: '#55311d', hair: '#140c08', shoe: '#111' },
+  mate: { top: '#2196f3', topD: '#1769b0', pants: '#fff', pantsD: '#d9d9d9', skin: '#c68e6a', skinD: '#a8734f', hair: '#3b2416', shoe: '#111' },
+});
+const _poseBase = pose;
+pose = function (name, t, k = 0) {
+  if (name === 'stepover') {
+    const p = Math.sin(t * 9);
+    const base = _poseBase('idle', t);
+    return { ...base, lean: 12, tL: 25 * p, sL: 25 * p - 20, tR: -25 * p, sR: -25 * p - 20, aL: 45, fL: 70, aR: -45, fR: -60, expr: 'focus' };
+  }
+  return _poseBase(name, t, k);
+};
+const NUMW = { ten: 10, hundred: 100 };
+
+function sD4open(t, seg) {
+  let s = COMIC_DEFS + bgRect('cBlue');
+  s += burst(540, 330, 'DAY 4', 150, Y, seg.t0, t, -5);
+  const tV = kw(seg, 'tryout');
+  if (t > tV) s += `<g transform="translate(540,520) scale(${eb((t - tV) / 0.4)})" filter="url(#dsh)"><rect x="-300" y="-60" width="600" height="120" rx="60" fill="#2196f3" ${ink(8)}/>${ctext(0, 4, 'A: TRYOUT WON ✓', 52, '#fff')}</g>`;
+  s += commentCard(540, 680, 960, EP.comments.workout, kw(seg, 'top') - 0.1, t, ['tryouts', 'street kids', 'race them', '10 laps']);
+  s += burst(540, 1420, 'LOSER = 10 LAPS', 70, RED, kwN(seg, 'loser'), t, 4);
+  return s;
+}
+
+function sTenx(t, seg) {
+  const tN = kwN(seg, 'nah'), tX = kwN(seg, 'ten', 2);
+  let s = COMIC_DEFS + bgRect('cPop');
+  s += `<g transform="translate(540,520)">${ctext(0, 0, '10 LAPS', 150, '#fff')}${t > tN ? `<path d="M-300,30 L300,-30" stroke="${RED}" stroke-width="30" stroke-linecap="round"/>` : ''}</g>`;
+  const p = eb((t - tX) / 0.4);
+  if (p > 0) s += `<g transform="translate(540,880) scale(${p})">${ctext(0, 0, '10X', 320, Y)}</g>${sparkles(540, 880, t, tX, 8, 340)}`;
+  s += athlete(540, 1760, 1.0, 'marcus', pose(t > tX ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  return s;
+}
+
+function sTryout(t, seg) {
+  let s = COMIC_DEFS;
+  s += captionBox(540, 330, '6:00 AM · SUNDAY LEAGUE TRYOUT', seg.t0, t, '#fff', '#111', 40);
+  const t22 = kw(seg, 'Twenty-two'), t2 = kwN(seg, 'spots');
+  s += burst(300, 520, '22 PLAYERS', 64, '#2196f3', t22, t, -5);
+  s += burst(780, 640, '2 SPOTS', 76, RED, t2, t, 6);
+  // lineup of hopefuls
+  const looks = ['mate', 'kid1', 'big', 'kid2', 'kid3', 'mate'];
+  looks.forEach((w, i) => { s += athlete(130 + i * 165, 1500 + (i % 2) * 20, 0.55, w, pose('idle', t + i), t, i % 2 ? -1 : 1, blinking(t, i)); });
+  s += athlete(540, 1770, 0.95, 'marcus', pose('idle', t), t, 1, blinking(t, .4));
+  // coach with clipboard, facing away
+  const tC = kw(seg, 'Coach');
+  s += athlete(900, 1760, 0.85, 'coach', pose('idle', t), t, 1);
+  s += `<g transform="translate(965,1450)"><rect x="-26" y="-36" width="52" height="70" rx="6" fill="#c9a26a" ${ink(5)}/><rect x="-18" y="-24" width="36" height="46" fill="#fff"/></g>`;
+  s += burst(820, 1150, 'NOT EVEN A LOOK 😶', 50, '#7c4dff', tC + 0.3, t, -4);
+  return s;
+}
+
+function sMatch(t, seg) {
+  const tTouch = kw(seg, 'touch'), tFly = kw(seg, 'flying'), tUp = kwN(seg, 'up'), tEvery = kw(seg, 'Every');
+  let s = COMIC_DEFS;
+  s += captionBox(260, 330, 'THE MATCH', seg.t0, t, '#2196f3', '#fff');
+  s += burst(540, 520, 'CLEAN ✓', 80, '#2ecc71', tTouch + 0.2, t, -4);
+  const hit = t > tFly - 0.3, f = clamp((t - (tFly - 0.3)) / 0.5);
+  const getUp = t > tUp ? clamp((t - tUp) / 0.5) : 0;
+  let rot = hit ? lerp(0, -95, eo(f)) : 0; if (getUp) rot = lerp(-95, 0, eo(getUp));
+  const mx = hit ? lerp(470, 300, eo(f)) - (getUp ? 0 : 0) : 470;
+  s += `<g transform="rotate(${rot} ${mx} 1740)">${athlete(mx, 1740, 1.0, 'marcus', pose(hit && !getUp ? 'sad' : 'idle', t), t, 1)}</g>`;
+  s += athlete(lerp(860, 600, eo(clamp((t - (tFly - 0.8)) / 0.6))), 1760, 1.3, 'big', pose(hit ? 'idle' : 'run', t), t, -1);
+  s += burst(560, 900, 'OOF! 💥', 90, RED, tFly - 0.1, t, 8);
+  if (t > tEvery - 0.2) {
+    const n = Math.min(7, 1 + Math.floor((t - tEvery + 0.2) * 4));
+    s += `<g transform="translate(540,700)" filter="url(#dsh)"><rect x="-260" y="-80" width="520" height="160" rx="40" fill="#1a1d24" ${ink(6)}/>${ctext(0, 4, `GOT UP ×${n}`, 80, '#f4b41a')}</g>`;
+  }
+  return s;
+}
+
+function sWinner(t, seg) {
+  const tCut = kw(seg, 'cut'), tStep = kw(seg, 'step-over'), tThru = kw(seg, 'through'), tWin = kw(seg, 'winner');
+  let s = COMIC_DEFS;
+  s += `<g transform="translate(540,330)" filter="url(#dsh)"><rect x="-200" y="-60" width="400" height="120" rx="24" fill="#1a1d24" ${ink(6)}/>${ctext(-90, 2, "70'", 70, '#f4b41a')}${ctext(80, 2, '0–0', 70, '#fff')}</g>`;
+  const ps = t > tStep && t < tThru ? pose('stepover', t) : t >= tThru ? pose('kick', t, clamp((t - tThru + 0.2) / 0.8)) : pose('dribble', t);
+  const mx = lerp(250, 420, eo(clamp((t - tCut) / 1.2)));
+  s += athlete(720, 1740, 1.1, 'big', pose(t > tStep ? 'sad' : 'idle', t), t, -1);
+  s += athlete(mx, 1760, 1.05, 'marcus', ps, t, 1);
+  const bp = clamp((t - tThru) / 0.7);
+  const bx = t < tThru ? mx + 110 : lerp(mx + 110, 1000, bp), by = t < tThru ? 1740 : lerp(1740, 1500, bp);
+  s += comicBall(bx, by, 30, t * 700);
+  s += burst(300, 900, 'STEP-OVER', 64, '#7c4dff', tStep, t, -6);
+  if (t > tThru) s += `<path d="M${mx + 110},1740 Q800,1500 1000,1500" stroke="#fff" stroke-width="10" stroke-dasharray="6 24" stroke-linecap="round" fill="none" opacity=".85"/>`;
+  s += burst(540, 620, 'ASSIST → WINNER!', 80, '#2ecc71', tWin - 0.1, t, -4);
+  if (t > tWin) s += `<g transform="translate(540,330)" filter="url(#dsh)"><rect x="-200" y="-60" width="400" height="120" rx="24" fill="#1a1d24" ${ink(6)}/>${ctext(-90, 2, "70'", 70, '#f4b41a')}${ctext(80, 2, '1–0', 70, '#2ecc71')}</g>`;
+  return s + (t > tWin ? confetti(t, tWin, 540, 700, 80) : '');
+}
+
+function sCoach(t, seg) {
+  const tSat = kwN(seg, 'saturday'), tCut = kw(seg, 'final');
+  let s = COMIC_DEFS + bgRect('cDusk');
+  const walk = eo(clamp((t - seg.t0) / 1.4));
+  s += athlete(lerp(1100, 720, walk), 1760, 1.0, 'coach', walk < 1 ? pose('run', t * 0.6) : pose('idle', t), t, -1);
+  s += athlete(330, 1760, 1.0, 'marcus', pose(t > tSat ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  if (t > tSat - 0.2) {
+    const p = eb((t - tSat + 0.2) / 0.35);
+    s += `<g transform="translate(700,820) scale(${p})" filter="url(#dsh)"><rect x="-260" y="-90" width="520" height="180" rx="50" fill="#fff" ${ink(8)}/><path d="M40,88 L90,170 L110,88Z" fill="#fff" ${ink(8)}/><rect x="30" y="80" width="90" height="14" fill="#fff"/>
+      ${ctext(0, 4, '“SATURDAY.”', 84, '#111')}</g>`;
+  }
+  s += burst(540, 420, 'FINAL CUT: SATURDAY', 66, RED, tCut, t, -3);
+  return s;
+}
+
+function sTeach(t, seg) {
+  const moves = [['step-over', 'STEP-OVER', '#7c4dff'], ['cut', 'CUT INSIDE', '#2196f3'], ['roulette', 'ROULETTE', RED]];
+  let s = COMIC_DEFS;
+  s += captionBox(540, 330, 'TEACHING THE STREET KIDS', seg.t0, t, '#fff');
+  let cur = -1;
+  moves.forEach(([k], i) => { if (t > kw(seg, k) - 0.1) cur = i; });
+  moves.forEach(([k, label, col], i) => {
+    const a = kw(seg, k);
+    if (t > a - 0.1) s += `<g transform="translate(540,${480 + i * 130}) scale(${eb((t - a + 0.1) / 0.35)})" filter="url(#dsh)" opacity="${i === cur ? 1 : 0.55}"><rect x="-250" y="-50" width="500" height="100" rx="50" fill="${col}" ${ink(7)}/>${ctext(0, 3, `${i + 1}. ${label}`, 52, '#fff')}</g>`;
+  });
+  const ps = cur === 0 ? pose('stepover', t) : cur === 1 ? pose('dribble', t) : cur === 2 ? { ...pose('idle', t), lean: 0 } : pose('idle', t);
+  const spin = cur === 2 ? ((t - kw(seg, 'roulette')) * 400) % 360 : 0;
+  s += `<g transform="rotate(${cur === 2 ? Math.sin(spin * Math.PI / 180) * 10 : 0} 540 1740)">${athlete(540, 1760, 1.05, 'marcus', ps, t, cur === 2 && Math.cos(spin * Math.PI / 180) < 0 ? -1 : 1)}</g>`;
+  s += comicBall(660, 1735, 28, t * 300);
+  [['kid1', 170], ['kid2', 330], ['kid3', 900]].forEach(([w, x], i) => { s += athlete(x, 1600, 0.6, w, pose(cur >= 0 ? 'stepover' : 'idle', t + i * 0.2), t, x < 540 ? 1 : -1, blinking(t, i)); });
+  return s;
+}
+
+function sRace(t, seg) {
+  const races = [kwN(seg, 'raced'), kwN(seg, 'three'), kwN(seg, 'won')];
+  const res = ['W', 'W', 'L'];
+  let s = COMIC_DEFS;
+  const ri = Math.min(2, Math.max(0, races.filter(a => t > a - 0.2).length - 1));
+  const r0 = races[ri] - 0.2, f = clamp((t - r0) / 1.4);
+  const lanes = [['kid1', 1340], ['marcus', 1580], ['kid2', 1800]];
+  lanes.forEach(([w, y], i) => {
+    const speed = w === 'marcus' ? (res[ri] === 'W' ? 1 : 0.8) : (i === 0 ? 0.9 : 0.85);
+    const x = lerp(160, 940, eo(f) * speed);
+    s += `<path d="M0,${y + 8} H${W}" stroke="#fff" stroke-width="4" opacity=".5"/>`;
+    s += athlete(x, y, w === 'marcus' ? 0.62 : 0.55, w, f < 1 ? pose('run', t + i * 0.1) : pose(w === 'marcus' && res[ri] === 'W' ? 'celebrate' : 'idle', t), t, 1);
+  });
+  s += `<rect x="960" y="1420" width="12" height="420" fill="#fff" ${ink(4)}/><rect x="972" y="1420" width="60" height="40" fill="#111"/>`;
+  s += captionBox(540, 330, `RACE ${ri + 1} OF 3`, seg.t0, t, '#fff');
+  // tally
+  res.forEach((r, i) => {
+    const done = t > races[i] + 1.1 || (i < ri);
+    s += `<g transform="translate(${380 + i * 160},560)" filter="url(#dsh)"><circle r="62" fill="${done ? (r === 'W' ? '#2ecc71' : RED) : '#1a1d24'}" ${ink(7)}/>${ctext(0, 4, done ? r : i + 1, 60, '#fff')}</g>`;
+  });
+  return s;
+}
+
+function sGrind(t, seg) {
+  const tHun = kwN(seg, 'hundred'), tStep = kwN(seg, 'hundred', 2), tSat = kwN(seg, 'saturday');
+  let s = COMIC_DEFS;
+  if (t < tStep - 0.2) {
+    const n = Math.round(100 * eo(clamp((t - tHun) / Math.max(0.6, tStep - tHun - 0.4))));
+    s += `<g transform="translate(540,560)">${ctext(0, -110, 'LAPS', 70, '#fff')}${ctext(0, 40, t > tHun ? n : 0, 230, Y)}</g>`;
+    s += `<g transform="translate(540,800)" filter="url(#dsh)"><rect x="-260" y="-44" width="520" height="88" rx="44" fill="#1a1d24" ${ink(6)}/>${ctext(0, 2, '10 → 100 (10X)', 50, '#f4b41a')}</g>`;
+    s += athlete(470, 1760, 1.05, 'marcus', pose('run', t, n > 60 ? 1 : 0), t, 1);
+  } else {
+    const n = Math.round(100 * eo(clamp((t - tStep) / 1.6)));
+    s += `<g transform="translate(540,560)">${ctext(0, -110, 'STEP-OVERS', 70, '#fff')}${ctext(0, 40, n, 230, '#7c4dff')}${ctext(0, 190, 'EACH FOOT', 50, '#fff')}</g>`;
+    s += athlete(470, 1760, 1.05, 'marcus', t > tSat ? pose('celebrate', t) : pose('stepover', t), t, 1);
+    s += comicBall(600, 1735, 28, t * 200);
+    s += burst(540, 1080, "NOT GETTING CUT 😤", 64, RED, tSat + 0.3, t, -4);
+  }
+  return s;
+}
+
+function sUpgrade4(t, seg) {
+  const p = eb((t - seg.t0) / 0.5);
+  const before = Object.fromEntries(EP.statsBefore), tAll = kw(seg, 'Everything'), tO = kwN(seg, 'overall');
+  const stats = EP.statsAfter.map(([n, v, kwd]) => {
+    if (v === before[n]) return [n, v, false];
+    const a = kwd === 'dribbling' && n !== 'DRI' ? tAll : kwd === 'physical' && n !== 'PHY' ? tAll : kw(seg, kwd);
+    const f = clamp((t - a - 0.4) / 1.0);
+    return [n, Math.round(lerp(before[n], v, f)), f > 0];
+  });
+  const of = clamp((t - tO - 0.5) / 0.8), ovr = Math.round(lerp(EP.ovrBefore, EP.ovrAfter, of));
+  let s = COMIC_DEFS + bgRect('cPop');
+  s += statCardC(t, 540, 960, 0.98 * p, stats, ovr, t > tO + 0.5 && t - tO < 1.8 ? 1 - (t - tO - 0.5) / 1.3 : 0, of > 0);
+  s += burst(820, 520, '+11 DRI', 56, '#7c4dff', kw(seg, 'Dribbling') + 0.5, t, 8);
+  s += burst(260, 1480, '+6 PHY', 56, RED, kw(seg, 'Physical') + 0.5, t, -8);
+  s += burst(540, 300, `OVR ${EP.ovrBefore} → ${EP.ovrAfter}`, 72, '#2ecc71', tO + 0.5, t, -4);
+  return s;
+}
+
+function artTeamTrain(t) {
+  return `<rect width="420" height="392" fill="#1b5e8a"/><rect y="220" width="420" height="172" fill="#239b56"/>
+  ${[60, 150, 240, 330].map(x => `<path d="M${x - 12},372 L${x},340 L${x + 12},372Z" fill="#ff7a1a" stroke="#111" stroke-width="3"/>`).join('')}
+  ${athlete(110, 380, 0.34, 'mate', pose('run', t), t, 1)}${athlete(220, 380, 0.36, 'marcus', pose('run', t + .2), t, 1)}${athlete(330, 380, 0.34, 'mate', pose('run', t + .4), t, 1)}
+  ${athlete(380, 300, 0.3, 'coach', pose('idle', t), t, -1)}`;
+}
+function artSecret(t) {
+  const flick = 0.8 + 0.2 * Math.sin(t * 13);
+  return `<rect width="420" height="392" fill="#0b0d16"/><polygon points="180,0 240,0 340,392 80,392" fill="#fff6d0" opacity="${0.18 * flick}"/>
+  <g transform="translate(300,380)"><path d="M-22,-4 L-26,-100 L-6,-100 L-3,-4Z M22,-4 L26,-100 L6,-100 L3,-4Z M-44,-100 L-48,-200 Q0,-218 48,-200 L44,-100Z M-46,-198 L-86,-140 L-72,-132 L-40,-176Z M46,-198 L86,-140 L72,-132 L40,-176Z M-10,-226 h20 v28 h-20Z" fill="#000"/><rect x="-44" y="-310" width="88" height="88" rx="40" fill="#000"/></g>
+  ${athlete(120, 380, 0.4, 'marcus', pose('idle', t), t, 1)}${txt(300, 60, '?', 60, '#ffd54f')}`;
+}
+
+Object.assign(SCENES, { d4open: sD4open, tenx: sTenx, tryout: sTryout, match: sMatch, winner: sWinner, coach: sCoach, teach: sTeach, race: sRace, grind: sGrind, upgrade4: sUpgrade4 });
+const _cam3d_d3 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'tryout': return { cam: 'juggle', x: -40, t, k: clamp((t - seg.t0) / 6) };
+    case 'match': return { cam: 'juggle', x: -30, t, k: 0.3 };
+    case 'winner': return { cam: 'goal', t };
+    case 'coach': return { cam: 'juggle', x: -20, t, k: 0.6, blur: true };
+    case 'teach': return { cam: 'juggle', x: 20, t, k: clamp((t - seg.t0) / 6) };
+    case 'race': return { cam: 'track', x: 40 + (t - seg.t0) * 3, t };
+    case 'grind': return { cam: 'track', x: 100 + (t - seg.t0) * 9, t };
+    default: return _cam3d_d3(t, seg);
+  }
 };

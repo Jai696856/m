@@ -119,7 +119,7 @@ if __name__ == "__main__":
     ep = json.load(open(sys.argv[1]))
     if ep.get("words_file"):
         import os
-        tl, dur = build_from_words(ep["chunks"], sys.argv[2], os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), ep["words_file"]))
+        tl, dur = build_from_words(ep["chunks"], sys.argv[2], (ep['words_file'] if os.path.isabs(ep['words_file']) else os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), ep['words_file'])))
     else:
         tl, dur = build(ep["chunks"], sys.argv[2])
     print(json.dumps({"timeline": tl, "duration": dur}))

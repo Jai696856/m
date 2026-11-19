@@ -466,7 +466,7 @@ function sceneOptions(t, seg) {
   opts.forEach((o, i) => {
     const appear = eo((t - o.t0) / 0.45);
     if (appear <= 0) return;
-    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, ({ ball: artPitch, mic: artStream, sprint: artSprint, shoot: artShoot, tryout: (t) => artTryout(t), dribble: (t) => artDribble(t) })[o.icon](t));
+    s += optionCard(t, 450 + i * 490, o, o.t0 <= t && t < o.t1, appear, ({ ball: artPitch, mic: artStream, sprint: artSprint, shoot: artShoot, tryout: (t) => artTryout(t), dribble: (t) => artDribble(t), teamtrain: (t) => artTeamTrain(t), secret: (t) => artSecret(t) })[o.icon](t));
   });
   return s;
 }

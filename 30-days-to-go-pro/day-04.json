@@ -1,0 +1,30 @@
+{
+  "day": 4,
+  "title": "Day 4: Tryout",
+  "style": "comic",
+  "render3d": true,
+  "words_file": "audio/day-04.words.json",
+  "optionsTitle": ["SATURDAY:", "FINAL CUT"],
+  "statsBefore": [["SPD", 20], ["SHO", 19], ["PAS", 18], ["DRI", 14], ["DEF", 16], ["PHY", 15]],
+  "statsAfter": [["SPD", 22, "dribbling"], ["SHO", 19, ""], ["PAS", 21, "dribbling"], ["DRI", 25, "dribbling"], ["DEF", 18, "physical"], ["PHY", 21, "physical"]],
+  "ovrBefore": 17,
+  "ovrAfter": 21,
+  "comments": {
+    "workout": {"handle": "@ca1ęb", "text": "do tryouts then after show the street kids all the dribbling move learned after the game and practicing and race them for fun whoever loses has to do 10 laps", "likes": "", "ago": "top comment", "color": "#16a085"}
+  },
+  "chunks": [
+    {"scene": "d4open", "text": "Day four. You voted tryout... and the top comment said: do the tryout, then teach the street kids every move I learn, and race them. Loser runs ten laps."},
+    {"scene": "tenx", "text": "Ten laps? Nah. I'm doing ten times that."},
+    {"scene": "tryout", "text": "Six a.m. Sunday league tryout. Twenty-two players. Two spots. Coach didn't even look at me."},
+    {"scene": "match", "text": "First touch... clean. Then a defender twice my size sent me flying. But I got up. Every single time."},
+    {"scene": "winner", "text": "Minute seventy. I cut inside... step-over... and slipped it through for the winner!"},
+    {"scene": "coach", "text": "Coach walked over. Said one word. Saturday. That's the final cut."},
+    {"scene": "teach", "text": "So I went straight to the street pitch. Showed the kids the step-over. The cut inside. The roulette."},
+    {"scene": "race", "text": "Then we raced. Three times. I won two... lost one."},
+    {"scene": "grind", "text": "Loser runs ten laps... so I ran a hundred. Then a hundred step-overs. Each foot. Because Saturday... I'm not getting cut."},
+    {"scene": "upgrade4", "text": "Card check. Dribbling: fourteen to twenty-five. Physical: fifteen to twenty-one. Everything went up. Overall... twenty-one!"},
+    {"scene": "options", "letter": "A", "title": "TEAM TRAINING", "sub": "Train with the squad all week", "icon": "teamtrain", "text": "Saturday is the final cut. Option A: I train with the team all week."},
+    {"scene": "options", "letter": "B", "title": "SECRET COACH", "sub": "A former pro trains me in secret", "icon": "secret", "text": "Option B: I find a former pro to train me in secret."},
+    {"scene": "cta3", "text": "Comment A or B. That's Day five."}
+  ]
+}
