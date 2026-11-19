@@ -4,8 +4,9 @@ An original open-world driving and action sandbox for **Godot 4.3+**, written en
 Everything is generated from code: the city, cars, people, sky, ocean, sound effects and the radio music.
 There are no image, model or audio files.
 
-You arrive in Sunset Shores, a palm-lined coastal city, with $500 and a pistol. Steal cars, run jobs for
-three local contacts, and keep one step ahead of the police.
+You play as a two-person crew, **Marisol** and **Cole**, who arrive in Sunset Shores, a palm-lined coastal
+city with swamps on its edge, with $500 and a pistol. Steal cars, run jobs for three local contacts, fly off
+ramps for cash, and keep one step ahead of the police. The whole city comments on it all as it happens.
 
 ## Opening it
 
@@ -30,11 +31,24 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | Flip car upright | R | D-pad up |
 | Horn | H | Right stick click |
 | Radio on/off | T | D-pad left |
+| Switch between Marisol and Cole | Tab | D-pad down |
 | Full map | M | Back |
 | Pause | Esc or P | Start |
 
 ## What's in it
 
+- **A crew of two:** press Tab to swap between Marisol and Cole. The one you leave behind waits where you
+  left them and shows on the minimap as a pink dot. Marisol is the wheelwoman, so her cars accelerate 15%
+  harder. Cole is tough and takes 25% less damage. You can't switch while wanted or during a job.
+- **The wetlands:** a swamp on the east edge of town with murky pools, lily pads, cattails and
+  moss-hung cypress trees. A boardwalk runs out to the Gator Tours shack. **Alligators** guard the pools
+  and charge anyone on foot who gets close; you can shoot them or run them over. **Flamingos** wade in the
+  swamp and the beach shallows, and take off if you get close, drive past fast or fire a gun.
+- **Chirp:** the city's social feed, in the top-left corner. Locals post about the cars you steal,
+  explosions, police chases, stunt jumps, gator sightings and spooked flamingos. Between those come
+  local news and everyday chatter.
+- **Stunt bonuses:** keep a car in the air long enough (the beach ramps help) and you get cash for the
+  hang time and distance.
 - **The city:** an 8×8 grid of blocks about 650 m across. Downtown glass towers sit in the middle,
   with midtown shops and neon signs around them, pastel houses with pools and palms in the residential
   streets, and a strip of beachfront hotels. There are also two parks with fountains, two parking lots,
@@ -75,12 +89,13 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 
 | File | What it does |
 |---|---|
-| `scripts/game.gd` | Entry point. Builds the world and owns money, time of day, crime, explosions, wasted/busted and the respray |
+| `scripts/game.gd` | Entry point. Builds the world and owns money, time of day, crime, explosions, wasted/busted, the respray, stunt bonuses and the Chirp feed |
 | `scripts/city.gd` | City generator: roads, districts, buildings, beach, ocean, props, street lights, spawn points |
 | `scripts/car.gd` | Vehicle physics (raycast suspension, tyre grip, drift, damage, fire, explosions) and models |
 | `scripts/traffic.gd` | Lane-following traffic on rails, parked cars, carjacking |
 | `scripts/ped.gd`, `scripts/peds.gd` | Pedestrians, officers and bodyguards, plus spawning and being hit by cars |
-| `scripts/player.gd` | On-foot movement, curb step-up, weapons, getting in and out of cars |
+| `scripts/player.gd` | On-foot movement, curb step-up, weapons, getting in and out of cars, switching characters |
+| `scripts/wildlife.gd` | Alligators and flamingos in the wetlands |
 | `scripts/police.gd` | Wanted level, police AI on the road grid, busting, losing the cops |
 | `scripts/missions.gd` | Mission contacts, story missions and freelance jobs |
 | `scripts/hud.gd` | HUD, minimap, full map, pause menu and title screen |
@@ -93,10 +108,10 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 ## Tests
 
 ```bash
-godot --headless --path . -s tests/smoke_test.gd                     # 53 checks: driving, police, missions...
+godot --headless --path . -s tests/smoke_test.gd                     # 71 checks: driving, police, missions, crew, wildlife...
 xvfb-run godot --path . -s tests/screenshots.gd -- /tmp/shots [shot] # real screenshots
 ```
 
 The smoke test plays the game headlessly. It walks onto curbs, steals and drives cars, shoots,
-gets a wanted level, chases and dies, completes two missions, blows up cars, and runs a minute of
-traffic.
+gets a wanted level, chases and dies, completes two missions, and blows up cars. It also switches
+characters, gets bitten by a gator, scares flamingos, lands a stunt jump, and runs a minute of traffic.

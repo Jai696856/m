@@ -30,6 +30,10 @@ var stars_flash := 0.0
 var money_shown := 0.0
 var show_map := false
 var heading_font: Font
+var feed: RichTextLabel
+var feed_box: PanelContainer
+var posts: Array = []   # [handle, text, time_left]
+var lbl_hero: Label
 
 
 func setup(g) -> void:
@@ -74,6 +78,8 @@ func setup(g) -> void:
 	lbl_notice = _label(26, Color(1, 0.9, 0.5), HORIZONTAL_ALIGNMENT_LEFT)
 	lbl_vehicle = _label(40, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_RIGHT, true)
 	lbl_speed = _label(30, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_RIGHT, true)
+	lbl_hero = _label(22, Color(1.0, 0.65, 0.85), HORIZONTAL_ALIGNMENT_RIGHT, true)
+	_build_feed()
 	_build_pause()
 	_build_intro()
 
@@ -90,6 +96,46 @@ func _label(size: int, color: Color, align: HorizontalAlignment, heading := fals
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(l)
 	return l
+
+
+func _build_feed() -> void:
+	feed_box = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.04, 0.12, 0.62)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	feed_box.add_theme_stylebox_override("panel", sb)
+	feed_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(feed_box)
+	feed = RichTextLabel.new()
+	feed.bbcode_enabled = true
+	feed.fit_content = true
+	feed.scroll_active = false
+	feed.custom_minimum_size = Vector2(400, 0)
+	feed.add_theme_font_size_override("normal_font_size", 16)
+	feed.add_theme_font_size_override("bold_font_size", 16)
+	feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	feed_box.add_child(feed)
+	feed_box.visible = false
+
+
+func add_post(handle: String, text: String) -> void:
+	posts.push_front([handle, text, 14.0])
+	if posts.size() > 3:
+		posts.resize(3)
+	_refresh_feed()
+
+
+func _refresh_feed() -> void:
+	var b := "[color=#ff7ab8][b]CHIRP[/b][/color]  [color=#aaaaaa]trending in Sunset Shores[/color]\n"
+	for p in posts:
+		b += "[color=#7fd8ff][b]%s[/b][/color]  %s\n" % [p[0], p[1]]
+	feed.text = b.strip_edges()
+	feed_box.visible = not posts.is_empty()
+	feed_box.reset_size()
 
 
 func _panel(color: Color) -> PanelContainer:
@@ -115,6 +161,7 @@ Right click / LB      Aim
 Q / mouse wheel       Switch weapon
 R                     Flip the car upright
 H                     Horn          T   Radio on/off
+Tab                   Switch between Marisol and Cole
 M                     Full map      Esc   Pause"""
 
 
@@ -296,6 +343,18 @@ func _process(delta: float) -> void:
 	stars_flash -= real_dt
 	money_shown = move_toward(money_shown, game.money, maxf(40.0, absf(game.money - money_shown) * 4.0) * real_dt)
 	lbl_money.text = "$%08d" % int(money_shown)
+	lbl_hero.text = p.crew[p.hero].name.to_upper()
+	lbl_hero.position = Vector2(s.x - 420, 178)
+	lbl_hero.size = Vector2(390, 30)
+	var changed := false
+	for post in posts:
+		post[2] -= real_dt
+		if post[2] <= 0.0:
+			changed = true
+	if changed:
+		posts = posts.filter(func(q): return q[2] > 0.0)
+		_refresh_feed()
+	feed_box.position = Vector2(26, 104)
 	lbl_money.position = Vector2(s.x - 420, 58)
 	lbl_money.size = Vector2(390, 50)
 	var h := int(game.hour)
@@ -463,6 +522,11 @@ class Minimap extends Control:
 		_quad(-1600.0, 0.0, 1180.0, 1600.0, Color(0.15, 0.45, 0.62))
 		_quad(-375.0, 0.0, 45.0, 700.0, Color(0.85, 0.78, 0.58))
 		_quad(0.0, 0.0, city.HALF + 8.0, city.HALF + 8.0, Color(0.2, 0.2, 0.22))
+		_quad((city.WET_X + 620.0) * 0.5, 0.0, (620.0 - city.WET_X) * 0.5, city.WET_Z, Color(0.27, 0.34, 0.2))
+		for pool in city.pools:
+			var pc: Vector3 = pool[0]
+			if big or Vector2(pc.x - _p.x, pc.z - _p.z).length() < view_r + 30.0:
+				draw_circle(_w2s(pc), float(pool[1]) * _scale, Color(0.12, 0.3, 0.3))
 		for key in city.kinds:
 			var k: Vector2i = key
 			var c: Vector3 = city.block_center(k.x, k.y)
@@ -501,7 +565,7 @@ class Minimap extends Control:
 					r = 7.0
 				"target", "police":
 					r = 6.0
-				"hospital", "respray":
+				"hospital", "respray", "partner":
 					r = 6.0
 			draw_circle(sp, r + 2.0, Color(0, 0, 0, 0.75))
 			draw_circle(sp, r, col)

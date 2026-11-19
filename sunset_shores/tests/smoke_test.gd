@@ -39,6 +39,9 @@ func _initialize() -> void:
 	await _test_race()
 	await _test_explosion()
 	await _test_long_run()
+	await _test_crew_switch()
+	await _test_wildlife()
+	await _test_stunt_and_feed()
 	_test_night()
 	print("")
 	if failures.is_empty():
@@ -289,6 +292,70 @@ func _test_long_run() -> void:
 		if is_instance_valid(c) and c.global_position.distance_to(snap[c]) > 3.0:
 			moved += 1
 	check(moved > snap.size() / 3, "most traffic is moving (%d of %d)" % [moved, snap.size()])
+
+
+func _test_crew_switch() -> void:
+	print("crew switch")
+	var p = game.player
+	if p.in_car:
+		p.exit_car()
+	game.police.reset()
+	await frames(5)
+	var here: Vector3 = p.global_position
+	var there: Vector3 = p.partner_pos
+	var name0: String = p.crew[p.hero].name
+	check(p.switch_hero(), "can switch characters with no heat")
+	await frames(3)
+	check(p.crew[p.hero].name != name0, "now playing %s" % p.crew[p.hero].name)
+	check(p.global_position.distance_to(there) < 1.0, "the camera jumps to the other character")
+	check(p.partner_pos.distance_to(here) < 1.0, "the first character waits where they were")
+	check(is_instance_valid(p.partner_model) and p.partner_model.is_inside_tree(), "the waiting partner is visible in the world")
+	game.police.add_heat(10)
+	check(not p.switch_hero(), "switching is blocked while wanted")
+	game.police.reset()
+	# Cole is tough
+	p.hero = 1
+	var hp0: float = p.health
+	p.take_damage(20.0)
+	check(absf((hp0 - p.health) - 15.0) < 0.01, "Cole takes 25% less damage")
+	p.heal(100)
+
+
+func _test_wildlife() -> void:
+	print("wildlife")
+	var w = game.wildlife
+	check(w.gators.size() >= 6, "alligators in the wetlands (%d)" % w.gators.size())
+	check(w.flamingos.size() >= 6, "flamingos placed (%d)" % w.flamingos.size())
+	var p = game.player
+	var g = w.gators[0]
+	p.global_position = g.global_position + Vector3(6.0, 0.3, 0.0)
+	p.velocity = Vector3.ZERO
+	var hp0: float = p.health
+	await frames(150)
+	check(g.state != g.IDLE or p.health < hp0, "a gator charges a player on foot")
+	check(p.health < hp0, "and bites (%.0f -> %.0f)" % [hp0, p.health])
+	g.take_hit(500.0, p, g.global_position)
+	check(g.state == g.DEAD, "gators can be shot")
+	p.heal(100)
+	var f = w.flamingos[0]
+	p.global_position = f.global_position + Vector3(3.0, 0.3, 0.0)
+	await frames(30)
+	check(f.state != f.STAND, "flamingos take off when you walk up")
+
+
+func _test_stunt_and_feed() -> void:
+	print("stunts and the Chirp feed")
+	var p = game.player
+	var car = game.traffic.spawn_car("sport", Color.YELLOW, Transform3D(Basis(), Vector3(-380, 14.0, -40)))
+	p.global_position = car.global_position + Vector3(2, 0, 0)
+	p.enter_car(car)
+	var money0: int = game.money
+	car.linear_velocity = Vector3(0, 6.0, -22.0)
+	await frames(240)
+	check(game.stats.stunts >= 1, "a long jump scores a stunt bonus")
+	check(game.money > money0, "stunt bonus paid ($%d -> $%d)" % [money0, game.money])
+	check(game.hud.posts.size() >= 1, "the Chirp feed has posts (%d)" % game.hud.posts.size())
+	p.exit_car()
 
 
 func _test_night() -> void:

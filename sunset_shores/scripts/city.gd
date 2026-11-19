@@ -15,6 +15,8 @@ const SIDEWALK := 4.0
 const LANE_OFF := 3.5        # traffic lane offset from the road centre (drive on the right)
 const PARK_OFF := 6.5        # curbside parking offset
 const SHORE_X := -420.0      # where the ocean begins
+const WET_X := 350.0         # the wetlands start east of here...
+const WET_Z := 430.0         # ...between -WET_Z and +WET_Z
 const CORNERS := [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1)]
 
 const NEON := [Color(1.0, 0.25, 0.6), Color(0.2, 0.9, 1.0), Color(1.0, 0.75, 0.2),
@@ -40,6 +42,7 @@ var pickup_spots: Array = []      # [kind, Vector3]
 var contact_points: Array = []    # Vector3 for each mission contact
 var spawn_point := Vector3.ZERO
 var spawn_yaw := 0.0
+var partner_spawn := Vector3.ZERO
 var hospital_pos := Vector3.ZERO
 var station_pos := Vector3.ZERO
 var respray_pos := Vector3.ZERO
@@ -54,6 +57,11 @@ var tree_xf: Array[Transform3D] = []
 var lamp_xf: Array[Transform3D] = []
 var _lights_on := -1
 var world_body: StaticBody3D
+var pools: Array = []             # [Vector3 centre, radius] of swamp water
+var gator_homes: Array = []       # Vector3
+var flamingo_spots: Array = []    # Vector3
+var cypress_xf: Array[Transform3D] = []
+var reed_xf: Array[Transform3D] = []
 
 
 # --- grid helpers -----------------------------------------------------------
@@ -104,6 +112,10 @@ func ground_height(pos: Vector3) -> float:
 	if pos.x < -HALF - ROAD * 0.5 and pos.x > -HALF - ROAD * 0.5 - 8.0 and absf(pos.z) < HALF + ROAD * 0.5:
 		return CURB
 	return 0.0
+
+
+func in_wetlands(p: Vector3) -> bool:
+	return p.x > WET_X and absf(p.z) < WET_Z
 
 
 func ring_corner(b: Vector2i, idx: int) -> Vector3:
@@ -648,15 +660,131 @@ func _build_outskirts() -> void:
 		var p := Vector3(rng.randf_range(-330, 600), 0.0, rng.randf_range(-600, 600))
 		if absf(p.x) < HALF + 14.0 and absf(p.z) < HALF + 14.0:
 			continue
+		if in_wetlands(p):
+			continue
 		tree_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.6)), p))
 		_cyl_shape(body, 0.35, 4.0, p + Vector3(0, 2.0, 0))
+	_build_wetlands()
 	# a few low hills of rock
 	for k in 10:
 		var p := Vector3(rng.randf_range(380, 580), 0.0, rng.randf_range(-560, 560))
+		if in_wetlands(p):
+			p.z = signf(p.z + 0.01) * rng.randf_range(WET_Z + 30.0, 560.0)
 		var r := rng.randf_range(8, 18)
 		_prop(Util.sphere(r, 12), p + Vector3(0, -r * 0.55, 0), Util.mat(Color(0.48, 0.45, 0.38), 0.95), Vector3.ZERO, 900.0).scale = Vector3(1.3, 1.0, 1.0)
+	partner_spawn = ring_corner(Vector2i(5, 3), 2) + Vector3(0, 0.02, 0)
 	contact_points.push_front(Vector3(block_center(5, 2).x - 20.0, CURB, block_center(5, 2).z + 30.0))
 	contact_points.append(Vector3(block_center(4, 1).x, CURB, block_center(4, 1).z + 20.0))
+
+
+# --- the wetlands: swamp pools, cypress trees, reeds, a boardwalk and a tour shack ---
+
+func _build_wetlands() -> void:
+	var mud := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(620.0 - WET_X, WET_Z * 2.0)
+	mud.mesh = pm
+	mud.position = Vector3((WET_X + 620.0) * 0.5, -0.015, 0)
+	mud.material_override = Util.mat(Color(0.3, 0.36, 0.2), 1.0)
+	add_child(mud)
+	var water := StandardMaterial3D.new()
+	water.albedo_color = Color(0.1, 0.17, 0.1, 0.96)
+	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	water.roughness = 0.25
+	water.metallic = 0.0
+	water.metallic_specular = 0.3
+	var lily := Util.mat(Color(0.3, 0.55, 0.22), 0.8)
+	var tries := 0
+	while pools.size() < 16 and tries < 300:
+		tries += 1
+		var r := rng.randf_range(10.0, 28.0)
+		var c := Vector3(rng.randf_range(WET_X + 25.0 + r, 600.0 - r), 0.0, rng.randf_range(-WET_Z + r + 10.0, WET_Z - r - 10.0))
+		if absf(c.z) < 12.0 + r:
+			continue  # keep the boardwalk dry
+		var clash := false
+		for o in pools:
+			if c.distance_to(o[0]) < r + float(o[1]) + 6.0:
+				clash = true
+		if clash:
+			continue
+		pools.append([c, r])
+		var w := MeshInstance3D.new()
+		w.mesh = Util.cyl(r, r, 0.02, 28)
+		w.position = c + Vector3(0, 0.04, 0)
+		w.scale = Vector3(1.0, 1.0, rng.randf_range(0.6, 1.0))
+		w.material_override = water
+		w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(w)
+		for k in rng.randi_range(4, 10):
+			var a := rng.randf() * TAU
+			var lp := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.0, r * 0.6)
+			_prop(Util.cyl(0.6, 0.6, 0.02, 8), lp + Vector3(0, 0.06, 0), lily, Vector3.ZERO, 120.0)
+		gator_homes.append(c)
+		if rng.randf() < 0.6:
+			flamingo_spots.append(c + Vector3(r * 0.6, 0, 0))
+		for k in 30:
+			var a := rng.randf() * TAU
+			var rp := c + Vector3(cos(a), 0, sin(a)) * (r + rng.randf_range(-1.0, 2.5))
+			reed_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3)), rp))
+	var body := StaticBody3D.new()
+	add_child(body)
+	for k in 150:
+		var p := Vector3(rng.randf_range(WET_X + 10.0, 600.0), 0.0, rng.randf_range(-WET_Z, WET_Z))
+		if absf(p.z) < 6.0:
+			continue
+		cypress_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.4)), p))
+		_cyl_shape(body, 0.45, 5.0, p + Vector3(0, 2.5, 0))
+	# boardwalk from the east edge of the city out into the swamp
+	var wood := Util.mat(Color(0.5, 0.36, 0.22), 0.9)
+	var x := HALF + ROAD * 0.5
+	while x < 560.0:
+		_prop(Util.box(2.1, 0.12, 3.6), Vector3(x + 2.0, 0.3, 0), wood, Vector3.ZERO, 300.0)
+		for sz in [-1.0, 1.0]:
+			_prop(Util.box(0.12, 0.9, 0.12), Vector3(x + 2.0, 0.75, sz * 1.8), wood, Vector3.ZERO, 150.0)
+		x += 4.0
+	for sz in [-1.0, 1.0]:
+		_prop(Util.box(560.0 - HALF - ROAD * 0.5, 0.1, 0.1), Vector3((560.0 + HALF + ROAD * 0.5) * 0.5 + 2.0, 1.15, sz * 1.8), wood, Vector3.ZERO, 300.0)
+	# the tour shack at the end of the boardwalk
+	var shack := Vector2(570.0, 0.0)
+	_building(shack, Vector3(10, 4.5, 8), Color(0.55, 0.42, 0.3), 2, body, 0.0)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(11.0, 2.0, 9.0)
+	_prop(roof, Vector3(shack.x, 5.5, shack.y), Util.mat(Color(0.35, 0.4, 0.3), 0.9), Vector3(0, PI * 0.5, 0))
+	_sign("GATOR TOURS", Vector3(shack.x - 5.0, 3.6, shack.y), Vector3(-1, 0, 0), Color(0.4, 1.0, 0.4), 0.02)
+	pickup_spots.append(["armor", Vector3(shack.x - 7.0, 0.3, 2.5)])
+	# flamingos also like the shallows on the beach
+	for k in 3:
+		var z := rng.randf_range(-260.0, 260.0)
+		for j in 3:
+			flamingo_spots.append(Vector3(SHORE_X - 3.0 + rng.randf_range(-2, 2), 0.0, z + j * 2.5))
+
+
+func _cypress_mesh() -> ArrayMesh:
+	var bark := Color(0.38, 0.3, 0.22)
+	var moss := Color(0.42, 0.48, 0.32)
+	var parts := [
+		[Util.cyl(0.25, 0.9, 1.4, 8), Util.xf(Vector3(0, 0.7, 0)), bark],
+		[Util.cyl(0.18, 0.28, 6.0, 7), Util.xf(Vector3(0, 4.0, 0)), bark],
+		[Util.cyl(2.6, 3.4, 0.9, 9), Util.xf(Vector3(0.3, 7.0, 0)), Color(0.24, 0.36, 0.18)],
+		[Util.cyl(1.8, 2.6, 0.8, 9), Util.xf(Vector3(-0.2, 7.8, 0.3)), Color(0.27, 0.4, 0.2)],
+	]
+	for k in 5:
+		var a := k * TAU / 5.0
+		parts.append([Util.cyl(0.03, 0.12, 2.2, 4), Util.xf(Vector3(cos(a) * 1.6, 6.0, sin(a) * 1.6)), moss])
+	for k in 4:
+		var a := k * TAU / 4.0 + 0.4
+		parts.append([Util.cyl(0.08, 0.14, 1.4, 5), Util.xf(Vector3(cos(a) * 0.7, 0.45, sin(a) * 0.7), Vector3(sin(a) * 0.6, 0, -cos(a) * 0.6)), bark])
+	return Util.merge(parts)
+
+
+func _reed_mesh() -> ArrayMesh:
+	var parts := []
+	for k in 6:
+		var a := k * 1.1
+		parts.append([Util.box(0.05, 1.5 + 0.2 * (k % 3), 0.05), Util.xf(Vector3(cos(a) * 0.25, 0.75, sin(a) * 0.25), Vector3(cos(a) * 0.15, 0, sin(a) * 0.15)), Color(0.4, 0.55, 0.25)])
+		if k % 2 == 0:
+			parts.append([Util.cyl(0.05, 0.05, 0.3, 5), Util.xf(Vector3(cos(a) * 0.3, 1.55, sin(a) * 0.3)), Color(0.4, 0.26, 0.15)])
+	return Util.merge(parts)
 
 
 # --- shared prop meshes ---------------------------------------------------------
@@ -703,6 +831,8 @@ func _finish_props() -> void:
 	_multimesh(_palm_mesh(), palm_xf, Util.vc_mat(0.9))
 	_multimesh(_tree_mesh(), tree_xf, Util.vc_mat(0.9))
 	_multimesh(_lamp_mesh(), lamp_xf, Util.vc_mat(0.6, 0.4))
+	_multimesh(_cypress_mesh(), cypress_xf, Util.vc_mat(0.95))
+	_multimesh(_reed_mesh(), reed_xf, Util.vc_mat(0.9), false)
 	var heads: Array[Transform3D] = []
 	for t in lamp_xf:
 		heads.append(t * Transform3D(Basis(), Vector3(0, 6.86, -2.6)))

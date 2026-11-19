@@ -399,6 +399,7 @@ func passed(mult := 1.0, note := "") -> void:
 	if note != "":
 		game.hud.subtitle(note, 4.0)
 	game.sfx.play("pass")
+	game.post("race" if def.type == "race" else "mission")
 	if index < STORY.size():
 		index += 1
 		if index == STORY.size():

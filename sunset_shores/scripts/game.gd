@@ -14,6 +14,43 @@ const Sfx := preload("res://scripts/sfx.gd")
 const Pickups := preload("res://scripts/pickups.gd")
 const Fx := preload("res://scripts/fx.gd")
 const Car := preload("res://scripts/car.gd")
+const Wildlife := preload("res://scripts/wildlife.gd")
+
+## "Chirp": the city's social feed reacting to what you do. {car} and {who} get filled in.
+const CHIRP := {
+	"carjack": ["somebody just yanked a guy out of his {car} at a red light. this city never sleeps",
+		"my uncle's {car} just got jacked in front of the taco place. he finished his taco first though",
+		"PSA lock your doors. just saw a {car} get borrowed permanently"],
+	"explosion": ["was that thunder or did another car just blow up", "smoke over the city again. normal day",
+		"my windows rattled. someone's insurance is going UP"],
+	"wanted": ["helicopters? no. but SO many cop cars downtown rn. avoid", "sirens nonstop for 10 min who did what",
+		"just got passed by six police cruisers chasing ONE car lmao", "the cops are mad at somebody today"],
+	"busted": ["the cops finally caught that maniac. drinks on me", "watched an arrest live from my balcony. 10/10 content"],
+	"wasted": ["ambulance on the scene again. stay safe out there", "rough day for somebody. sending vibes"],
+	"race": ["a street race just went past my window at like 200 km/h. my plant fell over",
+		"illegal street racing at sunset? in THIS economy?"],
+	"stunt": ["a {car} just flew off the beach ramp and LANDED IT. i'm screaming",
+		"someone just jumped a {car} like it was a movie. sunset shores stays undefeated"],
+	"gator": ["gator on the boardwalk again. normal tuesday", "do NOT go near the swamp pools. ask me how i know",
+		"saw a tourist run from a gator faster than any car in this city"],
+	"flamingo": ["the flamingos at the shore got spooked and flew off. who scared the birds??",
+		"flamingo flock lifting off at golden hour. ok the city is pretty sometimes"],
+	"respray": ["the respray place just repainted a car in like 30 seconds. cops drove right past it lol"],
+	"mission": ["word is somebody new is doing jobs for the locals. watch yourselves",
+		"heard a crew just pulled off something big. no names obviously"],
+	"news": ["SHORES NEWS: heat advisory today, 34 degrees on the boardwalk. stay hydrated",
+		"SHORES NEWS: local man tries to pay for parking with a live crab. city declines",
+		"SHORES NEWS: flamingo population at the beach reaches record high",
+		"SHORES NEWS: city council votes to add more palm trees. again",
+		"SHORES NEWS: traffic on the beach road backed up after a car parked on a ramp",
+		"SHORES NEWS: Gator Tours reminds visitors the gators are not part of the tour",
+		"SHORES NEWS: police say car thefts are up. citizens say no kidding"],
+	"vibes": ["sunset from the promenade hits different today", "neon noodle at 2am is a spiritual experience",
+		"who keeps honking on the beach road. it's 7am", "the radio in my car only plays palm fm and honestly fine",
+		"lost my sandal at the beach. if found it's yours now", "rent went up again. moving into the swamp with the gators"],
+}
+const HANDLES := ["@boardwalk_ben", "@sunsetsally", "@palmtreepete", "@shores_scanner", "@neon_nights",
+	"@gatorgary", "@tacotuesday_tina", "@surfdude_sam", "@midtown_mo", "@beachcam_live", "@rollerblade_rosie"]
 
 const DAY_MINUTES := 16.0
 const RESPRAY_COST := 250
@@ -21,6 +58,7 @@ const RESPRAY_COLORS := [Color(0.7, 0.08, 0.08), Color(0.1, 0.22, 0.55), Color(0
 	Color(0.92, 0.92, 0.9), Color(0.1, 0.5, 0.3), Color(0.95, 0.55, 0.1), Color(0.55, 0.2, 0.6)]
 
 var city
+var wildlife
 var player
 var cam
 var traffic
@@ -44,7 +82,12 @@ var state_ms := 0
 var hint := ""
 var headless := false
 var respray_cd := 0.0
-var stats := {"kills": 0, "cars_stolen": 0, "cars_destroyed": 0, "missions": 0}
+var stats := {"kills": 0, "cars_stolen": 0, "cars_destroyed": 0, "missions": 0, "stunts": 0}
+var _post_cd := {}
+var ambient_post_t := 20.0
+var air_t := 0.0
+var air_dist := 0.0
+var _air_start := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -87,6 +130,9 @@ func _ready() -> void:
 	missions = Missions.new()
 	add_child(missions)
 	missions.setup(self)
+	wildlife = Wildlife.new()
+	add_child(wildlife)
+	wildlife.setup(self)
 	hud.setup(self)
 	traffic.initial_spawn()
 	peds.initial_spawn()
@@ -143,6 +189,7 @@ func _setup_input() -> void:
 		"map": [_key(KEY_M), _joy(JOY_BUTTON_BACK)],
 		"radio": [_key(KEY_T), _joy(JOY_BUTTON_DPAD_LEFT)],
 		"pause": [_key(KEY_ESCAPE), _key(KEY_P), _joy(JOY_BUTTON_START)],
+		"switch_hero": [_key(KEY_TAB), _joy(JOY_BUTTON_DPAD_DOWN)],
 	}
 	for action in map:
 		if not InputMap.has_action(action):
@@ -246,6 +293,10 @@ func _update_time(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_update_time(delta)
+	ambient_post_t -= delta
+	if ambient_post_t <= 0.0 and state == "play":
+		ambient_post_t = rng.randf_range(35.0, 70.0)
+		post("news" if rng.randf() < 0.5 else "vibes")
 	if state != "play" and Time.get_ticks_msec() - state_ms > 4500:
 		_respawn()
 
@@ -254,8 +305,10 @@ func _physics_process(delta: float) -> void:
 	hint = ""
 	respray_cd -= delta
 	if state != "play" or player.in_car == null:
+		air_t = 0.0
 		return
 	var c = player.in_car
+	_track_stunt(c, delta)
 	var d := Vector2(c.global_position.x - city.respray_pos.x, c.global_position.z - city.respray_pos.z).length()
 	if d < 7.0:
 		if police.wanted > 0 and respray_cd <= 0.0:
@@ -268,6 +321,7 @@ func _physics_process(delta: float) -> void:
 					c.fire.emitting = false
 				if c.smoke:
 					c.smoke.emitting = false
+				post("respray")
 				hud.big_message("RESPRAYED", "-$%d  New paint, no heat" % RESPRAY_COST, Color(1.0, 0.3, 0.85), 3.0)
 				sfx.play("pass", null, -4.0)
 				respray_cd = 6.0
@@ -275,6 +329,48 @@ func _physics_process(delta: float) -> void:
 				hint = "A respray costs $%d" % RESPRAY_COST
 		elif police.wanted == 0:
 			hint = "Respray shop: come back when the cops are after you ($%d)" % RESPRAY_COST
+
+
+## Big air in a car pays out: time off the ground and distance flown.
+func _track_stunt(c, delta: float) -> void:
+	if c.dead:
+		air_t = 0.0
+		return
+	if c.grounded == 0:
+		if air_t == 0.0:
+			_air_start = c.global_position
+		air_t += delta
+		if c.linear_velocity.length() < 3.0:
+			air_t = 0.0
+	elif air_t > 0.0:
+		var flight := air_t
+		var dist := Vector2(c.global_position.x - _air_start.x, c.global_position.z - _air_start.z).length()
+		air_t = 0.0
+		if flight > 0.9 and dist > 12.0 and c.global_transform.basis.y.y > 0.6:
+			var bonus := int(flight * 60.0 + dist * 4.0) / 10 * 10
+			add_money(bonus, false)
+			stats.stunts += 1
+			hud.big_message("STUNT BONUS", "+$%d   %.1f s   %d m" % [bonus, flight, int(dist)], Color(0.3, 0.9, 1.0), 2.5)
+			sfx.play("pass", null, -6.0, 1.2)
+			post("stunt", {"car": c.spec.name})
+
+
+## Put a post on the Chirp feed (rate-limited per kind).
+func post(kind: String, vars := {}) -> void:
+	if not CHIRP.has(kind) or hud == null:
+		return
+	var now := Time.get_ticks_msec()
+	if _post_cd.get(kind, 0) > now:
+		return
+	_post_cd[kind] = now + 25000
+	var lines: Array = CHIRP[kind]
+	var text: String = lines[rng.randi() % lines.size()]
+	for k in vars:
+		text = text.replace("{%s}" % k, str(vars[k]))
+	var handle: String = "@ShoresNews" if kind == "news" else HANDLES[rng.randi() % HANDLES.size()]
+	if kind == "news":
+		text = text.trim_prefix("SHORES NEWS: ")
+	hud.add_post(handle, text)
 
 
 func player_pos() -> Vector3:
@@ -298,6 +394,9 @@ func get_blips() -> Array:
 	out.append_array(pickups.get_blips())
 	out.append_array(police.get_blips())
 	out.append_array(missions.get_blips())
+	out.append_array(wildlife.get_blips())
+	if not player.dead:
+		out.append([player.partner_pos, Color(1.0, 0.55, 0.8), "partner"])
 	return out
 
 
@@ -319,6 +418,7 @@ func crime(amount: float, pos: Vector3, need_witness := true) -> void:
 
 func gunshot(pos: Vector3, by_player: bool) -> void:
 	peds.alert(pos, 38.0)
+	wildlife.alert(pos, 45.0)
 	if by_player:
 		crime(4.0, pos)
 
@@ -384,6 +484,8 @@ func explode(pos: Vector3, radius: float, by_player: bool, source = null) -> voi
 			c.apply_central_impulse(((c.global_position - pos).normalized() + Vector3.UP) * c.mass * 4.0 * (1.0 - d / (radius * 1.3)))
 			c.damage(90.0 * (1.0 - d / (radius * 1.3)), by_player)
 	peds.alert(pos, 60.0)
+	wildlife.alert(pos, 80.0)
+	post("explosion")
 	if by_player:
 		crime(50.0, pos, false)
 
@@ -404,6 +506,7 @@ func player_died() -> void:
 	state_ms = Time.get_ticks_msec()
 	Engine.time_scale = 0.35
 	hud.big_message("WASTED", "", Color(0.85, 0.1, 0.1), 4.5)
+	post("wasted")
 	sfx.play("fail")
 	missions.fail("You were wasted.")
 
@@ -417,6 +520,7 @@ func player_busted() -> void:
 	if player.in_car == null:
 		player.model.set_hands_up()
 	hud.big_message("BUSTED", "", Color(0.3, 0.55, 1.0), 4.5)
+	post("busted")
 	sfx.play("fail")
 	missions.fail("You were busted.")
 

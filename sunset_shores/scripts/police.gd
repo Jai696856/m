@@ -41,6 +41,8 @@ func add_heat(amount: float) -> void:
 	wanted = _stars_for(heat)
 	if wanted > old:
 		game.hud.flash_stars()
+		if wanted >= 3:
+			game.post("wanted")
 		spawn_cd = minf(spawn_cd, 1.5)
 
 

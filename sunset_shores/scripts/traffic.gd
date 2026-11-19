@@ -346,6 +346,7 @@ func carjack(car) -> void:
 	var p = game.peds.spawn_ped(car.global_position - side * 1.9 + Vector3(0, 0.05, 0), "ped")
 	p.flee(game.player.global_position)
 	game.sfx.play("door", car.global_position)
+	game.post("carjack", {"car": car.spec.name})
 	if game.police.unit_near(car.global_position, 50.0):
 		game.crime(60.0, car.global_position, false)
 

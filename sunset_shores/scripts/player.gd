@@ -27,6 +27,21 @@ var weapons := [
 var hurt_flash := 0.0
 var shape: CollisionShape3D
 var near_car = null
+## The crew: two original characters you can switch between with Tab.
+## Marisol is the better driver (stronger engine), Cole is tougher (takes less damage).
+var crew := [
+	{"name": "Marisol", "perk": "driver", "perk_text": "Wheelwoman: cars accelerate 15% harder",
+		"shirt": Color(0.95, 0.35, 0.45), "pants": Color(0.2, 0.25, 0.42), "skin": Color(0.78, 0.56, 0.42),
+		"hair": Color(0.1, 0.06, 0.05), "opts": {"hair_style": 1, "shoes": Color(0.95, 0.95, 0.95)}},
+	{"name": "Cole", "perk": "tough", "perk_text": "Tough: takes 25% less damage",
+		"shirt": Color(0.1, 0.62, 0.62), "pants": Color(0.16, 0.18, 0.26), "skin": Color(0.88, 0.68, 0.52),
+		"hair": Color(0.45, 0.3, 0.15), "opts": {"shoes": Color(0.3, 0.22, 0.15)}},
+]
+var hero := 0
+var partner_pos := Vector3.ZERO
+var partner_yaw := 0.0
+var partner_model: Node3D
+var switch_cd := 0.0
 
 
 func setup(g) -> void:
@@ -43,11 +58,87 @@ func setup(g) -> void:
 	shape.shape = cap
 	shape.position.y = 0.9
 	add_child(shape)
-	model = Humanoid.new()
+	_build_model()
+	partner_pos = game.city.partner_spawn
+	partner_yaw = PI
+	_build_partner()
+
+
+func perk() -> String:
+	return crew[hero].perk
+
+
+func _make_person(c: Dictionary) -> Node3D:
+	var m := Humanoid.new()
+	m.build(c.shirt, c.pants, c.skin, c.hair, c.opts)
+	return m
+
+
+func _build_model() -> void:
+	var yaw := 0.0
+	if model:
+		yaw = model.rotation.y
+		model.queue_free()
+	model = _make_person(crew[hero])
 	add_child(model)
-	model.build(Color(0.1, 0.62, 0.62), Color(0.16, 0.18, 0.26), Color(0.82, 0.6, 0.45), Color(0.12, 0.08, 0.05),
-		{"shoes": Color(0.95, 0.95, 0.95)})
+	model.rotation.y = yaw
 	model.show_gun(true)
+
+
+## The crew member you are not playing waits in the world where you left them.
+func _build_partner() -> void:
+	if partner_model:
+		partner_model.queue_free()
+	partner_model = Node3D.new()
+	partner_model.name = "Partner"
+	game.add_child.call_deferred(partner_model)
+	var m := _make_person(crew[1 - hero])
+	partner_model.add_child(m)
+	m.rotation.y = partner_yaw
+	partner_model.set_deferred("global_position", partner_pos)
+	partner_model.position = partner_pos
+
+
+func can_switch() -> String:
+	if game.state != "play" or dead:
+		return "Can't switch right now."
+	if game.police.wanted > 0:
+		return "Lose the cops before switching."
+	if game.missions.is_active():
+		return "Finish the job before switching."
+	if knock_t > 0.0:
+		return "Can't switch right now."
+	return ""
+
+
+func switch_hero() -> bool:
+	var why := can_switch()
+	if why != "":
+		game.hud.notice(why)
+		return false
+	var here: Vector3 = game.player_pos()
+	var here_yaw: float = model.rotation.y
+	if in_car:
+		var c = in_car
+		here_yaw = Util.yaw_of(-c.global_transform.basis.z)
+		exit_car()
+		here = global_position
+	var go := partner_pos
+	var go_yaw := partner_yaw
+	partner_pos = here
+	partner_yaw = here_yaw
+	hero = 1 - hero
+	_build_model()
+	model.rotation.y = go_yaw
+	global_position = go + Vector3(0, 0.1, 0)
+	velocity = Vector3.ZERO
+	_build_partner()
+	game.cam.yaw = go_yaw
+	game.cam.snap()
+	game.hud.big_message(crew[hero].name.to_upper(), crew[hero].perk_text, Color(1.0, 0.6, 0.8), 2.5)
+	game.sfx.play("pass", null, -10.0, 1.6)
+	switch_cd = 1.0
+	return true
 
 
 func _physics_process(delta: float) -> void:
@@ -62,6 +153,10 @@ func _physics_process(delta: float) -> void:
 			move_and_slide()
 		return
 	if game.state != "play":
+		return
+	switch_cd -= delta
+	if Input.is_action_just_pressed("switch_hero") and switch_cd <= 0.0:
+		switch_hero()
 		return
 	if in_car != null:
 		_drive(delta)
@@ -295,6 +390,8 @@ func take_hit(dmg: float, from, _pos: Vector3) -> void:
 func take_damage(dmg: float) -> void:
 	if dead or game.state != "play":
 		return
+	if perk() == "tough":
+		dmg *= 0.75
 	if armor > 0.0:
 		var absorbed := minf(armor, dmg * 0.75)
 		armor -= absorbed

@@ -19,7 +19,7 @@ func _initialize() -> void:
 	game.hud.intro.visible = false
 	paused = false
 	game.time_flow = 0.0
-	for shot in ["beach", "downtown", "drive", "night", "wanted", "intro"]:
+	for shot in ["beach", "downtown", "drive", "night", "wanted", "swamp", "intro"]:
 		if only == "" or only == shot:
 			await call("_shot_" + shot)
 	quit()
@@ -105,6 +105,21 @@ func _shot_wanted() -> void:
 	game.hud.objective = "Lose the cops."
 	await _frames(40)
 	await _save("05_wanted")
+
+
+func _shot_swamp() -> void:
+	_set_time(17.2)
+	var w = game.wildlife
+	var g = w.gators[0]
+	var f = w.flamingos[0]
+	g.global_position = f.global_position + Vector3(-4, 0, 3)
+	g.body_node.rotation.y = 0.6
+	_place(g.global_position + Vector3(9, 0.1, 9), atan2(9, 9), -0.18)
+	game.post("gator")
+	game.post("news")
+	game.post("stunt", {"car": "Marlin GT"})
+	await _frames(40)
+	await _save("06_swamp")
 
 
 func _shot_intro() -> void:
