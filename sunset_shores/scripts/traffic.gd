@@ -28,7 +28,7 @@ class Agent:
 	var vel := Vector3.ZERO
 
 
-const TARGET := 26
+var target := 26
 const TYPES := ["sedan", "sedan", "sedan", "compact", "compact", "suv", "suv", "taxi", "pickup", "van", "sport"]
 const COLORS := [Color(0.92, 0.92, 0.9), Color(0.08, 0.08, 0.09), Color(0.6, 0.62, 0.65), Color(0.35, 0.36, 0.38),
 	Color(0.7, 0.08, 0.08), Color(0.1, 0.22, 0.55), Color(0.1, 0.32, 0.2), Color(0.75, 0.68, 0.52),
@@ -78,7 +78,7 @@ func initial_spawn() -> void:
 			t = TYPES[rng.randi() % TYPES.size()]
 		var c = spawn_car(t, color_for(t), s[0])
 		c.home_spot = true
-	for i in TARGET:
+	for i in target:
 		_spawn_traffic(20.0, 280.0)
 
 
@@ -203,7 +203,7 @@ func _physics_process(delta: float) -> void:
 	for car in gone:
 		_despawn(car)
 	spawn_cd -= delta
-	if agents.size() < TARGET and spawn_cd <= 0.0:
+	if agents.size() < target and spawn_cd <= 0.0:
 		spawn_cd = 0.25
 		_spawn_traffic(120.0, 260.0)
 	cleanup_cd -= delta

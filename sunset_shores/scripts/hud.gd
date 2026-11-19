@@ -165,6 +165,13 @@ Tab                   Switch between Marisol and Cole
 M                     Full map      Esc   Pause"""
 
 
+const TOUCH_TEXT := """Left thumb       Move (push all the way to sprint), or drive
+Right thumb      Drag to look around
+FIRE             Shoot          JUMP / DRIFT   Jump or handbrake
+CAR              Get in, out or steal a car
+GUN  MAP  SWAP   Switch weapon, full map, Marisol / Cole"""
+
+
 func _build_pause() -> void:
 	pause_panel = Control.new()
 	pause_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -195,7 +202,7 @@ func _build_pause() -> void:
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(stats)
 	var ctl := Label.new()
-	ctl.text = CONTROLS_TEXT
+	ctl.text = TOUCH_TEXT if game.touch_mode else CONTROLS_TEXT
 	ctl.add_theme_font_size_override("font_size", 18)
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Consolas", "Menlo", "monospace"])
@@ -247,7 +254,7 @@ func _build_intro() -> void:
 	spacer.custom_minimum_size = Vector2(0, 16)
 	vb.add_child(spacer)
 	var ctl := Label.new()
-	ctl.text = CONTROLS_TEXT + "\n\nWalk into the coloured beam on the minimap to start a job."
+	ctl.text = (TOUCH_TEXT if game.touch_mode else CONTROLS_TEXT) + "\n\nWalk into the coloured beam on the minimap to start a job."
 	ctl.add_theme_font_size_override("font_size", 20)
 	ctl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	ctl.add_theme_constant_override("outline_size", 6)
@@ -256,7 +263,7 @@ func _build_intro() -> void:
 	ctl.add_theme_font_override("font", mono)
 	vb.add_child(ctl)
 	var go := Label.new()
-	go.text = "Click or press any key to play"
+	go.text = "Tap to play" if game.touch_mode else "Click or press any key to play"
 	go.name = "Go"
 	go.add_theme_font_size_override("font_size", 30)
 	go.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
@@ -273,18 +280,12 @@ func set_paused(p: bool) -> void:
 		var s: Dictionary = game.stats
 		(pause_panel.find_child("Stats", true, false) as Label).text = "Missions passed: %d    Cars stolen: %d    Cars destroyed: %d    Takedowns: %d" % [s.missions, s.cars_stolen, s.cars_destroyed, s.kills]
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	elif not game.headless:
+	elif not game.headless and not game.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if intro.visible:
-		if (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton) and event.is_pressed():
-			intro.visible = false
-			get_tree().paused = false
-			if not game.headless:
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("pause"):
 		set_paused(not get_tree().paused)
@@ -292,7 +293,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if get_tree().paused:
 		return
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not game.headless:
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not game.headless and not game.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if event.is_action_pressed("map"):
 		show_map = not show_map
@@ -330,6 +331,18 @@ func flash_stars() -> void:
 	stars_flash = 2.0
 
 
+## The title screen is dismissed here, before the GUI sees the click or tap.
+func _input(event: InputEvent) -> void:
+	if intro == null or not intro.visible:
+		return
+	if (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton or event is InputEventScreenTouch) and event.is_pressed():
+		intro.visible = false
+		get_tree().paused = false
+		if not game.headless and not game.touch_mode:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		get_viewport().set_input_as_handled()
+
+
 func _process(delta: float) -> void:
 	if root == null or game == null or lbl_money == null:
 		return
@@ -354,7 +367,7 @@ func _process(delta: float) -> void:
 	if changed:
 		posts = posts.filter(func(q): return q[2] > 0.0)
 		_refresh_feed()
-	feed_box.position = Vector2(26, 104)
+	feed_box.position = Vector2(18, 18 + clampf(s.y * 0.24, 130.0, 280.0) + 44) if game.touch_mode else Vector2(26, 104)
 	lbl_money.position = Vector2(s.x - 420, 58)
 	lbl_money.size = Vector2(390, 50)
 	var h := int(game.hour)
@@ -366,8 +379,9 @@ func _process(delta: float) -> void:
 	lbl_weapon.text = w.name + ("" if w.ammo < 0 else "  %d" % w.ammo)
 	lbl_weapon.position = Vector2(s.x - 420, 150)
 	lbl_weapon.size = Vector2(390, 30)
-	var map_size := clampf(s.y * 0.27, 170.0, 280.0)
-	minimap.position = Vector2(28, s.y - map_size - 52)
+	var touch: bool = game.touch_mode
+	var map_size := clampf(s.y * (0.24 if touch else 0.27), 130.0, 280.0)
+	minimap.position = Vector2(18, 18) if touch else Vector2(28, s.y - map_size - 52)
 	minimap.size = Vector2(map_size, map_size)
 	bigmap.visible = show_map
 	if show_map:
@@ -402,9 +416,18 @@ func _process(delta: float) -> void:
 	lbl_hint.visible = game.hint != "" and game.state == "play"
 	lbl_hint.position = Vector2(30, 26)
 	lbl_hint.size = Vector2(700, 30)
+	if game.touch_mode:
+		lbl_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_hint.position = Vector2(s.x * 0.5 - 400, 110)
+		lbl_hint.size = Vector2(800, 30)
+		lbl_hint.text = lbl_hint.text.replace("Press F to", "Tap CAR to").replace("Press R to", "Tap FLIP to")
 	lbl_notice.visible = notice_t > 0.0
 	lbl_notice.position = Vector2(30, 62)
 	lbl_notice.size = Vector2(700, 34)
+	if game.touch_mode:
+		lbl_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_notice.position = Vector2(s.x * 0.5 - 400, 146)
+		lbl_notice.size = Vector2(800, 34)
 	var car = p.in_car
 	lbl_vehicle.visible = car != null and vehicle_t > 0.0
 	lbl_vehicle.position = Vector2(s.x - 520, s.y - 150)

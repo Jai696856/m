@@ -4,7 +4,7 @@ extends Node3D
 
 const Ped := preload("res://scripts/ped.gd")
 
-const TARGET := 42
+var target := 42
 
 var game
 var city
@@ -39,7 +39,7 @@ func remove(p) -> void:
 
 
 func initial_spawn() -> void:
-	for i in TARGET:
+	for i in target:
 		_spawn_walker(8.0, 160.0)
 
 
@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 		if d > 175.0 or (p.state == Ped.DEAD and p.timer > 30.0):
 			remove(p)
 	spawn_cd -= delta
-	if spawn_cd <= 0.0 and _walker_count() < TARGET:
+	if spawn_cd <= 0.0 and _walker_count() < target:
 		spawn_cd = 0.15
 		_spawn_walker(70.0, 150.0)
 	_car_hits()

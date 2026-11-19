@@ -2,13 +2,16 @@
 shader_type spatial;
 render_mode specular_schlick_ggx;
 
-global uniform float night;
-instance uniform vec4 wall_color : source_color = vec4(0.8, 0.8, 0.8, 1.0);
-instance uniform float style = 0.0; // 0 office/apartment, 1 glass tower, 2 house
-instance uniform float seed = 0.0;
+uniform float night = 0.0;
+// One material per colour and style (instance uniforms aren't available on the
+// Compatibility renderer used on phones and the web); each building gets its own
+// window pattern from its position.
+uniform vec4 wall_color : source_color = vec4(0.8, 0.8, 0.8, 1.0);
+uniform float style = 0.0; // 0 office/apartment, 1 glass tower, 2 house
 
 varying vec3 wpos;
 varying vec3 wnorm;
+varying float seed;
 
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -19,6 +22,8 @@ float hash21(vec2 p) {
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 origin = MODEL_MATRIX[3].xyz;
+	seed = fract(sin(dot(origin.xz, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 void fragment() {

@@ -50,7 +50,9 @@ var lamp_lights: Array[OmniLight3D] = []
 var lamp_head_mat: StandardMaterial3D
 var neon_mats: Array[StandardMaterial3D] = []
 var signs: Array = []             # [Label3D, Color]
-var bmat: ShaderMaterial
+var bshader: Shader
+var wm: ShaderMaterial
+var _bmats := {}
 var unit_box: BoxMesh
 var palm_xf: Array[Transform3D] = []
 var tree_xf: Array[Transform3D] = []
@@ -170,8 +172,7 @@ func build(g) -> void:
 	game = g
 	rng.seed = 20261119
 	unit_box = BoxMesh.new()
-	bmat = ShaderMaterial.new()
-	bmat.shader = load("res://shaders/building.gdshader")
+	bshader = load("res://shaders/building.gdshader")
 	lamp_head_mat = Util.glow_mat(Color(1.0, 0.85, 0.6), 0.5)
 	world_body = StaticBody3D.new()
 	world_body.name = "WorldBody"
@@ -334,17 +335,25 @@ func _edge_props(c: Vector2, kind: String, body: StaticBody3D) -> void:
 func _building(c: Vector2, size: Vector3, color: Color, style: int, body: StaticBody3D, y0 := CURB) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = unit_box
-	mi.material_override = bmat
+	mi.material_override = _bmat(color, style)
 	mi.scale = size
 	mi.position = Vector3(c.x, y0 + size.y * 0.5, c.y)
 	add_child(mi)
-	mi.set_instance_shader_parameter("wall_color", color)
-	mi.set_instance_shader_parameter("style", float(style))
-	mi.set_instance_shader_parameter("seed", rng.randf())
 	_shape(body, size, mi.position)
 	if y0 <= CURB + 0.01:
 		footprints.append(Rect2(c.x - size.x * 0.5, c.y - size.z * 0.5, size.x, size.z))
 	return mi
+
+
+func _bmat(color: Color, style: int) -> ShaderMaterial:
+	var key := "%s_%d" % [color.to_html(), style]
+	if not _bmats.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = bshader
+		m.set_shader_parameter("wall_color", color)
+		m.set_shader_parameter("style", float(style))
+		_bmats[key] = m
+	return _bmats[key]
 
 
 func _prop(mesh: Mesh, pos: Vector3, m: Material, rot := Vector3.ZERO, vis := 0.0) -> MeshInstance3D:
@@ -573,6 +582,8 @@ func _build_lamps() -> void:
 			var dir := Vector3(-sx, 0, -sz).normalized()
 			lamp_xf.append(Transform3D(Basis(Vector3.UP, Util.yaw_of(dir)), p))
 			_cyl_shape(world_body, 0.15, 7.0, p + Vector3(0, 3.5, 0))
+			if game.low_spec:
+				continue  # each light is an extra pass on phones; the glowing lamp heads stay
 			var l := OmniLight3D.new()
 			l.position = p + dir * 2.6 + Vector3(0, 6.5, 0)
 			l.omni_range = 26.0
@@ -603,7 +614,7 @@ func _build_beach() -> void:
 	pm.subdivide_depth = 160
 	ocean.mesh = pm
 	ocean.position = Vector3(SHORE_X - 1300.0, 0.22, 0)
-	var wm := ShaderMaterial.new()
+	wm = ShaderMaterial.new()
 	wm.shader = load("res://shaders/water.gdshader")
 	wm.set_shader_parameter("shore_x", SHORE_X)
 	ocean.material_override = wm
@@ -882,6 +893,11 @@ func set_night(n: float) -> void:
 	if absf(n - _last_night) < 0.01:
 		return
 	_last_night = n
+	# a plain uniform per material (global shader uniforms break WebGL builds)
+	for m in _bmats.values():
+		m.set_shader_parameter("night", n)
+	if wm:
+		wm.set_shader_parameter("night", n)
 	lamp_head_mat.emission_energy_multiplier = lerpf(0.3, 7.0, n)
 	for m in neon_mats:
 		m.emission_energy_multiplier = lerpf(1.2, 5.0, n)

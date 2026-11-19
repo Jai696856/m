@@ -2,7 +2,7 @@
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
 
-global uniform float night;
+uniform float night = 0.0;
 uniform vec3 shallow : source_color = vec3(0.18, 0.72, 0.72);
 uniform vec3 deep : source_color = vec3(0.02, 0.17, 0.32);
 uniform float shore_x = -420.0;

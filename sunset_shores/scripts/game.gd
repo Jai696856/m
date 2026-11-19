@@ -15,6 +15,7 @@ const Pickups := preload("res://scripts/pickups.gd")
 const Fx := preload("res://scripts/fx.gd")
 const Car := preload("res://scripts/car.gd")
 const Wildlife := preload("res://scripts/wildlife.gd")
+const Touch := preload("res://scripts/touch.gd")
 
 ## "Chirp": the city's social feed reacting to what you do. {car} and {who} get filled in.
 const CHIRP := {
@@ -81,6 +82,9 @@ var state := "play"
 var state_ms := 0
 var hint := ""
 var headless := false
+var touch_mode := false   # phone/tablet: on-screen controls
+var low_spec := false     # web and mobile: lighter settings
+var touch
 var respray_cd := 0.0
 var stats := {"kills": 0, "cars_stolen": 0, "cars_destroyed": 0, "missions": 0, "stunts": 0}
 var _post_cd := {}
@@ -92,6 +96,9 @@ var _air_start := Vector3.ZERO
 
 func _ready() -> void:
 	headless = DisplayServer.get_name() == "headless"
+	var args := OS.get_cmdline_user_args()
+	touch_mode = DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or args.has("--touch")
+	low_spec = OS.has_feature("web") or OS.has_feature("mobile") or args.has("--low")
 	rng.randomize()
 	_setup_input()
 	_setup_environment()
@@ -113,6 +120,9 @@ func _ready() -> void:
 	peds = Peds.new()
 	add_child(peds)
 	peds.setup(self)
+	if low_spec:
+		traffic.target = 14
+		peds.target = 22
 	player = Player.new()
 	add_child(player)
 	player.setup(self)
@@ -134,6 +144,16 @@ func _ready() -> void:
 	add_child(wildlife)
 	wildlife.setup(self)
 	hud.setup(self)
+	if touch_mode:
+		touch = Touch.new()
+		hud.root.add_child(touch)
+		touch.setup(self)
+	if low_spec:
+		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		sun.directional_shadow_max_distance = 90.0
+		cam.cam.far = 1100.0
+		env.fog_density = 0.0018
 	traffic.initial_spawn()
 	peds.initial_spawn()
 	_update_time(0.0)
@@ -181,9 +201,9 @@ func _setup_input() -> void:
 		"handbrake": [_key(KEY_SPACE), _joy(JOY_BUTTON_A)],
 		"sprint": [_key(KEY_SHIFT), _joy(JOY_BUTTON_LEFT_STICK)],
 		"enter_exit": [_key(KEY_F), _key(KEY_ENTER), _joy(JOY_BUTTON_Y)],
-		"fire": [_mouse(MOUSE_BUTTON_LEFT), _joy(JOY_BUTTON_RIGHT_SHOULDER)],
-		"aim": [_mouse(MOUSE_BUTTON_RIGHT), _joy(JOY_BUTTON_LEFT_SHOULDER)],
-		"next_weapon": [_key(KEY_Q), _mouse(MOUSE_BUTTON_WHEEL_UP), _mouse(MOUSE_BUTTON_WHEEL_DOWN), _joy(JOY_BUTTON_DPAD_RIGHT)],
+		"fire": [_key(KEY_CTRL), _joy(JOY_BUTTON_RIGHT_SHOULDER)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_LEFT)]),
+		"aim": [_joy(JOY_BUTTON_LEFT_SHOULDER)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_RIGHT)]),
+		"next_weapon": [_key(KEY_Q), _joy(JOY_BUTTON_DPAD_RIGHT)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_WHEEL_UP), _mouse(MOUSE_BUTTON_WHEEL_DOWN)]),
 		"reset_car": [_key(KEY_R), _joy(JOY_BUTTON_DPAD_UP)],
 		"horn": [_key(KEY_H), _joy(JOY_BUTTON_RIGHT_STICK)],
 		"map": [_key(KEY_M), _joy(JOY_BUTTON_BACK)],
@@ -283,8 +303,7 @@ func _update_time(delta: float) -> void:
 	env.ambient_light_energy = lerpf(1.0, 0.5, night)
 	env.ambient_light_color = Color(0.55, 0.6, 0.7).lerp(Color(0.2, 0.25, 0.45), night)
 	env.fog_light_color = hor.lerp(Color(0.62, 0.66, 0.72), 0.45).lerp(Color(0.05, 0.06, 0.12), night * 0.7)
-	env.tonemap_exposure = lerpf(1.0, 1.25, night)
-	RenderingServer.global_shader_parameter_set("night", night)
+	env.tonemap_exposure = lerpf(1.0, 1.25, night) * (0.82 if low_spec else 1.0)
 	city.set_night(night)
 	Car.set_night(night)
 
@@ -536,6 +555,8 @@ func _respawn() -> void:
 		player.weapon = 0
 	var pos: Vector3 = city.station_pos if busted else city.hospital_pos
 	player.respawn_at(pos)
+	if touch:
+		touch.release_all()
 	cam.yaw = 0.0
 	cam.snap()
 	state = "play"

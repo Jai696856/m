@@ -55,13 +55,20 @@ func setup(g) -> void:
 	engine = AudioStreamPlayer.new()
 	engine.stream = gen
 	engine.volume_db = -12.0
+	# web builds play audio as browser "samples" by default, which can't stream a generator
+	engine.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(engine)
 	engine.play()
 	engine_pb = engine.get_stream_playback() as AudioStreamGeneratorPlayback
 	radio = AudioStreamPlayer.new()
 	radio.volume_db = -11.0
 	add_child(radio)
-	if not game.headless:
+	if game.headless:
+		pass
+	elif OS.has_feature("web"):
+		_radio_begin()
+		_r_chunked = true
+	else:
 		_thread = Thread.new()
 		_thread.start(_render_radio)
 
@@ -213,6 +220,9 @@ func _siren() -> AudioStreamWAV:
 # --- engine and radio --------------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	if _r_chunked and _radio_step(2500):
+		_r_chunked = false
+		_radio_done(_wav(_r_samples, RADIO_RATE, true))
 	var p = game.player
 	var car = p.in_car if p else null
 	var target_vol := 0.0
@@ -250,29 +260,41 @@ func _radio_done(w: AudioStreamWAV) -> void:
 	radio_ready = true
 
 
-func _render_radio() -> void:
-	# Palm FM: an original 8-bar synth loop (A minor - F - C - G) at 102 bpm.
-	var bpm := 102.0
-	var beat := 60.0 / bpm
-	var bars := 8
-	var n := int(bars * 4 * beat * RADIO_RATE)
-	var chords := [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]
-	var freqs := []
-	for ch in chords:
+# Palm FM: an original 8-bar synth loop (A minor - F - C - G) at 102 bpm.
+# Rendered in chunks so it can run on a worker thread on desktop, or a little
+# each frame on the web, where there are no threads.
+var _r_samples := PackedFloat32Array()
+var _r_i := 0
+var _r_seed := 1234567
+var _r_hp := 0.0
+var _r_freqs := []
+var _r_beat := 60.0 / 102.0
+var _r_chunked := false
+const ARP_ORDER := [0, 1, 2, 1, 2, 0, 1, 2]
+
+
+func _radio_begin() -> void:
+	var n := int(8 * 4 * _r_beat * RADIO_RATE)
+	_r_samples.resize(n)
+	_r_i = 0
+	_r_freqs.clear()
+	for ch in [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]:
 		var f := []
 		for m in ch:
 			f.append(440.0 * pow(2.0, (m - 69) / 12.0))
-		freqs.append(f)
-	var arp_order := [0, 1, 2, 1, 2, 0, 1, 2]
-	var s := PackedFloat32Array()
-	s.resize(n)
-	var seed_v := 1234567
-	var hp := 0.0
-	for i in n:
+		_r_freqs.append(f)
+
+
+## Renders up to `count` samples; returns true when the loop is complete.
+func _radio_step(count: int) -> bool:
+	var n := _r_samples.size()
+	var stop := mini(n, _r_i + count)
+	var beat := _r_beat
+	for i in range(_r_i, stop):
 		var t := float(i) / RADIO_RATE
 		var b := t / beat
 		var bar := int(b / 4.0)
-		var f: Array = freqs[(bar / 2) % 4]
+		var f: Array = _r_freqs[(bar / 2) % 4]
 		var e := b * 2.0
 		var ei := int(e)
 		var ef := e - ei
@@ -286,20 +308,25 @@ func _render_radio() -> void:
 		var sx := b * 4.0
 		var si := int(sx)
 		var sf := sx - si
-		var af: float = f[arp_order[si % 8] % 3] * 2.0
+		var af: float = f[ARP_ORDER[si % 8] % 3] * 2.0
 		var ph := fmod(af * t, 1.0)
-		var tri := 4.0 * absf(ph - 0.5) - 1.0
-		var arp := tri * exp(-sf * 5.0) * 0.12
+		var arp := (4.0 * absf(ph - 0.5) - 1.0) * exp(-sf * 5.0) * 0.12
 		var kt := fmod(b, 1.0) * beat
 		var kick := sin(TAU * (48.0 + 110.0 * exp(-kt * 32.0)) * kt) * exp(-kt * 9.0) * 0.6
-		seed_v = (seed_v * 1103515245 + 12345) & 0x7fffffff
-		var noise := float(seed_v) / 1073741823.5 - 1.0
-		hp = noise - hp * 0.6
+		_r_seed = (_r_seed * 1103515245 + 12345) & 0x7fffffff
+		var noise := float(_r_seed) / 1073741823.5 - 1.0
+		_r_hp = noise - _r_hp * 0.6
 		var snare := 0.0
 		if int(b) % 2 == 1:
 			snare = noise * exp(-kt * 16.0) * 0.32 + sin(TAU * 190.0 * kt) * exp(-kt * 20.0) * 0.2
-		var hat := hp * exp(-ef * beat * 0.5 * 70.0) * 0.07
+		var hat := _r_hp * exp(-ef * beat * 0.5 * 70.0) * 0.07
 		var v := bass + pad + arp + kick + snare + hat
-		s[i] = v / (1.0 + absf(v))
-	var w := _wav(s, RADIO_RATE, true)
-	call_deferred("_radio_done", w)
+		_r_samples[i] = v / (1.0 + absf(v))
+	_r_i = stop
+	return _r_i >= n
+
+
+func _render_radio() -> void:
+	_radio_begin()
+	_radio_step(1 << 30)
+	call_deferred("_radio_done", _wav(_r_samples, RADIO_RATE, true))

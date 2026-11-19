@@ -8,6 +8,27 @@ You play as a two-person crew, **Marisol** and **Cole**, who arrive in Sunset Sh
 city with swamps on its edge, with $500 and a pistol. Steal cars, run jobs for three local contacts, fly off
 ramps for cash, and keep one step ahead of the police. The whole city comments on it all as it happens.
 
+## Playing on a phone
+
+There's a web build in [`docs/play/`](../docs/play/). Once GitHub Pages is switched on for this repository,
+it's playable in any phone browser at **https://jai696856.github.io/m/play/**. Turn the phone sideways.
+On a touchscreen you get on-screen controls:
+
+| Action | Touch |
+|---|---|
+| Move / drive | Left thumb anywhere on the left side (push all the way to sprint) |
+| Look around | Drag with your right thumb |
+| Shoot / jump / handbrake | FIRE, JUMP (DRIFT in a car) |
+| Get in, out or steal a car | CAR |
+| Switch weapon, full map, switch character, pause | GUN, MAP, SWAP, II |
+
+Phones and the web get lighter settings automatically: less traffic and fewer pedestrians, cheaper
+shadows, and no per-lamp lights.
+
+To rebuild it, export the **Web** preset with **Godot 4.4.1 or newer** (`godot --headless --export-release
+"Web" ../docs/play/index.html`). Godot 4.3's web renderer stops drawing 3D in a scene this busy. Keep the
+empty `.gdignore` file in `docs/play/` so the tower-defense project at the repository root ignores the build.
+
 ## Opening it
 
 1. Install [Godot 4.3](https://godotengine.org/download) or newer (the standard build, not .NET).
