@@ -2,6 +2,9 @@
 
 A browser version of the original game (Three.js) lives in [`web/`](web/README.md).
 
+This repository also contains **[Sunset Shores](sunset_shores/README.md)**, a separate open-world driving and action
+game. It is its own Godot project in `sunset_shores/`.
+
 A 3D anime tower defense game built as a **Godot 4.3+** project in GDScript (also runs on Godot 4.4 and Xogot).
 Everything (map, cel-shaded chibi heroes, spirits, effects, sounds and UI) is generated from code. The only
 image file is the title logo, which `tools/make_logo.py` draws.
