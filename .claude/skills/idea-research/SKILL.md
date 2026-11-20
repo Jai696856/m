@@ -1,6 +1,6 @@
 ---
 name: idea-research
-description: Before building something the user asks for, research how similar things are made to gather ideas, then propose a short plan. Use when the user asks to make a feature, game mechanic, scene, UI, tool, or system and says "research", "get ideas", "look at examples", or "/idea-research <thing>".
+description: Before building any new feature, game mechanic, scene, UI, tool, or system the user asks for, research how similar things are made to gather ideas, then propose a short plan. Use automatically at the start of every new build request, not just when the user says "research".
 ---
 
 # Idea Research

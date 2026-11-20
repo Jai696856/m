@@ -1,6 +1,6 @@
 ---
 name: blender-3d-models
-description: For 3D games, research modeling guides online, then build the models in Blender (headless, via Python/bpy), render previews to check them, and export to the game engine. Use when the user asks for 3D models, props, characters, environments, or assets for a 3D game, or says "/blender-3d-models <thing>".
+description: For 3D games, research modeling guides online, then build the models in Blender (headless, via Python/bpy), render previews to check them, and export to the game engine. Use automatically whenever a 3D game needs a model, prop, character, environment, or asset, instead of placeholder primitives.
 ---
 
 # Blender 3D Models

@@ -1,6 +1,6 @@
 ---
 name: lean-code
-description: Write minimal code and remove dead code you added, while spending fewer tokens. Use after making code changes, when asked to clean up, trim, or de-bloat your own work, or when the user says "lean", "remove useless code", or "save tokens".
+description: Write minimal code and remove dead code you added, while spending fewer tokens. Use automatically on every coding task - while writing and as a cleanup pass before finishing - and when the user says "lean", "remove useless code", or "save tokens".
 ---
 
 # Lean Code
