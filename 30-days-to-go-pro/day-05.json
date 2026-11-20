@@ -1,0 +1,142 @@
+{
+  "day": 5,
+  "title": "Day 5: Secret Coach",
+  "style": "comic",
+  "render3d": true,
+  "optionsTitle": [
+    "TOMORROW:",
+    "FINAL CUT"
+  ],
+  "statsBefore": [
+    [
+      "SPD",
+      22
+    ],
+    [
+      "SHO",
+      19
+    ],
+    [
+      "PAS",
+      21
+    ],
+    [
+      "DRI",
+      25
+    ],
+    [
+      "DEF",
+      18
+    ],
+    [
+      "PHY",
+      21
+    ]
+  ],
+  "statsAfter": [
+    [
+      "SPD",
+      22,
+      ""
+    ],
+    [
+      "SHO",
+      22,
+      "Shooting"
+    ],
+    [
+      "PAS",
+      27,
+      "Passing"
+    ],
+    [
+      "DRI",
+      25,
+      ""
+    ],
+    [
+      "DEF",
+      18,
+      ""
+    ],
+    [
+      "PHY",
+      21,
+      ""
+    ]
+  ],
+  "upBursts": [
+    [
+      "+6 PAS",
+      "Passing",
+      "#2196f3"
+    ],
+    [
+      "+3 SHO",
+      "Shooting",
+      "#e74c3c"
+    ]
+  ],
+  "ovrBefore": 21,
+  "ovrAfter": 23,
+  "chunks": [
+    {
+      "scene": "d5open",
+      "text": "Day five. You voted B... a secret coach. But where do you even find a former pro?"
+    },
+    {
+      "scene": "search",
+      "text": "So I asked the street kids. They all pointed at the same guy. The old groundskeeper who sweeps the pitch every night."
+    },
+    {
+      "scene": "dez",
+      "text": "They called him Dez. Twelve years as a pro... until his knee gave out."
+    },
+    {
+      "scene": "showme",
+      "text": "He rolled me a ball and said two words. \"Show me.\" So I hit him with every step-over I had. He shook his head. \"Flashy. Useless.\""
+    },
+    {
+      "scene": "wallpass",
+      "text": "Then the real training started. Under the lights. Five hundred wall passes... left foot only."
+    },
+    {
+      "scene": "weave",
+      "text": "Then the cone weave. Eyes up. Never look at the ball."
+    },
+    {
+      "scene": "onevone",
+      "text": "Then he made me go one-on-one against him. Bad knee and all. I didn't win the ball once."
+    },
+    {
+      "scene": "quote",
+      "text": "At midnight he finally said: \"Pros don't do the most tricks. They never waste a touch.\""
+    },
+    {
+      "scene": "upgradeG",
+      "text": "Card check. Passing: twenty-one to twenty-seven. Shooting: nineteen to twenty-two. Overall... twenty-three!"
+    },
+    {
+      "scene": "options",
+      "letter": "A",
+      "title": "PLAY IT SAFE",
+      "sub": "Simple passes, no mistakes",
+      "icon": "safe",
+      "text": "Tomorrow is the final cut. Option A: I play it safe. Simple passes, no mistakes."
+    },
+    {
+      "scene": "options",
+      "letter": "B",
+      "title": "MY GAME",
+      "sub": "Take players on",
+      "icon": "mygame",
+      "text": "Option B: I play my game. Take players on."
+    },
+    {
+      "scene": "cta3",
+      "text": "Comment A or B. Day six... is the final cut."
+    }
+  ],
+  "silence_db": -30,
+  "ctaComment": "safe or my game? I say… 👇"
+}

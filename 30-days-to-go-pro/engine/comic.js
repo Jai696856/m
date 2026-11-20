@@ -468,7 +468,7 @@ function artDribble(t) {
 function sCta3(t, seg) {
   const lt = t - seg.t0, opts = TL.filter(o => o.scene === 'options');
   let s = COMIC_DEFS + `${bgRect('cPop')}` + speedLines(540, 700, t, '#fff', .3);
-  s += commentCard(540, 230, 940, { handle: '@you', text: 'drop your craziest workout here 💡', likes: '', ago: 'now', color: '#9b59b6' }, seg.t0, t);
+  s += commentCard(540, 230, 940, { handle: '@you', text: EP.ctaComment || 'drop your craziest workout here 💡', likes: '', ago: 'now', color: '#9b59b6' }, seg.t0, t);
   s += ctext(540, 640, 'COMMENT', 140, '#fff');
   opts.forEach((o, i) => {
     const p = eb((t - kwN(seg, 'comment') - i * 0.15) / 0.4);
@@ -654,6 +654,8 @@ function chromeComic(t) {
   let ovr = EP.ovrBefore ?? 15;
   if (up) { const a = kwN(up, 'seventeen'); if (t > a) ovr = EP.ovrAfter; }
   if (up4) { const a = kwN(up4, 'overall') + 0.9; if (t > a) ovr = EP.ovrAfter; }
+  const upg = TL.find(x => x.scene === 'upgradeG');
+  if (upg) { const a = kwN(upg, 'overall') + 0.9; if (t > a) ovr = EP.ovrAfter; }
   const pill = (x, label, val, hi) => `<g transform="translate(${x},96)" filter="url(#dsh)"><rect x="-150" y="-44" width="300" height="88" rx="22" fill="#1a1d24" ${ink(6)}/>
     <text x="-125" y="0" font-family="${FONT}" font-size="28" font-weight="800" fill="#c9ced9" dominant-baseline="central">${label}</text>
     <text x="125" y="2" font-family="${FONT}" font-size="54" font-weight="900" fill="${hi ? '#2ecc71' : '#f4b41a'}" text-anchor="end" dominant-baseline="central">${val}</text></g>`;
@@ -974,5 +976,172 @@ cam3d = function (t, seg) {
     case 'race': return { cam: 'track', x: 40 + (t - seg.t0) * 3, t };
     case 'grind': return { cam: 'track', x: 100 + (t - seg.t0) * 9, t };
     default: return _cam3d_d3(t, seg);
+  }
+};
+
+// ===================================================================== DAY 5: SECRET COACH
+Object.assign(LOOKS, {
+  dez: { top: '#6d4c41', topD: '#4e342e', pants: '#37474f', pantsD: '#263238', skin: '#7a4a30', skinD: '#5e3722', hair: '#9e9e9e', shoe: '#3e2723', beard: '#bdbdbd', cap: '#2e7d32' },
+});
+const _comicHeadD4 = comicHead;
+comicHead = function (x, y, L, expr, blink) {
+  let s = _comicHeadD4(x, y, L, expr, blink);
+  if (L.beard) s += `<g transform="translate(${x},${y})"><path d="M-60,14 Q-58,70 0,76 Q58,70 60,14 Q40,40 20,34 Q0,28 -20,34 Q-40,40 -60,14Z" fill="${L.beard}" ${ink(6)}/><path d="M-22,34 Q0,24 22,34" stroke="${INK}" stroke-width="5" fill="none"/></g>`;
+  if (L.cap) s += `<g transform="translate(${x},${y})"><path d="M-70,-30 Q-68,-86 0,-86 Q68,-86 70,-30Z" fill="${L.cap}" ${ink(7)}/><path d="M-10,-32 Q60,-40 110,-26 Q70,-12 -10,-20Z" fill="${L.cap}" ${ink(6)}/><circle cx="0" cy="-84" r="7" fill="${L.cap}" ${ink(4)}/></g>`;
+  return s;
+};
+const _poseD4 = pose;
+pose = function (name, t, k = 0) {
+  if (name === 'point') return { ..._poseD4('idle', t), aL: 92, fL: 92, expr: 'det' };
+  if (name === 'arms') return { ..._poseD4('idle', t), aL: 40, fL: -60, aR: -40, fR: 60, expr: 'det' };
+  return _poseD4(name, t, k);
+};
+function bubble(x, y, text, t0, t, size = 70, w = null, tail = 'down') {
+  const p = eb((t - t0) / 0.35);
+  if (p <= 0) return '';
+  const bw = w || text.length * size * 0.62 + 90, bh = size * 2;
+  return `<g transform="translate(${x},${y}) scale(${p})" filter="url(#dsh)"><rect x="${-bw / 2}" y="${-bh / 2}" width="${bw}" height="${bh}" rx="${bh * 0.4}" fill="#fff" ${ink(8)}/>
+    <path d="M${tail === 'down' ? 30 : -30},${bh / 2 - 4} L${tail === 'down' ? 70 : -70},${bh / 2 + 70} L${tail === 'down' ? 100 : -100},${bh / 2 - 4}Z" fill="#fff" ${ink(8)}/><rect x="${tail === 'down' ? 24 : -106}" y="${bh / 2 - 14}" width="82" height="14" fill="#fff"/>
+    ${ctext(0, 4, text, size, '#111')}</g>`;
+}
+
+function sD5open(t, seg) {
+  let s = COMIC_DEFS + bgRect('cBlue');
+  s += burst(540, 360, 'DAY 5', 150, Y, seg.t0, t, -5);
+  const tB = kw(seg, 'voted');
+  if (t > tB) s += `<g transform="translate(540,580) scale(${eb((t - tB) / 0.4)})" filter="url(#dsh)"><rect x="-360" y="-64" width="720" height="128" rx="64" fill="#e74c3c" ${ink(8)}/>${ctext(0, 4, 'B: SECRET COACH WON ✓', 54, '#fff')}</g>`;
+  s += bubble(700, 1040, 'WHERE DO I FIND ONE? 🤔', kw(seg, 'where'), t, 48);
+  s += athlete(460, 1760, 1.0, 'marcus', pose('idle', t), t, 1, blinking(t));
+  return s;
+}
+function sSearch(t, seg) {
+  const tP = kw(seg, 'pointed'), tG = kw(seg, 'groundskeeper');
+  let s = COMIC_DEFS;
+  s += captionBox(540, 330, 'WHO KNOWS A FORMER PRO?', seg.t0, t, '#fff');
+  [['kid1', 170], ['kid2', 330], ['kid3', 490]].forEach(([w, x], i) => s += athlete(x, 1700, 0.7, w, pose(t > tP ? 'point' : 'idle', t + i), t, 1, blinking(t, i)));
+  s += athlete(240, 1790, 0.85, 'marcus', pose('idle', t), t, 1);
+  const sweep = Math.sin(t * 3) * 14;
+  s += `<g transform="translate(870,1600)">${athlete(0, 0, 0.75, 'dez', { ...pose('idle', t), aL: 30 + sweep, fL: 20 + sweep }, t, -1, blinking(t, 2))}
+    <path d="M${-60 + sweep},-170 L${-120 + sweep * 1.5},20" stroke="#8d6e63" stroke-width="10" stroke-linecap="round"/><path d="M${-150 + sweep * 1.5},10 h60 l10,30 h-80Z" fill="#ffd54f" ${ink(5)}/></g>`;
+  if (t > tP) s += `<path d="M620,1180 Q760,1100 820,1220" stroke="${Y}" stroke-width="14" fill="none" stroke-linecap="round"/><path d="M800,1190 L830,1240 L780,1236Z" fill="${Y}"/>`;
+  s += burst(780, 900, 'THE GROUNDSKEEPER?!', 52, '#7c4dff', tG, t, 5);
+  return s;
+}
+function sDez(t, seg) {
+  const tN = kw(seg, 'Dez'), tT = kw(seg, 'Twelve'), tK = kw(seg, 'knee');
+  let s = COMIC_DEFS + bgRect('cDusk');
+  s += athlete(540, 1760, 1.25, 'dez', pose('arms', t), t, -1, blinking(t, 1.3));
+  const p = eb((t - tN + 0.1) / 0.4);
+  if (p > 0) s += `<g transform="translate(540,470) scale(${p})" filter="url(#dsh)"><rect x="-330" y="-170" width="660" height="340" rx="40" fill="#1a1d24" ${ink(8)}/>
+    ${ctext(0, -95, 'DEZ', 110, '#f4b41a')}<text x="0" y="-25" font-family="${FONT}" font-size="34" font-weight="800" fill="#c9ced9" text-anchor="middle">THE GROUNDSKEEPER</text>
+    ${t > tT ? ctext(-150, 80, '12 YRS PRO', 46, '#2ecc71') : ''}${t > tK ? ctext(160, 80, 'KNEE ✕', 46, RED) : ''}</g>`;
+  return s;
+}
+function sShowme(t, seg) {
+  const tS = kw(seg, 'Show'), tStep = kw(seg, 'step-over'), tShook = kw(seg, 'shook');
+  let s = COMIC_DEFS;
+  s += athlete(820, 1760, 1.0, 'dez', pose('arms', t), t, -1, blinking(t, .8));
+  s += athlete(330, 1760, 1.0, 'marcus', t > tStep && t < tShook ? pose('stepover', t) : pose(t > tShook ? 'sad' : 'idle', t), t, 1);
+  s += comicBall(460, 1735, 28, t * 300);
+  s += bubble(760, 860, '"SHOW ME."', tS - 0.1, t, 66);
+  if (t > tStep && t < tShook) s += burst(330, 600, 'STEP-OVER ×9', 60, '#7c4dff', tStep, t, -6);
+  if (t > tShook) {
+    s += bubble(700, 860, '"FLASHY. USELESS."', kw(seg, 'Flashy') - 0.1, t, 60);
+    s += burst(330, 560, '✕', 160, RED, kw(seg, 'Useless'), t, -6);
+  }
+  return s;
+}
+function sWallpass(t, seg) {
+  const tL = kw(seg, 'left'), tF = kw(seg, 'Five');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".18"/>`;
+  s += captionBox(540, 330, 'UNDER THE LIGHTS', seg.t0, t, '#1a1d24', '#f4b41a');
+  const ph = (t * 2.2) % 1, bx = ph < 0.5 ? lerp(470, 1000, ph * 2) : lerp(1000, 470, (ph - 0.5) * 2);
+  s += `<rect x="1000" y="1240" width="80" height="560" fill="#9e9e9e" ${ink(6)}/>`;
+  s += athlete(330, 1760, 1.0, 'marcus', ph < 0.15 ? pose('kick', t, 0.6 + ph) : pose('idle', t), t, 1);
+  s += comicBall(bx, 1720, 26, t * 600);
+  const n = t > tF ? Math.min(500, Math.round(500 * eo(clamp((t - tF) / Math.max(1, seg.t1 - tF - 0.3))))) : 0;
+  s += `<g transform="translate(540,620)">${ctext(0, -100, 'WALL PASSES', 60, '#fff')}${ctext(0, 40, n, 200, Y)}</g>`;
+  s += burst(540, 950, 'LEFT FOOT ONLY 🦶', 60, RED, tL, t, -4);
+  s += athlete(900, 1560, 0.55, 'dez', pose('arms', t), t, -1);
+  return s;
+}
+function sWeave(t, seg) {
+  const tE = kw(seg, 'Eyes');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".18"/>`;
+  s += captionBox(540, 330, 'CONE WEAVE', seg.t0, t, '#2196f3', '#fff');
+  const cones = [220, 400, 580, 760, 940];
+  cones.forEach(x => s += `<path d="M${x - 26},1790 L${x},1710 L${x + 26},1790Z" fill="#ff7a1a" ${ink(6)}/><path d="M${x - 14},1752 h28" stroke="#fff" stroke-width="8"/>`);
+  const f = ((t - seg.t0) * 0.35) % 1, mx = lerp(120, 1000, f), my = 1700 + Math.sin(f * Math.PI * 9) * 70;
+  s += athlete(mx, my, 0.85, 'marcus', pose('dribble', t), t, 1);
+  s += comicBall(mx + 70, my - 10, 24, t * 700);
+  s += burst(540, 700, 'EYES UP 👀', 90, '#7c4dff', tE, t, -4);
+  s += burst(540, 900, 'NEVER LOOK AT THE BALL', 46, '#1a1d24', kw(seg, 'Never'), t, 3);
+  return s;
+}
+function sOneVOne(t, seg) {
+  const tOnce = kw(seg, 'once');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".18"/>`;
+  s += captionBox(540, 330, '1 V 1 VS DEZ', seg.t0, t, '#f4b41a');
+  const cyc = (t - seg.t0) % 1.6, n = Math.floor((t - seg.t0) / 1.6) + 1;
+  const mx = lerp(250, 560, clamp(cyc / 0.9)), stolen = cyc > 0.9;
+  s += athlete(760, 1760, 1.05, 'dez', stolen ? pose('kick', t, 0.8) : pose('idle', t), t, -1);
+  s += `<rect x="700" y="1640" width="40" height="22" rx="6" fill="#fff" ${ink(4)} transform="rotate(-6 720 1650)"/>`;
+  s += athlete(mx, 1760, 1.0, 'marcus', stolen ? pose('sad', t) : pose('dribble', t), t, 1);
+  s += comicBall(stolen ? lerp(660, 900, clamp((cyc - 0.9) / 0.4)) : mx + 90, 1730, 26, t * 500);
+  s += `<g transform="translate(540,620)" filter="url(#dsh)"><rect x="-300" y="-70" width="600" height="140" rx="34" fill="#1a1d24" ${ink(6)}/>${ctext(-140, 2, `TRIES ${n}`, 54, '#fff')}${ctext(150, 2, 'WON 0', 54, RED)}</g>`;
+  s += burst(540, 900, 'BAD KNEE & ALL 😭', 56, '#7c4dff', kw(seg, 'knee'), t, 4);
+  return s;
+}
+function sQuote(t, seg) {
+  const tQ = kw(seg, 'Pros');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".55"/>`;
+  s += `<g transform="translate(540,330)" filter="url(#dsh)"><rect x="-170" y="-56" width="340" height="112" rx="24" fill="#1a1d24" ${ink(6)}/>${ctext(0, 2, '12:00 AM', 60, '#f4b41a')}</g>`;
+  const p = eb((t - tQ + 0.2) / 0.5);
+  if (p > 0) s += `<g transform="translate(540,800) scale(${p})" filter="url(#dsh)"><rect x="-450" y="-230" width="900" height="460" rx="50" fill="#fff" ${ink(10)}/>
+    ${ctext(0, -120, '“PROS DON’T DO', 66, '#111')}${ctext(0, -30, 'THE MOST TRICKS.', 66, '#111')}${t > kw(seg, 'never') - 0.1 ? ctext(0, 70, 'THEY NEVER WASTE', 66, RED) + ctext(0, 160, 'A TOUCH.”', 66, RED) : ''}</g>`;
+  s += athlete(540, 1790, 0.95, 'dez', pose('arms', t), t, -1, blinking(t, .5));
+  return s;
+}
+function sUpgradeG(t, seg) {
+  const p = eb((t - seg.t0) / 0.5);
+  const before = Object.fromEntries(EP.statsBefore), tO = kwN(seg, 'overall');
+  const stats = EP.statsAfter.map(([n, v, kwd]) => {
+    if (v === before[n] || !kwd) return [n, v, false];
+    const f = clamp((t - kw(seg, kwd) - 0.4) / 1.0);
+    return [n, Math.round(lerp(before[n], v, f)), f > 0];
+  });
+  const of = clamp((t - tO - 0.5) / 0.8), ovr = Math.round(lerp(EP.ovrBefore, EP.ovrAfter, of));
+  let s = COMIC_DEFS + bgRect('cPop');
+  s += statCardC(t, 540, 960, 0.98 * p, stats, ovr, t > tO + 0.5 && t - tO < 1.8 ? 1 - (t - tO - 0.5) / 1.3 : 0, of > 0);
+  (EP.upBursts || []).forEach(([label, k, col], i) => s += burst(i % 2 ? 260 : 820, i % 2 ? 1480 : 520, label, 56, col, kw(seg, k) + 0.5, t, i % 2 ? -8 : 8));
+  s += burst(540, 300, `OVR ${EP.ovrBefore} → ${EP.ovrAfter}`, 72, '#2ecc71', tO + 0.5, t, -4);
+  return s;
+}
+function artSafe(t) {
+  const f = (t * 0.6) % 1;
+  return `<rect width="420" height="392" fill="#1b5e8a"/><rect y="200" width="420" height="192" fill="#239b56"/>
+  ${athlete(90, 380, 0.36, 'marcus', pose('idle', t), t, 1)}${athlete(330, 380, 0.34, 'mate', pose('idle', t), t, -1)}
+  <path d="M120,350 H300" stroke="#fff" stroke-width="6" stroke-dasharray="6 14"/>${comicBall(lerp(120, 300, f), 350, 12, t * 300)}
+  ${txt(210, 60, 'SAFE ✓', 44, '#fff')}`;
+}
+function artMyGame(t) {
+  const f = (t * 0.45) % 1, x = lerp(60, 380, f);
+  return `<rect width="420" height="392" fill="#3a1c71"/><rect y="200" width="420" height="192" fill="#239b56"/>
+  ${athlete(180, 375, 0.34, 'big', pose(f > 0.4 ? 'sad' : 'idle', t), t, -1)}${athlete(300, 375, 0.32, 'kid1', pose(f > 0.7 ? 'sad' : 'idle', t), t, -1)}
+  ${athlete(x, 385, 0.38, 'marcus', pose('dribble', t), t, 1)}${comicBall(x + 30, 378, 11, t * 600)}
+  ${txt(210, 60, 'TAKE THEM ON 🔥', 40, '#fff')}`;
+}
+Object.assign(SCENES, { d5open: sD5open, search: sSearch, dez: sDez, showme: sShowme, wallpass: sWallpass, weave: sWeave, onevone: sOneVOne, quote: sQuote, upgradeG: sUpgradeG });
+const _cam3d_d4 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'search': return { cam: 'juggle', x: 10, t, k: clamp((t - seg.t0) / 6) };
+    case 'dez': return { cam: 'juggle', x: 12, t, k: 0.8, blur: true };
+    case 'showme': return { cam: 'juggle', x: 14, t, k: 0.5 };
+    case 'wallpass': return { cam: 'juggle', x: 30, t, k: clamp((t - seg.t0) / 5), night: true };
+    case 'weave': return { cam: 'track', x: 50 + (t - seg.t0) * 1.5, t, night: true };
+    case 'onevone': return { cam: 'juggle', x: 70, t, k: 0.4, night: true };
+    case 'quote': return { cam: 'wide', t, blur: true, night: true };
+    default: return _cam3d_d4(t, seg);
   }
 };

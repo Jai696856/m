@@ -10,8 +10,11 @@ def audio_duration(path):
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path]))
 
 
+SIL = "silencedetect=noise=-35dB:d=0.25"
+
+
 def silences(path):
-    r = subprocess.run(["ffmpeg", "-i", path, "-af", "silencedetect=noise=-35dB:d=0.25", "-f", "null", "-"],
+    r = subprocess.run(["ffmpeg", "-i", path, "-af", SIL, "-f", "null", "-"],
                        capture_output=True, text=True)
     starts = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", r.stderr)]
     ends = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", r.stderr)]
@@ -121,5 +124,7 @@ if __name__ == "__main__":
         import os
         tl, dur = build_from_words(ep["chunks"], sys.argv[2], (ep['words_file'] if os.path.isabs(ep['words_file']) else os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), ep['words_file'])))
     else:
+        if ep.get("silence_db"):
+            SIL = f"silencedetect=noise={ep['silence_db']}dB:d={ep.get('silence_min', 0.18)}"
         tl, dur = build(ep["chunks"], sys.argv[2])
     print(json.dumps({"timeline": tl, "duration": dur}))

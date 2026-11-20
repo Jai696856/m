@@ -2,7 +2,7 @@
 import * as THREE from './node_modules/three/build/three.module.js';
 
 const RW = 720, RH = 1280;
-let renderer, scene, camera;
+let renderer, scene, camera, SUN, HEMI, DAYBG, NIGHTBG, isNight = false;
 
 function canvasTex(w, h, draw, repeat) {
   const c = document.createElement('canvas');
@@ -42,10 +42,16 @@ function build() {
     gr.addColorStop(0, '#5b6fd6'); gr.addColorStop(0.45, '#f6a15a'); gr.addColorStop(0.8, '#ffcf8a'); gr.addColorStop(1, '#ffe2b0');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   });
+  DAYBG = scene.background;
+  NIGHTBG = canvasTex(4, 512, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#05081a'); gr.addColorStop(0.6, '#141b3d'); gr.addColorStop(1, '#2a2350');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
   scene.fog = new THREE.Fog(0xf3b07a, 30, 95);
 
-  scene.add(new THREE.HemisphereLight(0xffe2c4, 0x3a5a8a, 1.1));
-  const sun = new THREE.DirectionalLight(0xffc183, 2.2);
+  HEMI = new THREE.HemisphereLight(0xffe2c4, 0x3a5a8a, 1.1); scene.add(HEMI);
+  const sun = new THREE.DirectionalLight(0xffc183, 2.2); SUN = sun;
   sun.position.set(-25, 30, 20);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -158,7 +164,17 @@ window.bg3d = {
     camera = new THREE.PerspectiveCamera(50, RW / RH, 0.1, 400);
     build();
   },
+  setNight(n) {
+    if (n === isNight) return;
+    isNight = n;
+    scene.background = n ? NIGHTBG : DAYBG;
+    scene.fog.color.set(n ? 0x141b3d : 0xf3b07a);
+    SUN.color.set(n ? 0xdfe8ff : 0xffc183); SUN.intensity = n ? 1.1 : 2.2;
+    SUN.position.set(n ? 6 : -25, n ? 30 : 30, n ? 18 : 20);
+    HEMI.intensity = n ? 0.45 : 1.1;
+  },
   render(o) {
+    this.setNight(!!o.night);
     const p = camPose(o);
     camera.fov = p.fov; camera.updateProjectionMatrix();
     camera.position.set(...p.pos); camera.lookAt(...p.look);
