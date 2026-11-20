@@ -51,7 +51,12 @@ func _draw() -> void:
 		"progress":
 			var p: int = value if value >= 0 else (world.pct() if world else 0)
 			if Save.setting("percent") or value >= 0:
-				_bar(Rect2(0, 4, size.x - 78, size.y - 8), p / 100.0, color)
+				var r:= Rect2(0, 4, size.x - 78, size.y - 8)
+				_bar(r, p / 100.0, color)
+				if value < 0 and world and not world.practice:
+					var bx:= r.position.x + 3.0 + (r.size.x - 6.0) * Save.best(world.p.key) / 100.0
+					draw_line(Vector2(bx, r.position.y - 3.0), Vector2(bx, r.end.y + 3.0), DARK, 6.0)
+					draw_line(Vector2(bx, r.position.y - 1.0), Vector2(bx, r.end.y + 1.0), Color.WHITE, 2.0)
 				_text("%d%%" % p, Vector2(size.x - 70, size.y * 0.5 + 9), 26, Color.WHITE)
 		"preview":
 			var c:= size * 0.5 + Vector2(0, sin(t * 2.2) * 8.0)

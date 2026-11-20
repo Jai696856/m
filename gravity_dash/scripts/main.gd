@@ -58,7 +58,7 @@ func _ready() -> void:
 	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(fade)
 	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	fade_label = _label("", 30, Color(1, 1, 1, 0.8))
+	fade_label = label("", 30, Color(1, 1, 1, 0.8))
 	fade.add_child(fade_label)
 	fade_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fade_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -105,7 +105,7 @@ func new_screen(n: String) -> Control:
 		Audio.play_menu()
 	return screen
 
-func _label(text: String, fs:= 28, col:= Color.WHITE, outline:= 10) -> Label:
+func label(text: String, fs:= 28, col:= Color.WHITE, outline:= 10) -> Label:
 	var l:= Label.new()
 	l.text = text
 	l.add_theme_font_override("font", FONT)
@@ -116,9 +116,6 @@ func _label(text: String, fs:= 28, col:= Color.WHITE, outline:= 10) -> Label:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
-
-func label(text: String, fs:= 28, col:= Color.WHITE, outline:= 10) -> Label:
-	return _label(text, fs, col, outline)
 
 func button(shape: String, fill: Color, icon: String, text: String, sz: Vector2, cb: Callable) -> Control:
 	var b = GDButton.new()
@@ -164,7 +161,7 @@ func frame(root: Control, title: String, back: Callable, col:= Color("ffc46b")) 
 	root.add_child(b)
 	pin(b, Control.PRESET_TOP_LEFT, 20)
 	if title != "":
-		var t:= _label(title, 50, col, 12)
+		var t:= label(title, 50, col, 12)
 		root.add_child(t)
 		pin(t, Control.PRESET_CENTER_TOP, 16)
 	var w = Widget.new()
@@ -200,11 +197,7 @@ static func fmt_time(sec: float) -> String:
 	return "%dm %02ds" % [t / 60, t % 60]
 
 static func fmt_wait(sec: int) -> String:
-	if sec <= 0:
-		return "Ready!"
-	if sec >= 3600:
-		return "%dh %02dm" % [sec / 3600, (sec / 60) % 60]
-	return "%dm %02ds" % [sec / 60, sec % 60]
+	return "Ready!" if sec <= 0 else fmt_time(sec)
 
 func _toast(title: String, text: String) -> void:
 	toasts.append([title, text])
@@ -218,8 +211,8 @@ func _next_toast() -> void:
 	var p:= panel(Vector2(400, 0), Color("ffd34d"))
 	var v:= VBoxContainer.new()
 	p.add_child(v)
-	v.add_child(_label(str(item[0]), 22, Color("ffd34d"), 7))
-	v.add_child(_label(str(item[1]), 17, Color.WHITE, 5))
+	v.add_child(label(str(item[0]), 22, Color("ffd34d"), 7))
+	v.add_child(label(str(item[1]), 17, Color.WHITE, 5))
 	top.add_child(p)
 	await get_tree().process_frame
 	if not is_instance_valid(p):
@@ -311,7 +304,7 @@ func show_menu() -> void:
 	w.custom_minimum_size = Vector2(230, 44)
 	root.add_child(w)
 	pin(w, Control.PRESET_TOP_LEFT, 26)
-	var tally:= _label("Stars %d   Levels %d / %d   Coins %d" % [int(Save.stat("stars")), int(Save.stat("completions")), mains.size(),
+	var tally:= label("Stars %d   Levels %d / %d   Coins %d" % [int(Save.stat("stars")), int(Save.stat("completions")), mains.size(),
 		int(Save.stat("coins"))], 20, Color("ffe08a"), 7)
 	root.add_child(tally)
 	pin(tally, Control.PRESET_CENTER_BOTTOM, 22)
@@ -321,7 +314,7 @@ func _menu_item(fill: Color, icon: String, side: float, caption: String, to: Cal
 	v.add_theme_constant_override("separation", 8)
 	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	v.add_child(button("circle", fill, icon, "", Vector2(side, side), func (): go(to)))
-	v.add_child(_label(caption, 28))
+	v.add_child(label(caption, 28))
 	return v
 
 func show_levels() -> void:
@@ -346,7 +339,7 @@ func show_levels() -> void:
 	row.add_child(button("round", Color("8ee53f"), "play", "Play", Vector2(210, 64), func (): play_main(page, false)))
 	row.add_child(button("round", Color("7ee0c8"), "restart", "Practice", Vector2(230, 64), func (): play_main(page, true)))
 	hb.add_child(button("circle", Color("ffc94d"), "right", "", Vector2(80, 80), _page.bind(1)))
-	page_label = _label("", 24, Color(1, 1, 1, 0.85), 8)
+	page_label = label("", 24, Color(1, 1, 1, 0.85), 8)
 	root.add_child(page_label)
 	pin(page_label, Control.PRESET_CENTER_BOTTOM, 30)
 	_refresh_card(0)
@@ -420,7 +413,7 @@ func _pause() -> void:
 	var v:= VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
 	center.add_child(v)
-	v.add_child(_label(str(playing.name), 58, Color.WHITE, 14))
+	v.add_child(label(str(playing.name), 58, Color.WHITE, 14))
 	for row in [["Normal", Save.best(playing.key), Levels.palette(float(playing.hue)).accent],
 			["Practice", int(Save.level(playing.key).practice), Color("7ee04a")]]:
 		var bar = Widget.new()
@@ -429,7 +422,7 @@ func _pause() -> void:
 		bar.color = row[2]
 		bar.custom_minimum_size = Vector2(520, 30)
 		bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		v.add_child(_label(str(row[0]), 20, Color(1, 1, 1, 0.7), 6))
+		v.add_child(label(str(row[0]), 20, Color(1, 1, 1, 0.7), 6))
 		v.add_child(bar)
 	var row:= HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -445,7 +438,7 @@ func _pause() -> void:
 	v.add_child(opts)
 	opts.add_child(toggle_button("music"))
 	opts.add_child(toggle_button("sfx"))
-	v.add_child(_label("The star button %s practice mode" % ("turns off" if play_practice else "switches to"), 18, Color(1, 1, 1, 0.6), 5))
+	v.add_child(label("The star button %s practice mode" % ("turns off" if play_practice else "switches to"), 18, Color(1, 1, 1, 0.6), 5))
 
 func _toggle_practice() -> void:
 	start_level(playing, not play_practice, back_to, on_level_won)
@@ -469,7 +462,7 @@ func _on_died(pct: int, new_best: bool) -> void:
 	if not new_best or pct <= 0 or current != "play" or world.practice:
 		return
 	Audio.sfx("best")
-	var l:= _label("New Best!\n%d%%" % pct, 64, Color("ffe14d"), 16)
+	var l:= label("New Best!\n%d%%" % pct, 64, Color("ffe14d"), 16)
 	screen.add_child(l)
 	pin(l, Control.PRESET_CENTER, 0)
 	l.pivot_offset = l.size * 0.5
@@ -502,7 +495,7 @@ func _show_win_panel() -> void:
 	var v:= VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	pnl.add_child(v)
-	v.add_child(_label(str(playing.name), 42, accent, 11))
+	v.add_child(label(str(playing.name), 42, accent, 11))
 	var grid:= HBoxContainer.new()
 	grid.alignment = BoxContainer.ALIGNMENT_CENTER
 	grid.add_theme_constant_override("separation", 40)
@@ -514,12 +507,12 @@ func _show_win_panel() -> void:
 	for item in [["Attempts", str(result.attempts)], ["Flips", str(result.flips)], ["Time", LevelCard.fmt_time(float(result.time))],
 			["Coins", "%d / 3" % coins], ["Shards", str(result.shards_picked)]]:
 		var cell:= VBoxContainer.new()
-		cell.add_child(_label(str(item[0]), 20, Color(1, 1, 1, 0.65), 6))
-		cell.add_child(_label(str(item[1]), 34, Color.WHITE, 9))
+		cell.add_child(label(str(item[0]), 20, Color(1, 1, 1, 0.65), 6))
+		cell.add_child(label(str(item[1]), 34, Color.WHITE, 9))
 		grid.add_child(cell)
 	var reward: Label = null
 	if result.practice:
-		v.add_child(_label("Practice run: no rewards, but now you know the route.", 22, Color("7ee04a"), 6))
+		v.add_child(label("Practice run: no rewards, but now you know the route.", 22, Color("7ee04a"), 6))
 	else:
 		var parts:= PackedStringArray()
 		if int(result.stars) > 0:
@@ -527,14 +520,14 @@ func _show_win_panel() -> void:
 		parts.append("+%d Shards" % int(result.shards))
 		if int(result.prisms) > 0:
 			parts.append("+%d Prisms" % int(result.prisms))
-		reward = _label("   ".join(parts), 40, Color("ffd34d"), 12)
+		reward = label("   ".join(parts), 40, Color("ffd34d"), 12)
 		v.add_child(reward)
 		if result.perfect:
-			v.add_child(_label("Perfect! Beaten on the first attempt", 22, Color("8ee53f"), 7))
+			v.add_child(label("Perfect! Beaten on the first attempt", 22, Color("8ee53f"), 7))
 		if int(result.new_coins) > 0:
-			v.add_child(_label("New secret coins: %d (+1 prism each)" % int(result.new_coins), 22, Color("ffd34d"), 7))
+			v.add_child(label("New secret coins: %d (+1 prism each)" % int(result.new_coins), 22, Color("ffd34d"), 7))
 	if not result.unlocks.is_empty():
-		var ul:= _label("Unlocked:  " + ", ".join(PackedStringArray(result.unlocks)), 22, Color("ff9ae6"), 7)
+		var ul:= label("Unlocked:  " + ", ".join(PackedStringArray(result.unlocks)), 22, Color("ff9ae6"), 7)
 		ul.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ul.custom_minimum_size = Vector2(620, 0)
 		v.add_child(ul)
@@ -574,7 +567,7 @@ func show_settings() -> void:
 	for row in [["music_vol", "Music volume"], ["sfx_vol", "Sound volume"]]:
 		var h:= HBoxContainer.new()
 		v.add_child(h)
-		var l:= _label(str(row[1]), 24, Color.WHITE, 7)
+		var l:= label(str(row[1]), 24, Color.WHITE, 7)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		l.custom_minimum_size = Vector2(260, 0)
 		h.add_child(l)
@@ -612,7 +605,7 @@ func show_settings() -> void:
 			if key == "music":
 				Audio.music_setting_changed())
 		grid.add_child(cb)
-	var confirm:= _label("", 20, Color("ff8a8a"), 6)
+	var confirm:= label("", 20, Color("ff8a8a"), 6)
 	var reset:= button("round", Color("ff5c5c"), "", "Erase all progress", Vector2(300, 56), func ():
 		if confirm.text == "":
 			confirm.text = "Press again to erase everything. This can't be undone."
@@ -621,7 +614,7 @@ func show_settings() -> void:
 			go(show_menu))
 	v.add_child(reset)
 	v.add_child(confirm)
-	var help:= _label("Click, tap or Space flips. Hold to fly in jet and wave modes. Z / X add or remove a practice checkpoint. R restarts. Esc pauses.", 17, Color(1, 1, 1, 0.6), 5)
+	var help:= label("Click, tap or Space flips. Hold to fly in jet and wave modes. Z / X add or remove a practice checkpoint. R restarts. Esc pauses.", 17, Color(1, 1, 1, 0.6), 5)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(help)
 
@@ -638,7 +631,7 @@ func show_codes() -> void:
 	keeper.custom_minimum_size = Vector2(220, 190)
 	keeper.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(keeper)
-	var say:= _label("Whisper a word to the lock. Some words open things.", 24, Color(1, 1, 1, 0.85), 7)
+	var say:= label("Whisper a word to the lock. Some words open things.", 24, Color(1, 1, 1, 0.85), 7)
 	v.add_child(say)
 	var input:= LineEdit.new()
 	input.placeholder_text = "Type a code"
@@ -660,4 +653,4 @@ func show_codes() -> void:
 	for c in Catalog.CODES:
 		if Save.claimed("code:" + c):
 			used += 1
-	v.add_child(_label("Codes found: %d / %d.   Hint: what can't the cube do?" % [used, Catalog.CODES.size()], 18, Color(1, 1, 1, 0.55), 5))
+	v.add_child(label("Codes found: %d / %d.   Hint: what can't the cube do?" % [used, Catalog.CODES.size()], 18, Color(1, 1, 1, 0.55), 5))

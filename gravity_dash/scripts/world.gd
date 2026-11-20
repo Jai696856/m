@@ -182,16 +182,21 @@ func remove_checkpoint() -> void:
 		checkpoints.pop_back()
 
 func _unhandled_input(e: InputEvent) -> void:
+	var tap: bool = (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) \
+		or (e is InputEventKey and e.pressed and not e.echo and e.keycode in [KEY_SPACE, KEY_UP, KEY_W, KEY_DOWN, KEY_S])
+	if mode == "dead":
+		# Tap to skip the rest of the death pause (after a short lockout so a late flip doesn't skip it by accident).
+		if tap and dead_t < 0.3:
+			dead_t = 0.0
+			get_viewport().set_input_as_handled()
+		return
 	if mode != "play":
 		return
-	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+	if tap:
 		pending = true
 		get_viewport().set_input_as_handled()
 	elif e is InputEventKey and e.pressed and not e.echo:
-		if e.keycode in [KEY_SPACE, KEY_UP, KEY_W, KEY_DOWN, KEY_S]:
-			pending = true
-			get_viewport().set_input_as_handled()
-		elif e.keycode == KEY_Z:
+		if e.keycode == KEY_Z:
 			place_checkpoint()
 		elif e.keycode == KEY_X:
 			remove_checkpoint()
@@ -298,7 +303,7 @@ func _colors() -> void:
 
 func _die() -> void:
 	mode = "dead"
-	dead_t = 0.55 if practice else 0.9
+	dead_t = 0.35 if practice else 0.5
 	if Save.setting("shake"):
 		shake = 14.0
 	if not practice:

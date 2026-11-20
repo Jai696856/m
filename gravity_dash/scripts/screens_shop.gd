@@ -10,7 +10,6 @@ const FONT = preload("res://fonts/Fredoka-Bold.ttf")
 
 var m
 var kit_tab:= "icon"
-var color_slot:= "c1"
 var tiles: Array = []
 var preview
 var info: Label

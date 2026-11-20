@@ -118,12 +118,6 @@ static func main_params(i: int) -> Dictionary:
 		"stars": r[2], "speed": float(r[3]), "chunks": r[4], "m": r[5], "bpm": r[8], "root": r[9],
 		"scale": SCALES[r[10]], "genre": (i * 7 + r[1]) % 6, "index": i })
 
-static func total_stars() -> int:
-	var n:= 0
-	for r in MAIN:
-		n += int(r[2])
-	return n
-
 static func word_name(seed: int) -> String:
 	return WORDS_A[seed % WORDS_A.size()] + " " + WORDS_B[(seed / 7) % WORDS_B.size()]
 

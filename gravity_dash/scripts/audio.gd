@@ -140,9 +140,6 @@ func _song(key: String) -> AudioStreamWAV:
 	mutex.unlock()
 	return w
 
-func has_song(key: String) -> bool:
-	return songs.has(key)
-
 func play(key: String, restart: bool) -> void:
 	if str(current) == key and music.playing and not restart:
 		return
