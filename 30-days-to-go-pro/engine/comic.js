@@ -999,7 +999,7 @@ pose = function (name, t, k = 0) {
 function bubble(x, y, text, t0, t, size = 70, w = null, tail = 'down') {
   const p = eb((t - t0) / 0.35);
   if (p <= 0) return '';
-  const bw = w || text.length * size * 0.62 + 90, bh = size * 2;
+  const bw = Math.min(1000, w || text.length * size * 0.74 + 100), bh = size * 2;
   return `<g transform="translate(${x},${y}) scale(${p})" filter="url(#dsh)"><rect x="${-bw / 2}" y="${-bh / 2}" width="${bw}" height="${bh}" rx="${bh * 0.4}" fill="#fff" ${ink(8)}/>
     <path d="M${tail === 'down' ? 30 : -30},${bh / 2 - 4} L${tail === 'down' ? 70 : -70},${bh / 2 + 70} L${tail === 'down' ? 100 : -100},${bh / 2 - 4}Z" fill="#fff" ${ink(8)}/><rect x="${tail === 'down' ? 24 : -106}" y="${bh / 2 - 14}" width="82" height="14" fill="#fff"/>
     ${ctext(0, 4, text, size, '#111')}</g>`;
@@ -1143,5 +1143,119 @@ cam3d = function (t, seg) {
     case 'onevone': return { cam: 'juggle', x: 70, t, k: 0.4, night: true };
     case 'quote': return { cam: 'wide', t, blur: true, night: true };
     default: return _cam3d_d4(t, seg);
+  }
+};
+
+// ===================================================================== DAY 6: FINAL CUT
+Object.assign(LOOKS, { flashy: { top: '#ff6d00', topD: '#c55400', pants: '#fff', pantsD: '#ddd', skin: '#f2c49b', skinD: '#d9a57b', hair: '#ffb300', shoe: '#00e5ff' } });
+
+function sD6open(t, seg) {
+  let s = COMIC_DEFS + bgRect('cDusk');
+  s += burst(540, 330, 'DAY 6: FINAL CUT', 90, RED, seg.t0, t, -4);
+  s += burst(540, 540, '40 PLAYERS · 11 SPOTS', 56, '#1a1d24', kw(seg, 'Forty'), t, 3);
+  const tA = kw(seg, 'voted');
+  if (t > tA) s += `<g transform="translate(540,740) scale(${eb((t - tA) / 0.4)})" filter="url(#dsh)"><rect x="-320" y="-60" width="640" height="120" rx="60" fill="#2196f3" ${ink(8)}/>${ctext(0, 4, 'A: PLAY IT SAFE ✓', 52, '#fff')}</g>`;
+  ['mate', 'kid1', 'big', 'kid2', 'flashy', 'kid3'].forEach((w, i) => s += athlete(110 + i * 172, 1560 + (i % 2) * 24, 0.55, w, pose('idle', t + i), t, i % 2 ? -1 : 1, blinking(t, i)));
+  s += athlete(540, 1790, 0.95, 'marcus', pose('idle', t), t, 1, blinking(t));
+  return s;
+}
+function sSafe(t, seg) {
+  let s = COMIC_DEFS;
+  const cyc = (t - seg.t0) % 1.4, f = clamp(cyc / 0.6);
+  s += athlete(300, 1760, 1.0, 'marcus', cyc < 0.25 ? pose('kick', t, 0.7 + cyc) : pose('idle', t), t, 1);
+  s += athlete(820, 1740, 0.95, 'mate', pose('idle', t), t, -1);
+  s += `<path d="M400,1730 H730" stroke="#fff" stroke-width="10" stroke-dasharray="8 22" stroke-linecap="round" opacity=".8"/>`;
+  s += comicBall(lerp(400, 730, f), 1730, 26, t * 400);
+  s += burst(300, 560, 'SIMPLE ✓', 72, '#2ecc71', kw(seg, 'simple'), t, -5);
+  s += burst(760, 780, 'CLOSEST MAN ✓', 60, '#2196f3', kw(seg, 'closest'), t, 5);
+  return s;
+}
+function sFlashy(t, seg) {
+  const tR = kw(seg, 'rainbow'), tC = kw(seg, 'crowd');
+  let s = COMIC_DEFS;
+  s += captionBox(540, 330, 'FIRST HALF', seg.t0, t, '#fff');
+  const ph = ((t - tR) * 0.9) % 1, up = t > tR ? Math.sin(ph * Math.PI) : 0;
+  s += athlete(620, 1760, 1.05, 'flashy', t > tR ? pose('kick', t, 0.5 + ph * 0.5) : pose('idle', t), t, -1);
+  s += comicBall(lerp(700, 560, ph), 1700 - up * 520, 28, t * 800);
+  s += athlete(220, 1760, 0.8, 'marcus', pose('sad', t), t, 1);
+  s += burst(330, 1000, 'NOBODY NOTICED ME 😶', 46, '#7c4dff', kw(seg, 'Nobody'), t, -4);
+  s += burst(700, 600, 'RAINBOW FLICK ×3 🌈', 56, '#ff6d00', tR, t, 4);
+  s += burst(540, 800, 'OOOOH!! 📣', 76, RED, tC, t, -3);
+  return s;
+}
+function sLost(t, seg) {
+  let s = COMIC_DEFS;
+  const n = 1 + seg.words.filter(([w, a]) => /again/i.test(w) && a <= t).length;
+  const cyc = ((t - seg.t0) * 0.9) % 1;
+  s += athlete(600, 1760, 1.05, 'flashy', pose(cyc > 0.5 ? 'sad' : 'dribble', t), t, -1);
+  s += athlete(lerp(900, 640, clamp(cyc * 2)), 1760, 1.0, 'big', pose(cyc > 0.5 ? 'celebrate' : 'run', t), t, -1);
+  s += comicBall(cyc > 0.5 ? lerp(560, 1000, (cyc - 0.5) * 2) : 520, 1730, 26, t * 600);
+  s += `<g transform="translate(540,620)" filter="url(#dsh)"><rect x="-270" y="-70" width="540" height="140" rx="34" fill="#1a1d24" ${ink(6)}/>${ctext(0, 2, `TURNOVER ×${n}`, 64, RED)}</g>`;
+  return s;
+}
+function sMemory(t, seg) {
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#3e2a14" opacity=".55"/>`;
+  s += captionBox(540, 330, 'SECOND HALF', seg.t0, t, '#fff');
+  const p = eb((t - kw(seg, 'Dez') + 0.2) / 0.5);
+  if (p > 0) s += `<g opacity="${clamp(p)}">${athlete(540, 1500, 0.95, 'dez', pose('arms', t), t, -1)}</g>`;
+  s += bubble(540, 820, '"NEVER WASTE A TOUCH."', kw(seg, 'Never') - 0.1, t, 60);
+  return s;
+}
+function sStats6(t, seg) {
+  const tP = kwN(seg, 'thirtyone'), tC = kwN(seg, 'thirtyone', 2), tZ = kw(seg, 'Zero');
+  let s = COMIC_DEFS + bgRect('cBlue');
+  const n = Math.round(31 * eo(clamp((t - tP) / Math.max(0.6, tC - tP))));
+  s += `<g transform="translate(540,620)">${ctext(0, -140, 'PASSES', 70, '#fff')}${ctext(0, 30, `${t > tP ? n : 0}/31`, 220, t > tC ? '#2ecc71' : Y)}</g>`;
+  s += burst(540, 980, '100% ✓', 90, '#2ecc71', tC + 0.3, t, -4);
+  s += burst(540, 1200, '0 TURNOVERS', 76, '#1a1d24', tZ, t, 3);
+  s += athlete(540, 1790, 0.85, 'marcus', pose(t > tZ ? 'celebrate' : 'idle', t), t, 1);
+  return s;
+}
+function sList(t, seg) {
+  const tW = kw(seg, "wasn't"), tUp = kw(seg, 'looked'), tIn = kwN(seg, 'in');
+  let s = COMIC_DEFS + bgRect('cDusk');
+  const names = ['J. RIVERA', 'T. OKAFOR', 'D. SILVA', 'K. MENSAH', 'L. PARK', 'A. COLE', 'B. NOVAK', 'R. DIAZ', 'S. AHMED', 'M. LEE', 'C. ROSS'];
+  const shown = Math.min(names.length, Math.floor((t - seg.t0) * 3));
+  s += `<g transform="translate(540,560)" filter="url(#dsh)"><rect x="-300" y="-250" width="600" height="500" rx="30" fill="#fff" ${ink(8)}/>
+    <text x="0" y="-200" font-family="${FONT}" font-size="40" font-weight="900" fill="#111" text-anchor="middle">FINAL SQUAD</text>`;
+  names.slice(Math.max(0, shown - 9), shown).forEach((n, i) => s += `<text x="-240" y="${-140 + i * 44}" font-family="${FONT}" font-size="34" font-weight="800" fill="#333">✓ ${n}</text>`);
+  s += `</g>`;
+  if (t > tW && t < tUp) s += burst(540, 900, 'NOT CALLED… 💔', 64, '#455a64', tW, t, -4);
+  s += athlete(260, 1770, 1.0, 'marcus', pose(t > tW && t < tIn + 0.3 ? 'sad' : t > tIn ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  s += athlete(820, 1770, 1.0, 'coach', pose('idle', t), t, -1);
+  if (t > tUp) s += bubble(640, 980, '"31 FOR 31. YOU\'RE IN."', tUp + 0.6, t, 54);
+  return s;
+}
+function sMadeIt(t, seg) {
+  let s = COMIC_DEFS + bgRect('cGreen');
+  s += burst(540, 520, 'I MADE THE TEAM!!', 70, Y, seg.t0, t, -5);
+  s += jersey(540, 1000, eb((t - seg.t0 - 0.3) / 0.5), t).replace('>?<', '>✓<');
+  s += athlete(540, 1790, 0.95, 'marcus', pose('celebrate', t), t, 1);
+  return s + confetti(t, seg.t0, 540, 500, 120);
+}
+function sSpecial(t, seg) {
+  const tB = kw(seg, 'big');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".7"/>`;
+  s += burst(540, 420, 'SPECIAL MATCH', 96, '#7c4dff', kw(seg, 'special'), t, -4);
+  s += burst(540, 620, 'IN 2 DAYS', 70, '#1a1d24', kw(seg, 'two'), t, 3);
+  const glow = 0.5 + 0.5 * Math.sin(t * 4);
+  s += `<g opacity="${eo((t - tB) / 0.6)}"><ellipse cx="540" cy="1150" rx="380" ry="200" fill="#7c4dff" opacity="${0.25 * glow}" filter="url(#b30)"/>${ctext(540, 1150, '???', 220, Y)}</g>${sparkles(540, 1150, t, tB, 8, 360)}`;
+  s += bubble(540, 880, 'SOMETHING BIG IS COMING…', tB - 0.4, t, 48);
+  return s;
+}
+function shirtArt(num, col, t) {
+  return `<rect width="420" height="392" fill="${col}"/><g transform="translate(210,215) scale(.62)">
+  <path d="M-150,-170 L-60,-200 Q0,-160 60,-200 L150,-170 L230,-60 L160,0 L130,-40 L130,200 L-130,200 L-130,-40 L-160,0 L-230,-60Z" fill="#f4f4f4" stroke="#111" stroke-width="10"/>
+  <text x="0" y="60" font-family="${FONT}" font-size="230" font-weight="900" fill="#111" text-anchor="middle" dominant-baseline="central">${num}</text></g>`;
+}
+Object.assign(SCENES, { d6open: sD6open, safe: sSafe, flashy: sFlashy, lost: sLost, memory: sMemory, stats6: sStats6, list: sList, madeit: sMadeIt, special: sSpecial });
+const _cam3d_d5 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'safe': case 'flashy': case 'lost': return { cam: 'juggle', x: -50 + ['safe', 'flashy', 'lost'].indexOf(seg.scene) * 8, t, k: 0.4 };
+    case 'memory': return { cam: 'juggle', x: -20, t, k: 0.6, blur: true };
+    case 'list': return { cam: 'juggle', x: -60, t, k: 0.7, blur: true };
+    case 'special': return { cam: 'wide', t, blur: true, night: true };
+    default: return _cam3d_d5(t, seg);
   }
 };

@@ -1,0 +1,29 @@
+{
+  "day": 6,
+  "title": "Day 6: The Final Cut",
+  "style": "comic",
+  "render3d": true,
+  "words_file": "audio/day-06.words.json",
+  "optionsTitle": ["DAY 7:", "PICK MY NUMBER"],
+  "ctaComment": "7 or 10? 👇",
+  "statsBefore": [["SPD", 22], ["SHO", 22], ["PAS", 27], ["DRI", 25], ["DEF", 18], ["PHY", 21]],
+  "statsAfter": [["SPD", 22, ""], ["SHO", 22, ""], ["PAS", 31, "Passing"], ["DRI", 25, ""], ["DEF", 22, "Defense"], ["PHY", 25, "Defense"]],
+  "upBursts": [["+4 PAS", "Passing", "#2196f3"], ["+4 DEF", "Defense", "#e74c3c"]],
+  "ovrBefore": 23,
+  "ovrAfter": 25,
+  "chunks": [
+    {"scene": "d6open", "text": "Day six. The final cut. Forty players left. Eleven spots. And you voted A... play it safe."},
+    {"scene": "safe", "text": "So that's what I did. Every touch... simple. Every pass... to the closest teammate."},
+    {"scene": "flashy", "text": "First half? Nobody noticed me. The kid next to me hit three rainbow flicks. The crowd went crazy."},
+    {"scene": "lost", "text": "But then he lost the ball. Again. And again."},
+    {"scene": "memory", "text": "Second half, I remembered what Dez said. Never waste a touch."},
+    {"scene": "stats6", "text": "Thirty-one passes. Thirty-one completed. Zero turnovers."},
+    {"scene": "list", "text": "Final whistle. Coach read the list. Name after name... mine wasn't called. Then he looked up. \"Marcus. Thirty-one for thirty-one. Nobody does that. You're in.\""},
+    {"scene": "madeit", "text": "I made the team!"},
+    {"scene": "upgradeG", "text": "Card check. Passing: twenty-seven to thirty-one. Defense: eighteen to twenty-two. Overall... twenty-five!"},
+    {"scene": "special", "text": "And coach said one more thing. In two days, we play a special match. Something big is coming."},
+    {"scene": "options", "letter": "A", "title": "NUMBER 7", "sub": "Speed. Flair. Wingers.", "icon": "seven", "text": "So, what number do I wear? Option A: number seven."},
+    {"scene": "options", "letter": "B", "title": "NUMBER 10", "sub": "The playmaker.", "icon": "ten", "text": "Option B: number ten."},
+    {"scene": "cta3", "text": "Comment A or B. Day seven."}
+  ]
+}
