@@ -4,6 +4,7 @@ extends Node3D
 
 const Car := preload("res://scripts/car.gd")
 const Ped := preload("res://scripts/ped.gd")
+const Heli := preload("res://scripts/heli.gd")
 
 const STAR_HEAT := [0.0, 0.01, 120.0, 300.0, 600.0, 1000.0]
 const CARS_FOR := [0, 1, 2, 3, 4, 6]
@@ -23,6 +24,9 @@ var bust_t := 0.0
 var ram_cd := 0.0
 var shot_cd := 0.0
 var rng := RandomNumberGenerator.new()
+var heli = null
+var roadblocks: Array = []   # [car, life]
+var roadblock_cd := 12.0
 
 
 func setup(g) -> void:
@@ -72,10 +76,19 @@ func clear() -> void:
 		if data.has(c):
 			data[c].leave = true
 			c.siren_on = false
+	if heli and is_instance_valid(heli):
+		heli.leaving = true
 
 
 func reset() -> void:
 	clear()
+	if heli and is_instance_valid(heli):
+		heli.queue_free()
+	heli = null
+	for rb in roadblocks:
+		if is_instance_valid(rb[0]):
+			rb[0].queue_free()
+	roadblocks.clear()
 	for c in cars:
 		if is_instance_valid(c):
 			c.queue_free()
@@ -138,6 +151,8 @@ func _physics_process(delta: float) -> void:
 				if u.global_position.distance_to(pp) < 75.0 and _los(u.global_position + Vector3.UP * 1.4, pp + Vector3.UP):
 					seen = true
 					break
+			if heli and is_instance_valid(heli) and heli.sees(pp):
+				seen = true
 	if wanted > 0:
 		if seen:
 			unseen_t = 0.0
@@ -152,6 +167,13 @@ func _physics_process(delta: float) -> void:
 			spawn_cd = 3.5
 			_spawn_car(pp)
 		_bust_check(delta, pp)
+		if wanted >= 3 and (heli == null or not is_instance_valid(heli)):
+			_spawn_heli(pp)
+		roadblock_cd -= delta
+		if wanted >= 3 and roadblock_cd <= 0.0 and game.player.in_car != null:
+			roadblock_cd = 22.0
+			_spawn_roadblock(pp)
+	_tick_roadblocks(delta, pp)
 	for c in cars.duplicate():
 		_ai(c, delta, pp)
 	_cleanup(pp)
@@ -338,8 +360,70 @@ func _cleanup(pp: Vector3) -> void:
 			game.peds.remove(p)
 
 
+func _spawn_heli(pp: Vector3) -> void:
+	heli = Heli.new()
+	add_child(heli)
+	heli.setup(game)
+	var a := rng.randf() * TAU
+	heli.global_position = pp + Vector3(cos(a) * 160.0, 70.0, sin(a) * 160.0)
+	game.hud.notice("Police chopper inbound")
+
+
+## Two cruisers parked across the road at an intersection ahead of you.
+func _spawn_roadblock(pp: Vector3) -> void:
+	var car = game.player.in_car
+	var v: Vector3 = car.linear_velocity
+	v.y = 0.0
+	if v.length() < 8.0:
+		return
+	var ahead: Vector3 = pp + v.normalized() * 130.0
+	var n: Vector2i = city.nearest_node(ahead)
+	var np: Vector3 = city.nodev(n)
+	if np.distance_to(pp) < 70.0 or np.distance_to(pp) > 190.0:
+		return
+	var dir := v.normalized()
+	var axis := Vector3(1, 0, 0) if absf(dir.x) > absf(dir.z) else Vector3(0, 0, 1)
+	var across := Vector3(axis.z, 0, axis.x)
+	for s in [-1.0, 1.0]:
+		var c := Car.new()
+		c.setup(game, "police", Color(0.95, 0.95, 0.97))
+		add_child(c)
+		var pos: Vector3 = np - axis * 6.0 + across * s * 3.0 + Vector3.UP * 0.1
+		c.global_transform = Transform3D(Basis(Vector3.UP, atan2(-across.x, -across.z) + 0.25 * s), pos)
+		c.siren_on = true
+		roadblocks.append([c, 45.0])
+		var p = game.peds.spawn_ped(pos - axis * 2.5, "cop")
+		p.alerted = true
+		p.state = Ped.CHASE
+		cops.append(p)
+	game.hud.notice("Roadblock ahead!")
+
+
+func _tick_roadblocks(delta: float, pp: Vector3) -> void:
+	var k := 0
+	while k < roadblocks.size():
+		var rb: Array = roadblocks[k]
+		rb[1] -= delta
+		var c = rb[0]
+		if not is_instance_valid(c):
+			roadblocks.remove_at(k)
+			continue
+		if rb[1] <= 0.0 and c.global_position.distance_to(pp) > 90.0 and c != game.player.in_car:
+			c.queue_free()
+			roadblocks.remove_at(k)
+			continue
+		if wanted == 0:
+			c.siren_on = false
+		k += 1
+
+
 func get_blips() -> Array:
 	var out := []
+	if heli and is_instance_valid(heli) and not heli.dead:
+		out.append([heli.global_position, Color(1, 0.2, 0.2), "police"])
+	for rb in roadblocks:
+		if is_instance_valid(rb[0]) and not rb[0].dead:
+			out.append([rb[0].global_position, Color(0.25, 0.45, 1.0), "police"])
 	var flash := fmod(Time.get_ticks_msec() * 0.004, 2.0) < 1.0
 	for c in cars:
 		if is_instance_valid(c) and not c.dead and data.has(c) and not data[c].leave:

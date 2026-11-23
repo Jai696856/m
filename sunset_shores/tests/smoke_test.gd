@@ -42,6 +42,11 @@ func _initialize() -> void:
 	await _test_crew_switch()
 	await _test_wildlife()
 	await _test_stunt_and_feed()
+	await _test_interiors_and_robbery()
+	await _test_abilities()
+	await _test_phone()
+	await _test_heli_and_roadblock()
+	await _test_heist()
 	_test_night()
 	print("")
 	if failures.is_empty():
@@ -356,6 +361,178 @@ func _test_stunt_and_feed() -> void:
 	check(game.money > money0, "stunt bonus paid ($%d -> $%d)" % [money0, game.money])
 	check(game.hud.posts.size() >= 1, "the Chirp feed has posts (%d)" % game.hud.posts.size())
 	p.exit_car()
+
+
+func _reset_player(pos: Vector3) -> void:
+	var p = game.player
+	if p.in_car:
+		p.exit_car()
+	game.police.reset()
+	await frames(2)
+	p.global_position = pos + Vector3(0, 0.2, 0)
+	p.velocity = Vector3.ZERO
+	p.heal(100)
+
+
+func _test_interiors_and_robbery() -> void:
+	print("enterable buildings and robberies")
+	var it = game.interiors
+	var p = game.player
+	# walk in through the bank's front door
+	await _reset_player(it.bank.entrance + Vector3(0, 0, 2.0))
+	game.cam.yaw = 0.0
+	Input.action_press("move_forward")
+	await frames(150)
+	Input.action_release("move_forward")
+	check(it.inside("bank", p.global_position), "walking north through the door gets you inside Bay Bank")
+	# robbing it
+	await _reset_player(it.bank.counter_front)
+	await frames(3)
+	var act: Dictionary = game.find_interaction(p.global_position)
+	check(not act.is_empty() and act.text == "rob the bank", "standing at the counter offers 'rob the bank'")
+	if act.is_empty():
+		return
+	act.call.call()
+	await frames(5)
+	check(game.police.wanted >= 2, "robbing the bank gives at least two stars")
+	for pile in it.bank.piles:
+		p.global_position = pile.global_position + Vector3(0, 0.1, 1.0)
+		await frames(2)
+		var g: Dictionary = game.find_interaction(p.global_position)
+		if not g.is_empty():
+			g.call.call()
+	check(it.bag > 3000, "grabbing the vault cash fills the bag ($%d)" % it.bag)
+	var money0: int = game.money
+	game.police.clear()
+	await frames(3)
+	check(game.money > money0 and it.bag == 0, "losing the cops pays out the bag")
+	# the corner store
+	await _reset_player(it.store.counter_front)
+	await frames(3)
+	var sact: Dictionary = game.find_interaction(p.global_position)
+	check(not sact.is_empty() and sact.text == "rob the store", "the Quick Stop can be robbed")
+	if not sact.is_empty():
+		var m0: int = game.money
+		sact.call.call()
+		await frames(220)
+		check(game.money > m0, "the clerk hands over the register")
+	game.police.reset()
+
+
+func _test_abilities() -> void:
+	print("special abilities")
+	var p = game.player
+	await _reset_player(game.city.spawn_point)
+	p.special = 100.0
+	p.hero = 1
+	Input.action_press("ability")
+	await frames(2)
+	Input.action_release("ability")
+	check(p.ability_on and is_equal_approx(Engine.time_scale, p.SLOW_MO), "pressing V slows time")
+	var before: float = p.special
+	await frames(60)
+	check(p.special < before, "the meter drains while active")
+	Input.action_press("ability")
+	await frames(2)
+	Input.action_release("ability")
+	check(not p.ability_on and Engine.time_scale == 1.0, "pressing V again ends it")
+	await frames(60)
+	check(p.special > 0.0, "the meter refills")
+	p.hero = 0
+
+
+func _test_phone() -> void:
+	print("phone")
+	var ph = game.phone
+	await _reset_player(game.city.block_center(3, 3) + Vector3(-34, 0, 0))
+	ph.open()
+	check(ph.is_open(), "the phone opens")
+	for s in ["contacts", "jobs", "chirp", "special", "settings", "home"]:
+		ph.show_screen(s)
+		await frames(1)
+	check(true, "every phone app opens without errors")
+	ph._gps(game.city.contact_points[1], "Dex")
+	check(game.waypoint != null, "contacts set a GPS waypoint")
+	ph._mechanic()
+	check(is_instance_valid(ph.last_delivery) and ph.last_delivery.global_position.distance_to(game.player_pos()) < 60.0, "the mechanic drops off a car nearby")
+	ph.close()
+	check(not ph.is_open(), "the phone closes")
+	game.set_waypoint(null)
+
+
+func _test_heli_and_roadblock() -> void:
+	print("helicopter and roadblocks")
+	var p = game.player
+	var car = game.traffic.spawn_car("sedan", Color.WHITE, Transform3D(Basis(), game.city.node_pos(4, 6) + Vector3(game.city.LANE_OFF, 0.3, 30)))
+	await _reset_player(car.global_position + Vector3(2, 0, 0))
+	p.enter_car(car)
+	game.police.add_heat(400)
+	game.police.roadblock_cd = 0.0
+	Input.action_press("move_forward")
+	await frames(240)
+	Input.action_release("move_forward")
+	check(game.police.wanted >= 3, "400 heat is three stars")
+	check(game.police.heli != null and is_instance_valid(game.police.heli), "a police helicopter joins at three stars")
+	check(game.police.roadblocks.size() >= 2 or game.police.roadblock_cd > 0.0, "roadblocks are attempted ahead of you (%d cars)" % game.police.roadblocks.size())
+	var h = game.police.heli
+	if h:
+		h.take_hit(1000.0, p, h.global_position)
+		check(h.dead, "the chopper can be shot down")
+		var t := 0
+		while is_instance_valid(h) and t < 900:
+			await physics_frame
+			t += 1
+		check(not is_instance_valid(h), "it crashes and explodes")
+	await _reset_player(game.city.spawn_point)
+
+
+func _test_heist() -> void:
+	print("the heist")
+	var m = game.missions
+	var r: Dictionary = game.interiors.reserve
+	var p = game.player
+	m.index = maxi(m.index, 3)
+	check(m.can_heist() == "", "the heist unlocks after three story jobs")
+	m.start(m.HEIST)
+	check(m.is_active() and m.active.def.type == "heist", "calling Lena starts the heist")
+	var van = m.active.car
+	p.global_position = van.global_position + Vector3(0, 0.3, 0)
+	p.enter_car(van)
+	await frames(3)
+	check(m.active.stage == 1, "stealing the armored van")
+	van.global_transform = Transform3D(Basis(), r.street + Vector3(0, 0.4, 0))
+	van.linear_velocity = Vector3.ZERO
+	await frames(30)
+	check(m.active.stage == 2 and m.active.guards.size() == 4, "parking at the Reserve brings out four guards")
+	p.exit_car()
+	await _reset_player(r.vault_front)
+	await frames(2)
+	var act: Dictionary = game.find_interaction(p.global_position)
+	check(not act.is_empty() and act.text.begins_with("start drilling"), "the vault door offers the drill")
+	act.call.call()
+	check(game.police.wanted >= 3, "drilling trips the alarm")
+	p.global_position = r.vault_front + Vector3(0, 0.2, 0)
+	m.active.drill = 0.3
+	game.player.health = 100.0
+	await frames(40)
+	check(m.active.stage == 4, "the drill opens the vault")
+	for g in r.gold:
+		p.global_position = g.global_position + Vector3(0, 0.2, 1.0)
+		p.health = 100.0
+		await frames(2)
+		var gi: Dictionary = game.find_interaction(p.global_position)
+		if not gi.is_empty():
+			gi.call.call()
+	check(m.active.take == 4 * m.GOLD_VALUE, "all the gold grabbed ($%d)" % m.active.take)
+	await frames(3)
+	check(m.active.stage == 5, "time to run for the boat")
+	var money0: int = game.money
+	p.global_position = m.BOAT_POS + Vector3(0, 0.3, 0)
+	p.health = 100.0
+	await frames(10)
+	check(not m.is_active() and game.money >= money0 + 4 * m.GOLD_VALUE, "reaching the boat pays out the heist ($%d)" % (game.money - money0))
+	check(game.stats.heists == 1, "heist recorded")
+	await _reset_player(game.city.spawn_point)
 
 
 func _test_night() -> void:

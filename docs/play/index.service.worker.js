@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1795113180|4811765';
+const CACHE_VERSION = '1795438617|6098887';
 /** @type {string} */
 const CACHE_PREFIX = 'Sunset Shores-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;

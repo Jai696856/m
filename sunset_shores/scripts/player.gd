@@ -30,10 +30,14 @@ var near_car = null
 ## The crew: two original characters you can switch between with Tab.
 ## Marisol is the better driver (stronger engine), Cole is tougher (takes less damage).
 var crew := [
-	{"name": "Marisol", "perk": "driver", "perk_text": "Wheelwoman: cars accelerate 15% harder",
+	{"name": "Marisol", "perk": "driver", "perk_text": "Wheelwoman: faster cars.  Special (V): Slipstream",
+		"ability": "Slipstream", "ability_text": "Time slows and your car grips like glue",
+		"tint": Color(0.3, 0.6, 1.0),
 		"shirt": Color(0.95, 0.35, 0.45), "pants": Color(0.2, 0.25, 0.42), "skin": Color(0.78, 0.56, 0.42),
 		"hair": Color(0.1, 0.06, 0.05), "opts": {"hair_style": 1, "shoes": Color(0.95, 0.95, 0.95)}},
-	{"name": "Cole", "perk": "tough", "perk_text": "Tough: takes 25% less damage",
+	{"name": "Cole", "perk": "tough", "perk_text": "Tough: less damage.  Special (V): Steady Aim",
+		"ability": "Steady Aim", "ability_text": "Time slows, every shot is dead on and hits twice as hard",
+		"tint": Color(1.0, 0.65, 0.2),
 		"shirt": Color(0.1, 0.62, 0.62), "pants": Color(0.16, 0.18, 0.26), "skin": Color(0.88, 0.68, 0.52),
 		"hair": Color(0.45, 0.3, 0.15), "opts": {"shoes": Color(0.3, 0.22, 0.15)}},
 ]
@@ -42,6 +46,10 @@ var partner_pos := Vector3.ZERO
 var partner_yaw := 0.0
 var partner_model: Node3D
 var switch_cd := 0.0
+## Special ability: a meter that fills over time and from takedowns, drained while active.
+var special := 100.0
+var ability_on := false
+const SLOW_MO := 0.45
 
 
 func setup(g) -> void:
@@ -116,6 +124,7 @@ func switch_hero() -> bool:
 	if why != "":
 		game.hud.notice(why)
 		return false
+	stop_ability()
 	var here: Vector3 = game.player_pos()
 	var here_yaw: float = model.rotation.y
 	if in_car:
@@ -155,6 +164,7 @@ func _physics_process(delta: float) -> void:
 	if game.state != "play":
 		return
 	switch_cd -= delta
+	_ability(delta)
 	if Input.is_action_just_pressed("switch_hero") and switch_cd <= 0.0:
 		switch_hero()
 		return
@@ -198,8 +208,14 @@ func _walk(delta: float) -> void:
 	model.animate(delta, hs, aiming)
 	_weapons()
 	_find_near_car()
+	var it: Dictionary = game.find_interaction(global_position)
+	if not it.is_empty():
+		game.hint = "Press F to " + it.text
 	if Input.is_action_just_pressed("enter_exit") and knock_t <= 0.0:
-		try_enter_vehicle()
+		if not it.is_empty():
+			it.call.call()
+		else:
+			try_enter_vehicle()
 	if global_position.y < -15.0:
 		global_position = game.city.spawn_point
 		velocity = Vector3.ZERO
@@ -257,6 +273,8 @@ func _weapons() -> void:
 		weapon = 0
 		w = weapons[0]
 	var want: bool = Input.is_action_pressed("fire") if w.auto else Input.is_action_just_pressed("fire")
+	if game.phone and game.phone.is_open():
+		want = false
 	if want and fire_cd <= 0.0:
 		fire()
 
@@ -271,6 +289,9 @@ func fire() -> void:
 	var cam: Camera3D = game.cam.cam
 	var dir := -cam.global_transform.basis.z
 	var sp: float = w.spread
+	var steady: bool = ability_on and perk() == "tough"
+	if steady:
+		sp = 0.0
 	dir = (dir + Vector3(randf_range(-sp, sp), randf_range(-sp, sp), randf_range(-sp, sp))).normalized()
 	var origin := cam.global_position
 	var me: Vector3 = (in_car.global_position if in_car else global_position) + Vector3.UP * 1.3
@@ -293,11 +314,43 @@ func fire() -> void:
 	if not hit.is_empty():
 		var c = hit.collider
 		if c != null and c.has_method("take_hit"):
-			c.take_hit(w.dmg, self, hit.position)
+			c.take_hit(w.dmg * (2.0 if steady else 1.0), self, hit.position)
 		else:
 			game.fx.impact(hit.position)
 	game.gunshot(muzzle, true)
 	game.cam.add_shake(0.05)
+
+
+func _ability(delta: float) -> void:
+	var real := delta / maxf(Engine.time_scale, 0.05)
+	if Input.is_action_just_pressed("ability"):
+		if ability_on:
+			stop_ability()
+		elif special > 15.0:
+			ability_on = true
+			Engine.time_scale = SLOW_MO
+			game.sfx.play("pass", null, -12.0, 0.6)
+			game.hud.notice(crew[hero].ability + ": " + crew[hero].ability_text)
+		else:
+			game.hud.notice("Special ability is still charging")
+	if ability_on:
+		special -= 11.0 * real
+		if special <= 0.0:
+			special = 0.0
+			stop_ability()
+	else:
+		special = minf(100.0, special + 1.6 * real)
+
+
+func stop_ability() -> void:
+	if ability_on:
+		ability_on = false
+		if game.state == "play":
+			Engine.time_scale = 1.0
+
+
+func add_special(amount: float) -> void:
+	special = minf(100.0, special + amount)
 
 
 func _find_near_car() -> void:
@@ -392,6 +445,8 @@ func take_damage(dmg: float) -> void:
 		return
 	if perk() == "tough":
 		dmg *= 0.75
+		if ability_on:
+			dmg *= 0.6
 	if armor > 0.0:
 		var absorbed := minf(armor, dmg * 0.75)
 		armor -= absorbed

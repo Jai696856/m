@@ -39,6 +39,8 @@ func setup(g) -> void:
 	streams["click"] = _chime([1200.0], 0.03)
 	streams["horn"] = _horn()
 	streams["siren"] = _siren()
+	streams["rotor"] = _rotor()
+	streams["alarm"] = _alarm()
 	for i in 16:
 		var p := AudioStreamPlayer3D.new()
 		p.unit_size = 12.0
@@ -199,6 +201,31 @@ func _horn() -> AudioStreamWAV:
 			for h in [1.0, 2.0, 3.0]:
 				v += sin(TAU * f * h * t) / (h * h)
 		s[i] = clampf(v * 0.35, -0.8, 0.8) * env
+	return _wav(s)
+
+
+func _rotor() -> AudioStreamWAV:
+	# chopper blades: low thumps five times a second, looped
+	var n := int(1.0 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var ph := fmod(t * 5.0, 1.0)
+		lp += ((randf() * 2.0 - 1.0) - lp) * 0.05
+		s[i] = (lp * 2.5 + sin(TAU * 55.0 * t) * 0.4) * exp(-ph * 9.0) * 0.9
+	return _wav(s, RATE, true)
+
+
+func _alarm() -> AudioStreamWAV:
+	var n := int(1.2 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var on := 1.0 if fmod(t, 0.3) < 0.18 else 0.0
+		s[i] = (sin(TAU * 1250.0 * t) * 0.5 + sin(TAU * 2500.0 * t) * 0.15) * on * 0.6
 	return _wav(s)
 
 

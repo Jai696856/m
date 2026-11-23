@@ -33,6 +33,7 @@ var heading_font: Font
 var feed: RichTextLabel
 var feed_box: PanelContainer
 var posts: Array = []   # [handle, text, time_left]
+var history: Array = [] # last posts for the phone's Chirp app
 var lbl_hero: Label
 
 
@@ -124,6 +125,9 @@ func _build_feed() -> void:
 
 func add_post(handle: String, text: String) -> void:
 	posts.push_front([handle, text, 14.0])
+	history.push_front([handle, text])
+	if history.size() > 15:
+		history.resize(15)
 	if posts.size() > 3:
 		posts.resize(3)
 	_refresh_feed()
@@ -162,6 +166,7 @@ Q / mouse wheel       Switch weapon
 R                     Flip the car upright
 H                     Horn          T   Radio on/off
 Tab                   Switch between Marisol and Cole
+V                     Special ability       C   Phone
 M                     Full map      Esc   Pause"""
 
 
@@ -169,7 +174,8 @@ const TOUCH_TEXT := """Left thumb       Move (push all the way to sprint), or dr
 Right thumb      Drag to look around
 FIRE             Shoot          JUMP / DRIFT   Jump or handbrake
 CAR              Get in, out or steal a car
-GUN  MAP  SWAP   Switch weapon, full map, Marisol / Cole"""
+GUN  MAP  SWAP   Switch weapon, full map, Marisol / Cole
+ABIL  PHONE      Special ability, in-game phone"""
 
 
 func _build_pause() -> void:
@@ -495,6 +501,13 @@ class Overlay extends Control:
 		var hp: float = clampf(p.health / 100.0, 0.0, 1.0)
 		var hc := Color(0.3, 0.9, 0.35) if hp > 0.3 else Color(0.95, 0.25, 0.2)
 		draw_rect(Rect2(x, y, w * hp, 10), hc)
+		# special ability meter
+		var sp_y := y + (28.0 if p.armor > 0.0 else 14.0)
+		var tint: Color = p.crew[p.hero].tint
+		draw_rect(Rect2(x - 2, sp_y - 2, w + 4, 10), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(x, sp_y, w * clampf(p.special / 100.0, 0.0, 1.0), 6), tint if not p.ability_on else tint.lightened(0.4))
+		if p.ability_on:
+			draw_rect(Rect2(Vector2.ZERO, s), Color(tint.r, tint.g, tint.b, 0.1))
 		if p.armor > 0.0:
 			draw_rect(Rect2(x - 2, y + 14, w + 4, 10), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(x, y + 16, w * clampf(p.armor / 100.0, 0.0, 1.0), 6), Color(0.35, 0.6, 1.0))
@@ -588,7 +601,7 @@ class Minimap extends Control:
 					r = 7.0
 				"target", "police":
 					r = 6.0
-				"hospital", "respray", "partner":
+				"hospital", "respray", "partner", "bank", "store":
 					r = 6.0
 			draw_circle(sp, r + 2.0, Color(0, 0, 0, 0.75))
 			draw_circle(sp, r, col)

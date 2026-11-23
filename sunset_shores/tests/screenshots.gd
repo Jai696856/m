@@ -19,7 +19,7 @@ func _initialize() -> void:
 	game.hud.intro.visible = false
 	paused = false
 	game.time_flow = 0.0
-	for shot in ["beach", "downtown", "drive", "night", "wanted", "swamp", "intro"]:
+	for shot in ["beach", "downtown", "drive", "night", "wanted", "swamp", "bank", "phone", "heli", "intro"]:
 		if only == "" or only == shot:
 			await call("_shot_" + shot)
 	quit()
@@ -120,6 +120,40 @@ func _shot_swamp() -> void:
 	game.post("stunt", {"car": "Marlin GT"})
 	await _frames(40)
 	await _save("06_swamp")
+
+
+func _shot_bank() -> void:
+	_set_time(14.0)
+	var it = game.interiors
+	_place(it.bank.entrance + Vector3(1.5, 0.1, -6.0), 0.15, -0.12)
+	it._rob_bank()
+	await _frames(50)
+	game.police.reset()
+	await _save("07_bank_robbery")
+
+
+func _shot_phone() -> void:
+	_set_time(15.0)
+	_place(game.interiors.store.counter_front + Vector3(0, 0.1, 10.0), 0.0, -0.1)
+	game.phone.open()
+	game.phone.show_screen("contacts")
+	await _frames(30)
+	await _save("08_phone")
+	game.phone.close()
+
+
+func _shot_heli() -> void:
+	_set_time(20.6)
+	var c: Vector3 = game.city.node_pos(4, 5)
+	_place(c + Vector3(3, 0.1, 10), 0.4, 0.35)
+	game.police.add_heat(400)
+	game.police._spawn_heli(game.player.global_position)
+	var h = game.police.heli
+	h.global_position = game.player.global_position + Vector3(-6, 22, -22)
+	h.angle = 0.0
+	await _frames(25)
+	await _save("09_heli")
+	game.police.reset()
 
 
 func _shot_intro() -> void:

@@ -30,6 +30,8 @@ func _layout() -> void:
 		{"name": "jump", "action": "jump", "label": "JUMP", "pos": Vector2(s.x - u * 3.6, s.y - u * 1.1), "r": u * 0.7, "hold": true, "when": "foot"},
 		{"name": "brake", "action": "handbrake", "label": "DRIFT", "pos": Vector2(s.x - u * 3.6, s.y - u * 1.1), "r": u * 0.7, "hold": true, "when": "car"},
 		{"name": "car", "action": "enter_exit", "label": "CAR", "pos": Vector2(s.x - u * 1.4, s.y - u * 4.0), "r": u * 0.65, "hold": false, "when": "any"},
+		{"name": "ability", "action": "ability", "label": "ABIL", "pos": Vector2(s.x - u * 5.1, s.y - u * 1.3), "r": u * 0.55, "hold": false, "when": "any"},
+		{"name": "phone", "action": "phone", "label": "PHONE", "pos": Vector2(s.x * 0.5 - u * 1.5, u * 0.7), "r": u * 0.42, "hold": false, "when": "any"},
 		{"name": "weapon", "action": "next_weapon", "label": "GUN", "pos": Vector2(s.x - u * 3.1, s.y - u * 3.1), "r": u * 0.5, "hold": false, "when": "any"},
 		{"name": "flip", "action": "reset_car", "label": "FLIP", "pos": Vector2(s.x - u * 3.1, s.y - u * 3.1), "r": u * 0.5, "hold": false, "when": "car_flipped"},
 		{"name": "horn", "action": "horn", "label": "HORN", "pos": Vector2(s.x - u * 4.3, s.y - u * 2.6), "r": u * 0.45, "hold": false, "when": "car"},
@@ -37,6 +39,12 @@ func _layout() -> void:
 		{"name": "map", "action": "map", "label": "MAP", "pos": Vector2(s.x * 0.5 + u * 0.5, u * 0.7), "r": u * 0.42, "hold": false, "when": "any"},
 		{"name": "swap", "action": "switch_hero", "label": "SWAP", "pos": Vector2(s.x * 0.5 - u * 0.5, u * 0.7), "r": u * 0.42, "hold": false, "when": "any"},
 	]
+
+
+func _label(b: Dictionary) -> String:
+	if b.name == "car" and game.player.in_car == null and not game.find_interaction(game.player.global_position).is_empty():
+		return "USE"
+	return b.label
 
 
 func _visible_now(b: Dictionary) -> bool:
@@ -182,4 +190,4 @@ func _draw() -> void:
 		draw_circle(b.pos, b.r, col)
 		draw_arc(b.pos, b.r, 0, TAU, 36, Color(1, 1, 1, 0.55), 2.5, true)
 		var fs := int(clampf(b.r * 0.42, 12.0, 26.0))
-		draw_string(font, b.pos + Vector2(-b.r, fs * 0.35), b.label, HORIZONTAL_ALIGNMENT_CENTER, b.r * 2.0, fs, Color(1, 1, 1, 0.95))
+		draw_string(font, b.pos + Vector2(-b.r, fs * 0.35), _label(b), HORIZONTAL_ALIGNMENT_CENTER, b.r * 2.0, fs, Color(1, 1, 1, 0.95))

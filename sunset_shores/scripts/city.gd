@@ -59,6 +59,7 @@ var tree_xf: Array[Transform3D] = []
 var lamp_xf: Array[Transform3D] = []
 var _lights_on := -1
 var world_body: StaticBody3D
+var special_blocks := {}          # "bank"/"store"/"reserve" -> block centre
 var pools: Array = []             # [Vector3 centre, radius] of swamp water
 var gator_homes: Array = []       # Vector3
 var flamingo_spots: Array = []    # Vector3
@@ -256,6 +257,12 @@ func _kind(bx: int, bz: int) -> String:
 		return "police"
 	if k == Vector2i(2, 3):
 		return "respray"
+	if k == Vector2i(5, 4):
+		return "bank"
+	if k == Vector2i(6, 3):
+		return "store"
+	if k == Vector2i(4, 3):
+		return "reserve"
 	if k == Vector2i(4, 1) or k == Vector2i(1, 5):
 		return "park"
 	if k == Vector2i(5, 2) or k == Vector2i(2, 6):
@@ -296,6 +303,10 @@ func _build_block(bx: int, bz: int) -> void:
 		"hospital": _hospital(c, body)
 		"police": _police(c, body)
 		"respray": _respray(c, body)
+		"bank", "store", "reserve":
+			# enterable buildings are added by interiors.gd; leave a paved lot
+			_lot(c, Color(0.56, 0.55, 0.53))
+			special_blocks[kind] = Vector3(c.x, 0, c.y)
 
 
 func _lot(c: Vector2, color: Color, size := BLOCK - SIDEWALK * 2.0) -> void:

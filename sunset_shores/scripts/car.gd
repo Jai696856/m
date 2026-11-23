@@ -406,8 +406,11 @@ func _drive(delta: float) -> void:
 	steer = move_toward(steer, s_in * max_steer, delta * 3.0)
 	var quarter := mass * 0.25
 	var drive_total: float = float(spec.engine) * throttle * curve
+	var slip := 1.0
 	if mode == PLAYER and game.player.perk() == "driver":
 		drive_total *= 1.15
+		if game.player.ability_on:
+			slip = 1.6
 	var space := get_world_3d().direct_space_state
 	grounded = 0
 	for w in wheels:
@@ -439,7 +442,7 @@ func _drive(delta: float) -> void:
 		rdir = (rdir - n * rdir.dot(n)).normalized()
 		var vs := vp.dot(rdir)
 		var vf := vp.dot(fdir)
-		var mu: float = spec.mu
+		var mu: float = float(spec.mu) * slip
 		var rear_hb: bool = hb and not w.front
 		if rear_hb:
 			mu *= 0.45

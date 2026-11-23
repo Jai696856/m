@@ -21,6 +21,8 @@ On a touchscreen you get on-screen controls:
 | Shoot / jump / handbrake | FIRE, JUMP (DRIFT in a car) |
 | Get in, out or steal a car | CAR |
 | Switch weapon, full map, switch character, pause | GUN, MAP, SWAP, II |
+| Special ability, phone | ABIL, PHONE |
+| Rob, grab, drill (when offered) | USE (the CAR button changes) |
 
 Phones and the web get lighter settings automatically: less traffic and fewer pedestrians, cheaper
 shadows, and no per-lamp lights.
@@ -53,6 +55,8 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | Horn | H | Right stick click |
 | Radio on/off | T | D-pad left |
 | Switch between Marisol and Cole | Tab | D-pad down |
+| Special ability | V | X |
+| Phone | C | Guide |
 | Full map | M | Back |
 | Pause | Esc or P | Start |
 
@@ -70,6 +74,22 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
   local news and everyday chatter.
 - **Stunt bonuses:** keep a car in the air long enough (the beach ramps help) and you get cash for the
   hang time and distance.
+- **Special abilities:** a meter under your health bar refills over time and with takedowns. Press V to use it.
+  Marisol's *Slipstream* slows time and gives her car much more grip. Cole's *Steady Aim* slows time, makes
+  every shot dead on, doubles the damage and takes some of the sting out of being hit.
+- **The phone (C):** Contacts (set a GPS waypoint to Rosa, Dex, Lena, the bank, the store or the respray, call
+  in the heist, or have a mechanic drop a sports car at the curb), Jobs, Chirp, Special, Map and Settings
+  (radio, lighter graphics).
+- **Buildings you can walk into:** Bay Bank, the Quick Stop corner store and the Shoreline Reserve each have a
+  real interior with staff, lights and furniture.
+  - **Rob the bank:** walk up to the counter and press F. The vault swings open. Grab the cash piles inside
+    (each bag adds heat), then lose the cops to keep the money. Get wasted or busted and the bag is gone.
+  - **Rob the store:** press F at the counter for a quick score and one star.
+- **The heist, *The Shoreline Job*** (call Lena once you've done three story jobs): steal an armored van,
+  drive it to the Shoreline Reserve, fight past four guards, drill the vault and hold out for 25 seconds as the
+  alarm brings three, then four, stars. Grab up to $50,000 in gold and run for the boat at Gator Tours.
+- **Bigger chases:** from three stars a police helicopter circles overhead, lighting you up with a searchlight
+  after dark and firing down at you (you can shoot it down). Roadblocks also appear at intersections ahead of you.
 - **The city:** an 8×8 grid of blocks about 650 m across. Downtown glass towers sit in the middle,
   with midtown shops and neon signs around them, pastel houses with pools and palms in the residential
   streets, and a strip of beachfront hotels. There are also two parks with fountains, two parking lots,
@@ -117,6 +137,10 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | `scripts/ped.gd`, `scripts/peds.gd` | Pedestrians, officers and bodyguards, plus spawning and being hit by cars |
 | `scripts/player.gd` | On-foot movement, curb step-up, weapons, getting in and out of cars, switching characters |
 | `scripts/wildlife.gd` | Alligators and flamingos in the wetlands |
+| `scripts/interiors.gd` | Enterable bank, store and Reserve; bank and store robberies |
+| `scripts/heli.gd` | The police helicopter |
+| `scripts/phone.gd` | The in-game phone |
+| `scripts/touch.gd` | On-screen controls for touchscreens |
 | `scripts/police.gd` | Wanted level, police AI on the road grid, busting, losing the cops |
 | `scripts/missions.gd` | Mission contacts, story missions and freelance jobs |
 | `scripts/hud.gd` | HUD, minimap, full map, pause menu and title screen |
@@ -129,7 +153,7 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 ## Tests
 
 ```bash
-godot --headless --path . -s tests/smoke_test.gd                     # 71 checks: driving, police, missions, crew, wildlife...
+godot --headless --path . -s tests/smoke_test.gd                     # 103 checks: driving, police, missions, heist, robberies...
 xvfb-run godot --path . -s tests/screenshots.gd -- /tmp/shots [shot] # real screenshots
 ```
 

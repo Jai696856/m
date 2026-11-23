@@ -289,6 +289,7 @@ func die() -> void:
 	model.set_dead()
 	if hit_by_player:
 		game.stats.kills += 1
+		game.player.add_special(6.0)
 		game.crime(150.0 if role == "cop" else 60.0, global_position, role != "cop")
 	if role == "ped" and game.rng.randf() < 0.35:
 		game.pickups.spawn("cash", global_position + Vector3(0.6, 0, 0), game.rng.randi_range(10, 60))
