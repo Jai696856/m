@@ -69,8 +69,8 @@ function build() {
   const pitchTex = canvasTex(512, 256, (g, w, h) => {
     for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#1f9a4c' : '#26ad58'; g.fillRect(i * w / 8, 0, w / 8, h); }
   }, [30, 1]);
-  const pitch = new THREE.Mesh(new THREE.PlaneGeometry(240, 26), toon(0xffffff, { map: pitchTex }));
-  pitch.rotation.x = -Math.PI / 2; add(pitch, 0, 0.01, -1, false);
+  const pitch = new THREE.Mesh(new THREE.PlaneGeometry(240, 46), toon(0xffffff, { map: pitchTex }));
+  pitch.rotation.x = -Math.PI / 2; add(pitch, 0, 0.01, 9, false);
   const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   for (const z of [-14, 12]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(240, 0.18), lineMat); l.rotation.x = -Math.PI / 2; add(l, 0, 0.02, z, false); }
   for (let x = -120; x <= 120; x += 40) {
@@ -169,9 +169,9 @@ window.bg3d = {
     isNight = n;
     scene.background = n ? NIGHTBG : DAYBG;
     scene.fog.color.set(n ? 0x141b3d : 0xf3b07a);
-    SUN.color.set(n ? 0xdfe8ff : 0xffc183); SUN.intensity = n ? 1.1 : 2.2;
+    SUN.color.set(n ? 0xeef3ff : 0xffc183); SUN.intensity = n ? 2.0 : 2.2;
     SUN.position.set(n ? 6 : -25, n ? 30 : 30, n ? 18 : 20);
-    HEMI.intensity = n ? 0.45 : 1.1;
+    HEMI.intensity = n ? 0.95 : 1.1;
   },
   render(o) {
     this.setNight(!!o.night);

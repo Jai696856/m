@@ -1259,3 +1259,340 @@ cam3d = function (t, seg) {
     default: return _cam3d_d5(t, seg);
   }
 };
+
+// ===================================================================== DAY 7: LIVE MATCH ENGINE
+Object.assign(LOOKS, {
+  marcus10: { ...LOOKS.marcus, top: '#1565c0', topD: '#0d47a1', pants: '#ffffff', pantsD: '#d6d6d6', num: 10 },
+  home: { top: '#1565c0', topD: '#0d47a1', pants: '#fff', pantsD: '#d6d6d6', skin: '#c68e6a', skinD: '#a8734f', hair: '#3b2416', shoe: '#111', num: 4 },
+  home2: { top: '#1565c0', topD: '#0d47a1', pants: '#fff', pantsD: '#d6d6d6', skin: '#6a3f27', skinD: '#55311d', hair: '#140c08', shoe: '#111', num: 9 },
+  opp: { top: '#c62828', topD: '#8e1c1c', pants: '#111', pantsD: '#000', skin: '#f2c49b', skinD: '#d9a57b', hair: '#5d4037', shoe: '#fff', num: 8 },
+  opp2: { top: '#c62828', topD: '#8e1c1c', pants: '#111', pantsD: '#000', skin: '#7a4a30', skinD: '#5e3722', hair: '#111', shoe: '#fff', num: 11 },
+  gkH: { top: '#2e7d32', topD: '#1b5e20', pants: '#111', pantsD: '#000', skin: '#c68e6a', skinD: '#a8734f', hair: '#3b2416', shoe: '#111', num: 1 },
+  gkA: { top: '#fbc02d', topD: '#c49000', pants: '#111', pantsD: '#000', skin: '#f2c49b', skinD: '#d9a57b', hair: '#ffb300', shoe: '#111', num: 1 },
+});
+const _athleteD6 = athlete;
+athlete = function (x, y, s, who, ps, t, face = 1, blink = false) {
+  let g = _athleteD6(x, y, s, who, ps, t, face, blink);
+  const L = LOOKS[who];
+  if (L && L.num != null) {
+    const ss = s * 1.45, hip = [0, -118 + ps.hipY * 0.6], sh = P(hip[0], hip[1], 180 - ps.lean, 92);
+    const cx = x + (hip[0] + sh[0]) / 2 * ss * face, cy = y + (hip[1] + sh[1]) / 2 * ss;
+    g += `<text x="${cx}" y="${cy + 4 * ss}" font-family="${FONT}" font-size="${44 * ss}" font-weight="900" fill="#fff" stroke="${INK}" stroke-width="${5 * ss}" paint-order="stroke" text-anchor="middle" dominant-baseline="central">${L.num}</text>`;
+  }
+  return g;
+};
+const _poseD6 = pose;
+pose = function (name, t, k = 0) {
+  if (name === 'strike') { // realistic shot: approach, plant, strike, follow-through
+    const back = k < 0.4 ? lerp(0, -70, eo(k / 0.4)) : lerp(-70, 115, eo(clamp((k - 0.4) / 0.25)));
+    const bend = k < 0.4 ? lerp(10, 95, k / 0.4) : lerp(95, 5, clamp((k - 0.4) / 0.15));
+    return { ..._poseD6('idle', t), lean: k < 0.4 ? 14 : lerp(14, -14, clamp((k - 0.4) / 0.3)), tL: back, sL: back - bend, tR: -4, sR: -14,
+      aL: -70, fL: -40, aR: 80, fR: 125, expr: 'focus' };
+  }
+  if (name === 'slide') return { ..._poseD6('idle', t), lean: -60, hipY: 60, tL: 80, sL: 80, tR: 60, sR: 50, aL: 140, fL: 150, aR: -120, fR: -100, expr: 'sad' };
+  return _poseD6(name, t, k);
+};
+
+const easeIO = f => (f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2);
+function KF(p, keys) {
+  if (p <= keys[0][0]) return keys[0].slice(1);
+  for (let i = 1; i < keys.length; i++) if (p <= keys[i][0]) {
+    const a = keys[i - 1], b = keys[i], f = easeIO((p - a[0]) / Math.max(1e-6, b[0] - a[0]));
+    return a.slice(1).map((v, j) => lerp(v, b[j + 1], f));
+  }
+  return keys[keys.length - 1].slice(1);
+}
+const depthS = y => 0.5 + (y - 1420) / 380 * 0.42;
+
+function ballTrail(pts, r) {
+  return pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${r * (0.5 + i * 0.1)}" fill="#fff" opacity="${0.08 + i * 0.07}"/>`).join('');
+}
+function goalFrame(sx, side, bulge = 0, hit = 0) {
+  // side: +1 = right goal (posts recede to the right)
+  const h = 330, w = 230, y0 = 1760 - h, shake = hit ? Math.sin(hit * 80) * 6 : 0;
+  let s = `<g transform="translate(${sx + shake},0)">`;
+  const backX = side * w;
+  s += `<polygon points="0,${y0} ${backX},${y0 - 60} ${backX},${1700} 0,1760" fill="#fff" opacity=".1"/>`;
+  for (let i = 1; i < 9; i++) { const f = i / 9; s += `<path d="M${backX * f},${y0 - 60 * f} Q${backX * f + side * bulge},${(y0 + 1730) / 2} ${backX * f},${1760 - 60 * f}" stroke="#fff" stroke-width="2.5" opacity=".6" fill="none"/>`; }
+  for (let j = 1; j < 8; j++) { const yy = y0 + (1760 - y0) * j / 8; s += `<path d="M0,${yy} Q${backX / 2 + side * bulge},${yy - 30 * (j / 8)} ${backX},${yy - 60 + (1700 - y0 + 60) * 0}" stroke="#fff" stroke-width="2.5" opacity=".55" fill="none"/>`; }
+  s += `<path d="M0,1760 V${y0} L${backX},${y0 - 60} V1700" fill="none" stroke="#fff" stroke-width="20" stroke-linejoin="round"/><path d="M0,1760 V${y0} L${backX},${y0 - 60} V1700" fill="none" ${ink(5)}/>`;
+  return s + '</g>';
+}
+
+function scoreboard(t, seg, sc, minute, live = true) {
+  const p = eo((t - seg.t0) / 0.3);
+  return `<g transform="translate(540,210)" filter="url(#dsh)" opacity="${p}">
+  <rect x="-470" y="-50" width="940" height="100" rx="24" fill="#1a1d24" ${ink(6)}/>
+  <rect x="-458" y="-38" width="20" height="76" rx="6" fill="#1565c0"/><rect x="438" y="-38" width="20" height="76" rx="6" fill="#c62828"/>
+  <text x="-420" y="2" font-family="${FONT}" font-size="38" font-weight="900" fill="#fff" dominant-baseline="central">HOME</text>
+  <rect x="-260" y="-36" width="190" height="72" rx="16" fill="#000" opacity=".35"/>${ctext(-165, 2, `${sc[0]} – ${sc[1]}`, 52, '#f4b41a')}
+  <text x="-45" y="2" font-family="${FONT}" font-size="38" font-weight="900" fill="#fff" dominant-baseline="central">EASTSIDE</text>
+  <text x="420" y="2" font-family="${FONT}" font-size="36" font-weight="900" fill="#c9ced9" text-anchor="end" dominant-baseline="central">${minute}</text></g>
+  ${live ? `<g transform="translate(540,300)"><rect x="-80" y="-24" width="160" height="48" rx="24" fill="#e53935" ${ink(5)}/><circle cx="-48" cy="0" r="9" fill="#fff" opacity="${0.5 + 0.5 * Math.sin(t * 8)}"/><text x="10" y="2" font-family="${FONT}" font-size="30" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="central">LIVE</text></g>` : ''}`;
+}
+
+// Each play: actors [{who, keys:[[p,x,y]], pose:(p,t)=>pose, face}], ball keys, events, goals at world x
+const PLAYS = {
+  kickoff: {
+    ball: [[0, 0, 1640], [0.08, 0, 1640], [0.62, -1090, 1650], [0.66, -1120, 1640], [0.80, -1430, 1500], [0.90, -1260, 1730], [1, -1220, 1740]],
+    dribbler: [[0.08, 0.62, 'opp']],
+    actors: [
+      { who: 'opp', keys: [[0, -60, 1650], [0.62, -1150, 1655], [1, -1180, 1655]], pose: (p, t) => p > 0.6 && p < 0.75 ? pose('strike', t, (p - 0.6) / 0.15) : p < 0.62 ? pose('dribble', t) : pose('sad', t) },
+      { who: 'home', keys: [[0, -280, 1720], [0.6, -1010, 1725], [1, -1050, 1725]], pose: (p, t) => p < 0.6 ? pose('run', t) : pose('idle', t) },
+      { who: 'opp2', keys: [[0, 200, 1560], [0.7, -900, 1560], [1, -980, 1560]], pose: (p, t) => pose('run', t + 0.3) },
+      { who: 'marcus10', keys: [[0, 150, 1600], [1, -520, 1600]], pose: (p, t) => pose('run', t + 0.6) },
+      { who: 'gkH', keys: [[0, -1400, 1610], [0.72, -1400, 1610], [0.82, -1420, 1500], [1, -1400, 1610]], dive: [0.72, 0.9, -1] },
+    ],
+    goals: [[-1500, -1]],
+    events: [[0.04, 'KICK OFF', '#1a1d24', 0], [0.82, 'SAVE! 🧤', '#2e7d32', 0]],
+  },
+  concede: {
+    ball: [[0, -200, 1670], [0.42, -960, 1690], [0.48, -1080, 1585], [0.55, -1110, 1585], [0.68, -1470, 1540], [1, -1460, 1560]],
+    dribbler: [[0, 0.42, 'opp']],
+    actors: [
+      { who: 'opp', keys: [[0, -250, 1690], [0.42, -1000, 1695], [1, -1020, 1695]], pose: (p, t) => p < 0.42 ? pose('dribble', t) : p < 0.5 ? pose('kick', t, (p - 0.42) / 0.08) : pose('idle', t) },
+      { who: 'opp2', keys: [[0, -700, 1575], [0.5, -1070, 1585], [1, -1100, 1585]], pose: (p, t) => p > 0.5 && p < 0.62 ? pose('strike', t, (p - 0.5) / 0.12) : p > 0.7 ? pose('celebrate', t) : pose('run', t) },
+      { who: 'home', keys: [[0, -600, 1720], [0.5, -980, 1730], [1, -1000, 1730]], pose: (p, t) => p < 0.5 ? pose('run', t) : pose('sad', t) },
+      { who: 'marcus10', keys: [[0, -300, 1610], [1, -760, 1610]], pose: (p, t) => p > 0.7 ? pose('sad', t) : pose('run', t + 0.2) },
+      { who: 'gkH', keys: [[0, -1400, 1610], [0.58, -1400, 1610], [0.7, -1390, 1700], [1, -1390, 1700]], dive: [0.58, 1, 1] },
+    ],
+    goals: [[-1500, -1]],
+    goalAt: [0.68, 1],
+    events: [[0.7, 'GOAL… 0–1 😩', '#c62828', 0]],
+  },
+  post: {
+    ball: [[0, 120, 1650], [0.68, 1180, 1680], [0.70, 1220, 1660], [0.80, 1470, 1440], [0.90, 1330, 1720], [1, 1290, 1745]],
+    dribbler: [[0, 0.68, 'marcus10']],
+    actors: [
+      { who: 'marcus10', keys: [[0, 80, 1655], [0.3, 680, 1655], [0.38, 820, 1590], [0.55, 1040, 1700], [0.68, 1150, 1685], [1, 1170, 1685]], pose: (p, t) => p > 0.64 && p < 0.8 ? pose('strike', t, (p - 0.64) / 0.16) : p > 0.82 ? pose('sad', t) : pose('dribble', t) },
+      { who: 'opp', keys: [[0, 980, 1640], [0.34, 830, 1640], [1, 790, 1660]], pose: (p, t) => p < 0.36 ? pose('run', t) : pose('slide', t), rot: [0.36, -25] },
+      { who: 'opp2', keys: [[0, 1300, 1700], [0.52, 1090, 1700], [1, 1060, 1720]], pose: (p, t) => p < 0.54 ? pose('run', t) : pose('slide', t), rot: [0.54, 25] },
+      { who: 'gkA', keys: [[0, 1420, 1610], [0.72, 1420, 1610], [0.82, 1440, 1520], [1, 1420, 1610]], face: -1, dive: [0.72, 0.9, 1] },
+    ],
+    goals: [[1500, 1]],
+    postHit: 0.8,
+    events: [[0.36, 'SKIP ✓', '#7c4dff', 1], [0.55, 'SKIP ✓✓', '#7c4dff', 1], [0.8, 'POST! 😱', '#ff6d00', 0]],
+  },
+  equalizer: {
+    ball: [[0, 700, 1560], [0.12, 1000, 1700], [0.28, 1060, 1690], [0.5, 1120, 1590], [0.56, 1150, 1585], [0.72, 1480, 1420], [1, 1470, 1460]],
+    dribbler: [[0.14, 0.54, 'marcus10']],
+    actors: [
+      { who: 'home2', keys: [[0, 620, 1560], [1, 760, 1560]], pose: (p, t) => p < 0.1 ? pose('kick', t, p / 0.1) : pose('run', t) },
+      { who: 'marcus10', keys: [[0, 980, 1705], [0.3, 1030, 1700], [0.5, 1090, 1595], [1, 1110, 1595]], pose: (p, t) => p > 0.52 && p < 0.7 ? pose('strike', t, (p - 0.52) / 0.18) : p > 0.74 ? pose('celebrate', t) : pose('dribble', t) },
+      { who: 'opp', keys: [[0, 1180, 1690], [0.35, 1100, 1690], [1, 1080, 1700]], pose: (p, t) => p < 0.34 ? pose('run', t) : pose('slide', t), rot: [0.34, -20] },
+      { who: 'gkA', keys: [[0, 1420, 1610], [0.6, 1420, 1610], [0.74, 1440, 1660], [1, 1440, 1660]], face: -1, dive: [0.6, 1, -1] },
+    ],
+    goals: [[1500, 1]],
+    goalAt: [0.72, 0],
+    events: [[0.3, 'CUT INSIDE', '#2196f3', 1], [0.74, 'GOAL!! 1–1 ⚽', '#2ecc71', 0]],
+  },
+  celebrate: {
+    ball: [[0, 1470, 1460], [1, 1470, 1460]],
+    actors: [
+      { who: 'marcus10', keys: [[0, 1150, 1600], [0.6, 950, 1760], [1, 940, 1760]], pose: (p, t) => p < 0.6 ? { ...pose('celebrate', t), lean: -10 } : pose('celebrate', t) },
+      { who: 'home', keys: [[0, 700, 1650], [1, 860, 1720]], pose: (p, t) => pose('celebrate', t + 0.3) },
+      { who: 'home2', keys: [[0, 650, 1560], [1, 820, 1600]], pose: (p, t) => pose('celebrate', t + 0.6) },
+    ],
+    goals: [[1500, 1]],
+    events: [[0.05, '1–1!!', '#2ecc71', 0]],
+    confetti: 0.0,
+  },
+  winner: {
+    ball: [[0, 260, 1660], [0.5, 1040, 1700], [0.52, 1060, 1700], [0.6, 1150, 1565], [0.62, 1165, 1565], [0.72, 1480, 1500], [1, 1470, 1520]],
+    dribbler: [[0, 0.5, 'marcus10']],
+    actors: [
+      { who: 'marcus10', keys: [[0, 200, 1665], [0.5, 990, 1705], [1, 1010, 1705]], pose: (p, t) => p > 0.48 && p < 0.58 ? pose('kick', t, (p - 0.48) / 0.1) : p > 0.74 ? pose('celebrate', t) : pose('dribble', t) },
+      { who: 'opp', keys: [[0, 700, 1660], [0.3, 640, 1665], [1, 600, 1665]], pose: (p, t) => p < 0.3 ? pose('run', t) : pose('sad', t) },
+      { who: 'home2', keys: [[0, 700, 1560], [0.6, 1140, 1565], [1, 1160, 1565]], pose: (p, t) => p > 0.58 && p < 0.7 ? pose('strike', t, (p - 0.58) / 0.12) : p > 0.74 ? pose('celebrate', t) : pose('run', t) },
+      { who: 'opp2', keys: [[0, 1250, 1700], [0.5, 1080, 1700], [1, 1060, 1710]], pose: (p, t) => p < 0.5 ? pose('run', t) : pose('slide', t), rot: [0.5, 20] },
+      { who: 'gkA', keys: [[0, 1420, 1610], [0.64, 1420, 1610], [0.74, 1430, 1700], [1, 1430, 1700]], face: -1, dive: [0.64, 1, 1] },
+    ],
+    goals: [[1500, 1]],
+    goalAt: [0.72, 0],
+    nutmeg: 0.3,
+    events: [[0.3, 'NUTMEG 🥜', '#f4b41a', 1], [0.52, 'ASSIST →', '#2196f3', 1], [0.74, 'GOAL!! 2–1 🔥', '#2ecc71', 0], [0.93, 'FULL TIME', '#1a1d24', 0]],
+  },
+};
+
+function playState(seg, t) {
+  const T = seg.t1 - seg.t0, p = clamp((t - seg.t0) / T), P_ = PLAYS[seg.play];
+  const ball = KF(p, P_.ball);
+  return { p, P_, ball, camX: ball[0] * 0.8 };
+}
+
+function sLive(t, seg) {
+  const { p, P_, ball, camX } = playState(seg, t);
+  const sx = wx => 540 + (wx - camX);
+  let s = COMIC_DEFS;
+  // goals
+  let bulge = 0;
+  if (P_.goalAt && p > P_.goalAt[0]) bulge = 30 * Math.max(0, 1 - (p - P_.goalAt[0]) * 6);
+  for (const [gx, side] of P_.goals || []) s += goalFrame(sx(gx), side, bulge, P_.postHit && p > P_.postHit && p < P_.postHit + 0.05 ? p : 0);
+  // actors (back to front)
+  const items = (P_.actors || []).map(a => {
+    const [x, y] = KF(p, a.keys);
+    return { a, x, y };
+  });
+  // ball draw info
+  let bx = ball[0], by = ball[1];
+  for (const [p0, p1, who] of P_.dribbler || []) {
+    if (p >= p0 && p <= p1) {
+      const d = items.find(i => i.a.who === who);
+      if (d) { const ph = (t * 3.4) % 1; const off = 34 + 70 * (ph < 0.22 ? ph / 0.22 : 1 - (ph - 0.22) / 0.78); bx = d.x + off; by = d.y - 16 - 10 * Math.max(0, Math.sin(ph * Math.PI)); }
+    }
+  }
+  if (P_.nutmeg && Math.abs(p - P_.nutmeg) < 0.03) { const d = items.find(i => i.a.who === 'opp'); if (d) { bx = d.x; by = d.y - 20; } }
+  items.sort((u, v) => u.y - v.y);
+  for (const { a, x, y } of items) {
+    let ps = a.pose ? a.pose(p, t) : pose('idle', t);
+    let wrap0 = '', wrap1 = '';
+    if (a.dive && p > a.dive[0]) {
+      const f = clamp((p - a.dive[0]) / (a.dive[1] - a.dive[0]) * 2.2);
+      ps = { ...pose('celebrate', t), expr: 'focus', hipY: 0 };
+      wrap0 = `<g transform="rotate(${a.dive[2] * 75 * eo(f)} ${sx(x)} ${y - 120})">`; wrap1 = '</g>';
+    }
+    if (a.rot && p > a.rot[0]) { wrap0 = `<g transform="rotate(${a.rot[1] * eo(clamp((p - a.rot[0]) * 8))} ${sx(x)} ${y})">`; wrap1 = '</g>'; }
+    s += wrap0 + athlete(sx(x), y, depthS(y), a.who, ps, t, a.face || 1) + wrap1;
+  }
+  // ball + motion trail while flying fast
+  const pPrev = Math.max(0, p - 0.02), b0 = KF(pPrev, P_.ball), speed = Math.hypot(ball[0] - b0[0], ball[1] - b0[1]);
+  if (speed > 25) {
+    const pts = [];
+    for (let i = 5; i >= 1; i--) { const q = KF(Math.max(0, p - i * 0.008), P_.ball); pts.push([sx(q[0]), q[1]]); }
+    s += ballTrail(pts, 24 * depthS(by));
+  }
+  s += `<ellipse cx="${sx(bx)}" cy="${Math.max(by, 1600) + 10}" rx="${22 * depthS(by)}" ry="6" fill="#0a1432" opacity=".35"/>`;
+  s += comicBall(sx(bx), by, 24 * depthS(by) + 4, t * (speed > 25 ? 1500 : 500));
+  // overlays
+  let sc = [...seg.score];
+  if (P_.goalAt && p > P_.goalAt[0] + 0.02) sc[P_.goalAt[1]]++;
+  const m = Math.floor(lerp(seg.min[0], seg.min[1], p));
+  const minute = m > 90 ? `90+${m - 90}'` : `${m}'`;
+  s += scoreboard(t, seg, sc, minute);
+  for (const [ep, label, col, small] of P_.events || []) {
+    const et = seg.t0 + ep * (seg.t1 - seg.t0);
+    if (t > et && t < et + (small ? 1.4 : 2.4)) s += burst(540, small ? 620 : 560, label, small ? 56 : 84, col, et, t, small ? 4 : -4);
+  }
+  if (P_.goalAt && p > P_.goalAt[0] && P_.goalAt[1] === 0) s += confetti(t, seg.t0 + P_.goalAt[0] * (seg.t1 - seg.t0), 540, 700, 110);
+  if (P_.confetti != null) s += confetti(t, seg.t0, 540, 600, 110);
+  return s;
+}
+
+function sF100(t, seg) {
+  const tHit = kw(seg, 'followers'), tNext = kw(seg, 'Next');
+  let s = COMIC_DEFS + bgRect('cGreen');
+  const n = Math.round(100 * eo(clamp((t - kw(seg, 'hit')) / 1.0)));
+  s += `<g transform="translate(540,520) scale(${t > tHit ? 1 + 0.2 * (1 - eo((t - tHit) / 0.35)) : 1})">${ctext(0, 0, n, 290, Y)}</g>${ctext(540, 730, 'FOLLOWERS', 100, '#fff')}`;
+  s += burst(540, 920, 'THANK YOU!! 🙏', 84, RED, kw(seg, 'Thank'), t, -5);
+  const f = eo(clamp((t - tNext) / 0.8));
+  if (t > tNext) s += `<g transform="translate(540,1180)" filter="url(#dsh)"><rect x="-420" y="-90" width="840" height="180" rx="40" fill="#1a1d24" ${ink(7)}/>
+    <text x="-380" y="-40" font-family="${FONT}" font-size="34" font-weight="800" fill="#c9ced9" dominant-baseline="central">NEXT GOAL</text>${ctext(320, -38, '250', 54, '#f4b41a')}
+    <rect x="-380" y="12" width="760" height="44" rx="22" fill="#333"/><rect x="-380" y="12" width="${760 * 0.4 * f}" height="44" rx="22" fill="#2ecc71"/></g>`;
+  s += athlete(540, 1790, 0.9, 'marcus', pose(t > tHit ? 'celebrate' : 'idle', t), t, 1);
+  return s + (t > tHit ? confetti(t, tHit, 540, 500, 100) : '');
+}
+function kitShirt(x, y, sc, num, col, numCol, label, p) {
+  return `<g transform="translate(${x},${y}) scale(${sc * p})" filter="url(#dsh)">
+  <path d="M-150,-170 L-60,-200 Q0,-160 60,-200 L150,-170 L230,-60 L160,0 L130,-40 L130,200 L-130,200 L-130,-40 L-160,0 L-230,-60Z" fill="${col}" ${ink(10)}/>
+  <path d="M-60,-200 Q0,-150 60,-200" fill="none" ${ink(8)}/>
+  <text x="0" y="40" font-family="${FONT}" font-size="200" font-weight="900" fill="${numCol}" stroke="${INK}" stroke-width="10" paint-order="stroke" text-anchor="middle" dominant-baseline="central">${num}</text>
+  <text x="0" y="-110" font-family="${FONT}" font-size="34" font-weight="900" fill="${numCol}" text-anchor="middle">MARCUS</text></g>
+  ${ctext(x, y + 200 * sc + 40, label, 44, '#fff')}`;
+}
+function sKit(t, seg) {
+  const tB = kw(seg, 'both'), tH = kw(seg, 'home'), tA = kw(seg, 'away');
+  let s = COMIC_DEFS + bgRect('cBlue');
+  s += `<g transform="translate(540,360) scale(${eb((t - seg.t0) / 0.4)})" filter="url(#dsh)"><rect x="-300" y="-60" width="600" height="120" rx="60" fill="#e74c3c" ${ink(8)}/>${ctext(0, 4, 'B: #10 WON ✓', 56, '#fff')}</g>`;
+  if (t > tB - 0.2) s += burst(540, 560, '100 FOLLOWERS = YOU GET BOTH', 48, '#2ecc71', tB - 0.2, t, -3);
+  if (t > tH - 0.3) s += kitShirt(310, 1060, 0.95, 10, '#1565c0', '#fff', 'HOME', eb((t - tH + 0.3) / 0.4));
+  if (t > tA - 0.3) s += kitShirt(770, 1060, 0.95, 7, '#f4f4f4', '#111', 'AWAY', eb((t - tA + 0.3) / 0.4));
+  return s;
+}
+function sDrill(t, seg) {
+  let s = COMIC_DEFS;
+  const lt = t - seg.t0, speed = 260, camX = lt * speed;
+  const sx = wx => 540 + (wx - camX);
+  for (let i = -2; i < 40; i++) { const cx = i * 230, cy = 1660 + (i % 2 ? -60 : 60); if (sx(cx) > -60 && sx(cx) < 1140) s += `<path d="M${sx(cx) - 24},${cy + 40} L${sx(cx)},${cy - 30} L${sx(cx) + 24},${cy + 40}Z" fill="#ff7a1a" ${ink(5)}/><path d="M${sx(cx) - 12},${cy + 6} h24" stroke="#fff" stroke-width="7"/>`; }
+  const mx = camX - 60, my = 1700 + Math.sin(mx / 230 * Math.PI) * 55;
+  const ph = (t * 3.6) % 1, off = 34 + 60 * (ph < 0.22 ? ph / 0.22 : 1 - (ph - 0.22) / 0.78);
+  s += athlete(sx(mx), my, 0.95, 'marcus10', pose('dribble', t), t, 1);
+  s += comicBall(sx(mx + off), my - 14 - 8 * Math.max(0, Math.sin(ph * Math.PI)), 24, t * 600);
+  const touches = Math.floor(lt * 3.6);
+  s += `<g transform="translate(540,560)" filter="url(#dsh)"><rect x="-230" y="-60" width="460" height="120" rx="30" fill="#1a1d24" ${ink(6)}/>${ctext(0, 2, `TOUCHES ${touches}`, 56, '#f4b41a')}</g>`;
+  s += captionBox(540, 330, 'FIRST PRACTICE · #10', seg.t0, t, '#1565c0', '#fff');
+  [['Close', 'CLOSE CONTROL'], ['Little', 'LITTLE TOUCHES'], ['Head', 'HEAD UP 👀'], ['glued', 'BALL GLUED 🧲']].forEach(([k, l], i) => {
+    const a = kw(seg, k); if (t > a && t < a + 1.6) s += burst(540, 780, l, 64, ['#2196f3', '#7c4dff', '#2ecc71', RED][i], a, t, i % 2 ? 4 : -4);
+  });
+  return s;
+}
+function sFinishing(t, seg) {
+  let s = COMIC_DEFS;
+  const T = seg.t1 - seg.t0, p = clamp((t - seg.t0) / T);
+  const rep = p < 0.62 ? 0 : 1, q = rep ? (p - 0.62) / 0.38 : p / 0.62;
+  // slow-mo around contact on rep 0
+  const k = rep ? clamp((q - 0.2) / 0.5) : clamp((q - 0.25) / 0.45);
+  const gx = 1000, contact = 0.42;
+  s += goalFrame(gx - 180, 1, rep === 0 && k > 0.75 ? 26 * Math.max(0, 1 - (k - 0.75) * 4) : rep && k > 0.8 ? 22 : 0);
+  const mx = lerp(180, 330, clamp(k / contact));
+  s += athlete(mx, 1760, 1.0, 'marcus10', pose('strike', t, k), t, 1);
+  if (k > 0.25 && k < 0.6) s += `<ellipse cx="${mx + 60}" cy="1762" rx="50" ry="14" fill="none" stroke="${Y}" stroke-width="6"/>`;
+  const bf = clamp((k - contact) / 0.35);
+  const target = rep ? [1010, 1720] : [1020, 1450];
+  const bx = k < contact ? 430 : lerp(430, target[0], bf), by = k < contact ? 1735 : lerp(1735, target[1], bf) - Math.sin(bf * Math.PI) * (rep ? 30 : 160);
+  if (bf > 0 && bf < 1) { const pts = []; for (let i = 5; i >= 1; i--) { const f2 = Math.max(0, bf - i * 0.03); pts.push([lerp(430, target[0], f2), lerp(1735, target[1], f2) - Math.sin(f2 * Math.PI) * (rep ? 30 : 160)]); } s += ballTrail(pts, 22); }
+  s += comicBall(bx, by, 26, t * (bf > 0 ? 1400 : 200));
+  s += athlete(940, 1700, 0.8, 'gkH', bf > 0.3 ? { ...pose('celebrate', t), expr: 'focus' } : pose('idle', t), t, -1);
+  if (rep === 0) {
+    if (k > 0.3) s += burst(330, 900, 'PLANT ✓', 56, '#2196f3', seg.t0 + (0.25 + 0.3 * 0.45) * 0.62 * T, t, -4);
+    if (k > contact) s += burst(540, 700, 'LACES ✓', 64, '#7c4dff', seg.t0 + (0.25 + contact * 0.45) * 0.62 * T, t, 4);
+    if (k > 0.6) s += burst(760, 540, 'FOLLOW THROUGH ✓', 52, '#2ecc71', seg.t0 + (0.25 + 0.6 * 0.45) * 0.62 * T, t, -3);
+    if (k > 0.8) s += burst(540, 1000, 'TOP BIN 🎯', 80, RED, seg.t0 + (0.25 + 0.8 * 0.45) * 0.62 * T, t, -5);
+    if (k > contact && k < 0.62) s += `<rect width="${W}" height="${H}" fill="#fff" opacity="${0.25 * (1 - (k - contact) / 0.2)}"/>${ctext(900, 420, 'SLOW-MO', 40, '#fff')}`;
+  } else if (k > 0.8) s += burst(540, 900, 'LOW & HARD ✓', 64, '#2ecc71', seg.t0 + (0.62 + 0.38 * (0.2 + 0.8 * 0.5)) * T, t, 4);
+  s += captionBox(540, 330, 'FINISHING DRILL', seg.t0, t, '#1565c0', '#fff');
+  return s;
+}
+function sMatchcard(t, seg) {
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".45"/>`;
+  s += burst(540, 330, 'SURPRISE!', 90, '#7c4dff', kw(seg, 'surprise'), t, -4);
+  const p = eb((t - kw(seg, 'friendly') + 0.2) / 0.5);
+  if (p > 0) s += `<g transform="translate(540,830) scale(${p})" filter="url(#dsh)"><rect x="-460" y="-260" width="920" height="520" rx="50" fill="#1a1d24" ${ink(10)}/>
+    <text x="0" y="-195" font-family="${FONT}" font-size="40" font-weight="900" fill="#c9ced9" text-anchor="middle">FRIENDLY · TONIGHT 🌙</text>
+    <rect x="-410" y="-140" width="320" height="230" rx="30" fill="#1565c0" ${ink(6)}/>${ctext(-250, -25, 'HOME', 64, '#fff')}
+    <rect x="90" y="-140" width="320" height="230" rx="30" fill="#c62828" ${ink(6)}/>${ctext(250, -25, 'EASTSIDE', 54, '#fff')}
+    ${ctext(0, -25, 'VS', 90, '#f4b41a')}
+    ${t > kw(seg, 'best') ? ctext(250, 160, '🏆 #1 IN LEAGUE', 40, '#f4b41a') : ''}</g>`;
+  return s;
+}
+function sWon(t, seg) {
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".2"/>`;
+  s += scoreboard(t, seg, [2, 1], 'FT', false);
+  s += burst(540, 520, 'WE WON!! 🏆', 110, '#2ecc71', seg.t0, t, -5);
+  [['home', 220], ['home2', 380], ['marcus10', 540], ['gkH', 700], ['home', 860]].forEach(([w, x], i) => s += athlete(x, 1760 - (i % 2) * 30, 0.75, w, pose('celebrate', t + i * 0.25), t, x > 540 ? -1 : 1));
+  return s + confetti(t, seg.t0, 540, 500, 140);
+}
+function artStriker(t) {
+  const f = (t * 0.6) % 1;
+  return `<rect width="420" height="392" fill="#1b5e8a"/><rect y="200" width="420" height="192" fill="#239b56"/>
+  <path d="M300,200 V120 H420" stroke="#fff" stroke-width="8" fill="none"/>
+  ${athlete(150, 380, 0.4, 'marcus10', pose('strike', t, f), t, 1)}${comicBall(lerp(200, 400, clamp((f - 0.45) / 0.4)), lerp(370, 150, clamp((f - 0.45) / 0.4)), 12, t * 900)}${txt(120, 60, 'ST', 50, '#fff')}`;
+}
+function artWinger(t) {
+  const f = (t * 0.4) % 1, x = lerp(30, 390, f);
+  return `<rect width="420" height="392" fill="#3a1c71"/><rect y="200" width="420" height="192" fill="#239b56"/><path d="M0,215 H420" stroke="#fff" stroke-width="5"/>
+  ${athlete(x, 300, 0.36, 'marcus10', pose('dribble', t), t, 1)}${comicBall(x + 30, 292, 11, t * 600)}${athlete(250, 380, 0.34, 'opp', pose(f > 0.6 ? 'sad' : 'idle', t), t, -1)}${txt(330, 60, 'LW', 50, '#fff')}`;
+}
+
+Object.assign(SCENES, { live: sLive, f100: sF100, kit: sKit, drill: sDrill, finishing: sFinishing, matchcard: sMatchcard, won: sWon });
+const _cam3d_d6 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'drill': return { cam: 'track', x: -90 + (t - seg.t0) * 2.6, t };
+    case 'finishing': return { cam: 'juggle', x: 150, t, k: 0.5 };
+    case 'matchcard': return { cam: 'wide', t, blur: true, night: true };
+    case 'live': { const { camX } = playState(seg, t); return { cam: 'track', x: -10 + camX / 100, t, night: true }; }
+    case 'won': return { cam: 'wide', t, blur: true, night: true };
+    case 'legend': return { cam: 'wide', t, blur: true, night: true };
+    default: return _cam3d_d6(t, seg);
+  }
+};
