@@ -126,7 +126,7 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 
   After the story, freelance jobs keep coming, with rising rewards.
 - **Pickups:** cash, health, body armour and an SMG.
-- **HUD:** a rotating minimap that zooms out as you speed up, a full map, money, clock, stars, health
+- **HUD:** a round radar minimap with curved health, armour and special gauges around its rim, a rotating minimap that zooms out as you speed up, a full map, money, clock, stars, health
   and armour, speedometer, and mission timers.
 - **Audio:** gunshots, crashes, explosions, horn, sirens, a live engine note that follows your speed,
   and *Palm FM*, an original synthwave loop that plays while you drive.
