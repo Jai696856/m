@@ -57,6 +57,20 @@ func setup(g) -> void:
 	minimap = Minimap.new()
 	minimap.game = game
 	minimap.clip_contents = true
+	var mask := Shader.new()
+	mask.code = """shader_type canvas_item;
+// Round radar: everything the minimap draws is cut to a circle with a soft edge.
+uniform vec2 size = vec2(240.0);
+varying vec2 local;
+void vertex() { local = VERTEX; }
+void fragment() {
+	float r = min(size.x, size.y) * 0.5;
+	float d = length(local - size * 0.5);
+	COLOR.a *= 1.0 - smoothstep(r - 1.5, r, d);
+}"""
+	var mmat := ShaderMaterial.new()
+	mmat.shader = mask
+	minimap.material = mmat
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(minimap)
 	bigmap = Minimap.new()
@@ -387,8 +401,9 @@ func _process(delta: float) -> void:
 	lbl_weapon.size = Vector2(390, 30)
 	var touch: bool = game.touch_mode
 	var map_size := clampf(s.y * (0.24 if touch else 0.27), 130.0, 280.0)
-	minimap.position = Vector2(18, 18) if touch else Vector2(28, s.y - map_size - 52)
+	minimap.position = Vector2(26, 26) if touch else Vector2(36, s.y - map_size - 36)
 	minimap.size = Vector2(map_size, map_size)
+	(minimap.material as ShaderMaterial).set_shader_parameter("size", minimap.size)
 	bigmap.visible = show_map
 	if show_map:
 		var bs := minf(s.x - 120, s.y - 120)
@@ -454,6 +469,12 @@ func _process(delta: float) -> void:
 class Overlay extends Control:
 	var hud
 
+	## A curved bar: background track, then the filled part from `a0` toward `a1`.
+	func _gauge(c: Vector2, r: float, a0: float, a1: float, frac: float, col: Color) -> void:
+		draw_arc(c, r, a0, a1, 32, Color(0, 0, 0, 0.6), 9.0, true)
+		if frac > 0.005:
+			draw_arc(c, r, a0, lerpf(a0, a1, frac), 32, col, 6.0, true)
+
 	func _star(c: Vector2, r: float, col: Color, filled: bool) -> void:
 		var pts := PackedVector2Array()
 		for i in 10:
@@ -492,25 +513,22 @@ class Overlay extends Control:
 			for d in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 				draw_line(cc + d * g, cc + d * (g + 8.0), Color(0, 0, 0, 0.6), 4.0)
 				draw_line(cc + d * g, cc + d * (g + 8.0), col, 2.0)
-		# health and armour under the minimap
+		# the radar's rim, with health / armour / special as curved gauges around it
 		var mm: Control = hud.minimap
-		var x := mm.position.x
-		var y := mm.position.y + mm.size.y + 12.0
-		var w := mm.size.x
-		draw_rect(Rect2(x - 2, y - 2, w + 4, 14), Color(0, 0, 0, 0.6))
+		var c := mm.position + mm.size * 0.5
+		var r := mm.size.x * 0.5
+		draw_arc(c, r + 2.0, 0.0, TAU, 72, Color(0.04, 0.03, 0.08, 0.95), 6.0, true)
 		var hp: float = clampf(p.health / 100.0, 0.0, 1.0)
 		var hc := Color(0.3, 0.9, 0.35) if hp > 0.3 else Color(0.95, 0.25, 0.2)
-		draw_rect(Rect2(x, y, w * hp, 10), hc)
-		# special ability meter
-		var sp_y := y + (28.0 if p.armor > 0.0 else 14.0)
 		var tint: Color = p.crew[p.hero].tint
-		draw_rect(Rect2(x - 2, sp_y - 2, w + 4, 10), Color(0, 0, 0, 0.6))
-		draw_rect(Rect2(x, sp_y, w * clampf(p.special / 100.0, 0.0, 1.0), 6), tint if not p.ability_on else tint.lightened(0.4))
+		# health: lower-left quarter, filling upward from the bottom
+		_gauge(c, r + 11.0, PI * 0.5, PI * 0.5 + PI * 0.48, hp, hc)
+		# armour: lower-right quarter
+		_gauge(c, r + 11.0, PI * 0.5, PI * 0.5 - PI * 0.48, clampf(p.armor / 100.0, 0.0, 1.0), Color(0.35, 0.6, 1.0))
+		# special: an inner band along the top
+		_gauge(c, r + 11.0, PI * 1.5 - PI * 0.4, PI * 1.5 + PI * 0.4, clampf(p.special / 100.0, 0.0, 1.0), tint if not p.ability_on else tint.lightened(0.4))
 		if p.ability_on:
 			draw_rect(Rect2(Vector2.ZERO, s), Color(tint.r, tint.g, tint.b, 0.1))
-		if p.armor > 0.0:
-			draw_rect(Rect2(x - 2, y + 14, w + 4, 10), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(x, y + 16, w * clampf(p.armor / 100.0, 0.0, 1.0), 6), Color(0.35, 0.6, 1.0))
 		# car health
 		if p.in_car:
 			var ch: float = clampf(p.in_car.health / 100.0, 0.0, 1.0)
@@ -636,11 +654,15 @@ class Minimap extends Control:
 			var kind: String = b[2]
 			var sp := _w2s(pos)
 			var important: bool = kind in ["objective", "target", "contact"]
-			var inside := Rect2(Vector2(6, 6), s - Vector2(12, 12)).has_point(sp)
+			var edge := s.x * 0.5 - 10.0
+			var inside := (sp - _c).length() < edge if not big else Rect2(Vector2(6, 6), s - Vector2(12, 12)).has_point(sp)
 			if not inside:
 				if not important:
 					continue
-				sp = Vector2(clampf(sp.x, 8, s.x - 8), clampf(sp.y, 8, s.y - 8))
+				if big:
+					sp = Vector2(clampf(sp.x, 8, s.x - 8), clampf(sp.y, 8, s.y - 8))
+				else:
+					sp = _c + (sp - _c).normalized() * edge
 			var r := 4.0
 			match kind:
 				"objective", "contact":
@@ -671,4 +693,8 @@ class Minimap extends Control:
 			var north := Vector2(0, -1).rotated(_yaw) * (s.x * 0.5 - 12.0) + _c
 			draw_circle(north, 9, Color(0, 0, 0, 0.7))
 			draw_string(ThemeDB.fallback_font, north + Vector2(-5, 6), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
-		draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.9), false, 3.0)
+		if big:
+			draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.9), false, 3.0)
+		else:
+			# soft inner shadow so the radar reads like a lens
+			draw_arc(_c, s.x * 0.5 - 4.0, 0.0, TAU, 72, Color(0, 0, 0, 0.35), 8.0, true)
