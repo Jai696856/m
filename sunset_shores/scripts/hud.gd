@@ -532,9 +532,9 @@ class Overlay extends Control:
 		# car health
 		if p.in_car:
 			var ch: float = clampf(p.in_car.health / 100.0, 0.0, 1.0)
-			var r := Rect2(s.x - 320, s.y - 30, 290, 8)
-			draw_rect(r.grow(2), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(r.position, Vector2(r.size.x * ch, r.size.y)), Color(1.0, 0.65, 0.2) if ch > 0.3 else Color(1, 0.2, 0.15))
+			var bar := Rect2(s.x - 320, s.y - 30, 290, 8)
+			draw_rect(bar.grow(2), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * ch, bar.size.y)), Color(1.0, 0.65, 0.2) if ch > 0.3 else Color(1, 0.2, 0.15))
 
 
 class Minimap extends Control:
