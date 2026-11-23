@@ -130,9 +130,8 @@ func _input(event: InputEvent) -> void:
 			if btn_ids.has(event.index) and btn_ids[event.index] != "fire":
 				return
 			var rel: Vector2 = event.relative
-			game.cam.yaw -= rel.x * 0.006
-			game.cam.pitch = clampf(game.cam.pitch - rel.y * 0.005, -1.2, 0.6)
-			game.cam.mouse_idle = 0.0
+			if rel.length() < 120.0:  # a finger landing can register as one huge jump
+				game.cam.look(rel.x * 0.006, rel.y * 0.005)
 
 
 func _apply_stick(v: Vector2) -> void:

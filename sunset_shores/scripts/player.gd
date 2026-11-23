@@ -219,6 +219,10 @@ func _walk(delta: float) -> void:
 	if global_position.y < -15.0:
 		global_position = game.city.spawn_point
 		velocity = Vector3.ZERO
+	# out of your depth in the sea: you tire quickly
+	if global_position.y < -1.4:
+		take_damage(9.0 * delta)
+		game.hint = "You're out of your depth. Head back to shore!"
 
 
 ## Climb curbs and other low ledges: if a short test move forward is blocked

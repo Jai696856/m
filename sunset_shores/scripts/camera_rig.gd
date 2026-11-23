@@ -1,50 +1,71 @@
 extends Node3D
-## Third-person camera: orbit with the mouse or right stick, a spring arm that
-## stops at walls, and a chase view that swings in behind the car when driving.
+## Third-person camera: orbit with the mouse, right stick or a thumb drag, a chase
+## view that swings in behind the car when driving, and collision that never pops.
+##
+## The camera is kept out of walls with a sphere cast from the pivot (the player's
+## head) back to where the camera wants to be. It pulls in at once when something
+## is in the way but eases back out, so turning past palms, lamp posts and curbs no
+## longer makes the view jump back and forth.
 
 const Util := preload("res://scripts/util.gd")
+
+const PITCH_MIN := -1.15
+const PITCH_MAX := 0.3
+const MAX_MOUSE_STEP := 90.0   # ignore pointer-lock spikes larger than this (pixels per event)
 
 var game
 var yaw := 0.0
 var pitch := -0.22
-var arm: SpringArm3D
 var cam: Camera3D
 var mouse_idle := 10.0
 var shake := 0.0
 var look_sens := 0.0032
 var _len := 4.5
+var _dist := 4.5
+var _shoulder := 0.45
+var _probe: SphereShape3D
+var _query: PhysicsShapeQueryParameters3D
 
 
 func setup(g) -> void:
 	game = g
 	name = "CameraRig"
-	arm = SpringArm3D.new()
-	arm.collision_mask = 1
-	arm.margin = 0.3
-	var sh := SphereShape3D.new()
-	sh.radius = 0.25
-	arm.shape = sh
-	arm.spring_length = 4.5
-	add_child(arm)
 	cam = Camera3D.new()
 	cam.fov = 70.0
 	cam.near = 0.1
 	cam.far = 2200.0
-	arm.add_child(cam)
+	add_child(cam)
 	cam.current = true
+	_probe = SphereShape3D.new()
+	_probe.radius = 0.3
+	_query = PhysicsShapeQueryParameters3D.new()
+	_query.shape = _probe
+	_query.collision_mask = 1
 	yaw = game.city.spawn_yaw
 	snap()
 
 
 func snap() -> void:
 	global_position = _follow_point()
+	_dist = _len
+	_place_camera(0.0, true)
+
+
+func look(dx: float, dy: float) -> void:
+	yaw -= dx
+	pitch = clampf(pitch - dy, PITCH_MIN, PITCH_MAX)
+	mouse_idle = 0.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		yaw -= event.relative.x * look_sens
-		pitch = clampf(pitch - event.relative.y * look_sens, -1.2, 0.6)
-		mouse_idle = 0.0
+		mouse_look(event.screen_relative)
+
+
+func mouse_look(rel: Vector2) -> void:
+	if rel.length() > MAX_MOUSE_STEP:
+		return  # browsers sometimes report a huge jump after pointer lock; drop it
+	look(rel.x * look_sens, rel.y * look_sens)
 
 
 func add_shake(amount: float) -> void:
@@ -61,9 +82,7 @@ func _follow_point() -> Vector3:
 func _process(delta: float) -> void:
 	var rs := Vector2(Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
 	if rs.length() > 0.15:
-		yaw -= rs.x * delta * 2.6
-		pitch = clampf(pitch - rs.y * delta * 1.8, -1.2, 0.6)
-		mouse_idle = 0.0
+		look(rs.x * delta * 2.6, rs.y * delta * 1.8)
 	mouse_idle += delta
 	var p = game.player
 	var target_len := 4.2
@@ -86,15 +105,41 @@ func _process(delta: float) -> void:
 		target_len = 2.4
 		shoulder = 0.75
 		fov = 60.0
+	# looking up brings the camera in close instead of driving it into the ground
+	if pitch > 0.0:
+		target_len *= lerpf(1.0, 0.55, pitch / PITCH_MAX)
 	_len = lerpf(_len, target_len, 1.0 - exp(-6.0 * delta))
-	arm.spring_length = _len
-	arm.position = Vector3(shoulder, 0, 0)
+	_shoulder = lerpf(_shoulder, shoulder, 1.0 - exp(-8.0 * delta))
 	cam.fov = lerpf(cam.fov, fov, 1.0 - exp(-5.0 * delta))
 	rotation = Vector3(pitch, yaw, 0)
+	_place_camera(delta, false)
 	shake = maxf(0.0, shake - delta * 1.8)
 	var s := shake * shake
-	cam.h_offset = randf_range(-1, 1) * s * 0.35
+	cam.h_offset = _shoulder + randf_range(-1, 1) * s * 0.35
 	cam.v_offset = randf_range(-1, 1) * s * 0.35
+
+
+## Puts the camera _len metres behind the pivot, or closer if something solid is
+## in between. Pulls in immediately, eases back out.
+func _place_camera(delta: float, instant: bool) -> void:
+	var back := global_transform.basis.z
+	var want := _len
+	if is_inside_tree():
+		var space := get_world_3d().direct_space_state
+		_query.transform = Transform3D(Basis(), global_position)
+		_query.motion = back * _len
+		var ex: Array[RID] = []
+		if game.player.in_car:
+			ex.append(game.player.in_car.get_rid())
+		_query.exclude = ex
+		var res := space.cast_motion(_query)
+		if res.size() == 2 and res[0] < 1.0:
+			want = maxf(0.35, _len * res[0])
+	if instant or want < _dist:
+		_dist = want
+	else:
+		_dist = move_toward(_dist, want, delta * 6.0)
+	cam.position = Vector3(0, 0, _dist)
 
 
 func _physics_process(delta: float) -> void:

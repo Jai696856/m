@@ -90,6 +90,11 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
   alarm brings three, then four, stars. Grab up to $50,000 in gold and run for the boat at Gator Tours.
 - **Bigger chases:** from three stars a police helicopter circles overhead, lighting you up with a searchlight
   after dark and firing down at you (you can shoot it down). Roadblocks also appear at intersections ahead of you.
+- **The island:** Sunset Shores sits on an island with a curving coastline and sea on every side. Sandy
+  beaches slope into the water, and rolling wooded hills rise between the town and the shore, up to Mount Sol on
+  the north-east peninsula. A 2.5 km **coastal highway** loops around the city, crosses the swamp on a
+  causeway, and has side roads into downtown. Traffic drives it and joins the city streets at both ends. Drive or
+  wade too far into the sea and your engine floods, or you tire. The minimap and full map show the real shape.
 - **The city:** an 8×8 grid of blocks about 650 m across. Downtown glass towers sit in the middle,
   with midtown shops and neon signs around them, pastel houses with pools and palms in the residential
   streets, and a strip of beachfront hotels. There are also two parks with fountains, two parking lots,
@@ -131,7 +136,8 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | File | What it does |
 |---|---|
 | `scripts/game.gd` | Entry point. Builds the world and owns money, time of day, crime, explosions, wasted/busted, the respray, stunt bonuses and the Chirp feed |
-| `scripts/city.gd` | City generator: roads, districts, buildings, beach, ocean, props, street lights, spawn points |
+| `scripts/city.gd` | City generator: roads, districts, buildings, beach, props, street lights, spawn points |
+| `scripts/terrain.gd` | The island: coastline, hills, beach and sea, the coastal highway, collision heightmap |
 | `scripts/car.gd` | Vehicle physics (raycast suspension, tyre grip, drift, damage, fire, explosions) and models |
 | `scripts/traffic.gd` | Lane-following traffic on rails, parked cars, carjacking |
 | `scripts/ped.gd`, `scripts/peds.gd` | Pedestrians, officers and bodyguards, plus spawning and being hit by cars |
@@ -153,7 +159,7 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 ## Tests
 
 ```bash
-godot --headless --path . -s tests/smoke_test.gd                     # 103 checks: driving, police, missions, heist, robberies...
+godot --headless --path . -s tests/smoke_test.gd                     # 120 checks: driving, police, heist, island, camera...
 xvfb-run godot --path . -s tests/screenshots.gd -- /tmp/shots [shot] # real screenshots
 ```
 

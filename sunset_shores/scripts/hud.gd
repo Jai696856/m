@@ -527,6 +527,25 @@ class Minimap extends Control:
 	var _scale := 1.0
 	var _c := Vector2.ZERO
 
+	var _island := PackedVector2Array()
+	var _inland := PackedVector2Array()
+
+	## The coastline pushed in (negative) or out by `off` metres.
+	func _outline(poly: PackedVector2Array, off: float) -> PackedVector2Array:
+		var out := PackedVector2Array()
+		var n := poly.size()
+		var cen := Vector2.ZERO
+		for q in poly:
+			cen += q
+		cen /= n
+		for k in n:
+			var t := (poly[(k + 1) % n] - poly[(k - 1 + n) % n]).normalized()
+			var nrm := Vector2(-t.y, t.x)
+			if nrm.dot(poly[k] - cen) < 0.0:
+				nrm = -nrm
+			out.append(poly[k] + nrm * off)
+		return out
+
 	func _w2s(w: Vector3) -> Vector2:
 		return Vector2(w.x - _p.x, w.z - _p.z).rotated(_yaw) * _scale + _c
 
@@ -543,9 +562,9 @@ class Minimap extends Control:
 			return
 		_c = s * 0.5
 		if big:
-			_p = Vector3(87.0, 0, 0)
+			_p = Vector3(157.0, 0, -95.0)
 			_yaw = 0.0
-			_scale = s.x / 1080.0
+			_scale = s.x / 1560.0
 		else:
 			_p = game.player_pos()
 			_yaw = game.cam.yaw
@@ -553,12 +572,39 @@ class Minimap extends Control:
 			if game.player.in_car:
 				spd = absf(game.player.in_car.forward_speed())
 			_scale = lerpf(1.0, 0.55, clampf(spd / 40.0, 0.0, 1.0)) * s.x / 240.0
-		draw_rect(Rect2(Vector2.ZERO, s), Color(0.3, 0.42, 0.26, 0.92))
+		draw_rect(Rect2(Vector2.ZERO, s), Color(0.14, 0.42, 0.6, 0.95))
 		var view_r: float = s.length() * 0.5 / _scale + 60.0
-		_quad(-1600.0, 0.0, 1180.0, 1600.0, Color(0.15, 0.45, 0.62))
-		_quad(-375.0, 0.0, 45.0, 700.0, Color(0.85, 0.78, 0.58))
+		# the island: a sandy rim, then the land inside it
+		var t = city.terrain
+		if _island.is_empty():
+			_island = _outline(t.coast, 0.0)
+			_inland = _outline(t.coast, -30.0)
+		var pts := PackedVector2Array()
+		for q in _island:
+			pts.append(_w2s(Vector3(q.x, 0, q.y)))
+		draw_colored_polygon(pts, Color(0.85, 0.78, 0.58))
+		pts = PackedVector2Array()
+		for q in _inland:
+			pts.append(_w2s(Vector3(q.x, 0, q.y)))
+		draw_colored_polygon(pts, Color(0.33, 0.45, 0.28))
+		# Mount Sol and the hills
+		for hill in [[Vector3(590, 0, -690), 150.0, 0.38], [Vector3(-120, 0, -575), 95.0, 0.4], [Vector3(250, 0, 560), 85.0, 0.4]]:
+			draw_circle(_w2s(hill[0]), float(hill[1]) * _scale, Color(0.27, 0.37, 0.22, hill[2]))
+			draw_circle(_w2s(hill[0]), float(hill[1]) * 0.5 * _scale, Color(0.45, 0.42, 0.36, hill[2]))
+		_quad(-375.0, 0.0, 45.0, 345.0, Color(0.85, 0.78, 0.58))
 		_quad(0.0, 0.0, city.HALF + 8.0, city.HALF + 8.0, Color(0.2, 0.2, 0.22))
-		_quad((city.WET_X + 620.0) * 0.5, 0.0, (620.0 - city.WET_X) * 0.5, city.WET_Z, Color(0.27, 0.34, 0.2))
+		# coastal highway and side roads
+		var road_w := maxf(2.0, 15.0 * _scale)
+		var lines: Array = [t.hwy]
+		lines.append_array(t.connectors)
+		for pl in lines:
+			var sp := PackedVector2Array()
+			for q in pl:
+				sp.append(_w2s(q))
+			draw_polyline(sp, Color(0.2, 0.2, 0.22), road_w, true)
+		for pool in city.pools:
+			var mc: Vector3 = pool[0]
+			draw_circle(_w2s(mc), (float(pool[1]) + 40.0) * _scale, Color(0.24, 0.32, 0.18, 0.55))
 		for pool in city.pools:
 			var pc: Vector3 = pool[0]
 			if big or Vector2(pc.x - _p.x, pc.z - _p.z).length() < view_r + 30.0:

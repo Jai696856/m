@@ -462,6 +462,13 @@ func _drive(delta: float) -> void:
 		apply_force(rdir * f.x + fdir * f.y, app)
 	var spd := lv.length()
 	apply_central_force(-lv * spd * 0.45)
+	# driving into the sea: heavy drag, then the engine floods
+	if xf.origin.y < -0.9:
+		apply_central_force(-lv * mass * 1.5)
+		if has_driver:
+			damage(8.0 * delta, driver == game.player)
+			if driver == game.player:
+				game.hint = "The engine is flooding. Get back to dry land!"
 	if grounded > 0:
 		apply_central_force(-up * spd * spd * 1.2)
 	else:

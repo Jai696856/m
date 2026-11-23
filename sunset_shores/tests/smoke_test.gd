@@ -47,6 +47,8 @@ func _initialize() -> void:
 	await _test_phone()
 	await _test_heli_and_roadblock()
 	await _test_heist()
+	await _test_island()
+	await _test_camera()
 	_test_night()
 	print("")
 	if failures.is_empty():
@@ -533,6 +535,99 @@ func _test_heist() -> void:
 	check(not m.is_active() and game.money >= money0 + 4 * m.GOLD_VALUE, "reaching the boat pays out the heist ($%d)" % (game.money - money0))
 	check(game.stats.heists == 1, "heist recorded")
 	await _reset_player(game.city.spawn_point)
+
+
+func _test_island() -> void:
+	print("the island")
+	var t = game.city.terrain
+	check(t.on_land(0, 0, 100.0) and t.on_land(-415, 0, 20.0) and t.on_land(600, 0, 50.0), "city, beach and swamp are on land")
+	check(not t.on_land(-700, 0) and not t.on_land(0, 800) and not t.on_land(900, 0), "there's sea on every side")
+	check(absf(t.height_at(100, 100)) < 0.01 and absf(t.height_at(-400, 50)) < 0.01, "the city and beach are flat")
+	check(t.height_at(590, -690) > 80.0, "Mount Sol rises on the north-east peninsula (%.0f m)" % t.height_at(590, -690))
+	var hmax := 0.0
+	for q in t.hwy:
+		hmax = maxf(hmax, absf(t.height_at(q.x, q.z)))
+	check(hmax < 0.05, "the highway runs on level ground (max %.2f m)" % hmax)
+	check(t.hwy_length() > 2000.0, "the coastal highway is %.0f m long" % t.hwy_length())
+	# a car driven hard out to sea is stopped by the offshore wall
+	var p = game.player
+	var car = game.traffic.spawn_car("sport", Color.ORANGE, Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(-430, 0.4, 100)))
+	await _reset_player(car.global_position + Vector3(0, 0, 3))
+	p.enter_car(car)
+	Input.action_press("move_forward")
+	await frames(420)
+	Input.action_release("move_forward")
+	check(car.global_position.x > -520.0, "you can't drive off the edge of the world (x=%.0f)" % car.global_position.x)
+	check(car.global_position.is_finite() and car.global_position.y > -8.0, "the car stays in the shallows")
+	p.exit_car()
+	# traffic on the highway, and joining it from the city
+	await _reset_player(Vector3(30, 0.3, -440))
+	var on_hw := 0
+	for k in 40:
+		await frames(15)
+		on_hw = 0
+		for ag in game.traffic.agents.values():
+			if ag.hw:
+				on_hw += 1
+		if on_hw > 0:
+			break
+	check(on_hw > 0, "traffic on the coastal highway (%d cars)" % on_hw)
+	var tr = game.traffic
+	var ag = tr.Agent.new()
+	ag.a = Vector2i(0, 1)
+	ag.b = Vector2i(0, 0)
+	ag.c = tr.HWY_NORTH
+	tr._set_turn(ag)
+	var end_turn: Vector3 = tr._eval_end(ag)
+	tr._enter_highway(ag)
+	var start_hw: Vector3 = tr._hwy_pose(ag)[0]
+	check(end_turn.distance_to(start_hw) < 0.5, "city lanes line up with the highway lanes (%.2f m)" % end_turn.distance_to(start_hw))
+	ag.s = t.hwy_length()
+	ag.hdir = 1
+	var end_hw: Vector3 = tr._hwy_pose(ag)[0]
+	tr._leave_highway(ag)
+	check(tr._eval(ag).distance_to(end_hw) < 0.5 and game.city.in_grid(ag.c), "highway traffic rejoins the city streets")
+	await _reset_player(game.city.spawn_point)
+
+
+func _test_camera() -> void:
+	print("camera")
+	var cam = game.cam
+	await _reset_player(game.city.spawn_point)
+	cam.look(0.0, -5.0)
+	check(cam.pitch <= cam.PITCH_MAX + 0.001, "looking up is capped (%.2f)" % cam.pitch)
+	cam.look(0.0, 5.0)
+	check(cam.pitch >= cam.PITCH_MIN - 0.001, "looking down is capped")
+	cam.pitch = -0.2
+	var yaw0: float = cam.yaw
+	cam.mouse_look(Vector2(4000, 0))
+	check(absf(cam.yaw - yaw0) < 0.001, "a giant mouse spike is ignored")
+	cam.mouse_look(Vector2(20, 0))
+	check(absf(cam.yaw - yaw0) > 0.01, "normal mouse movement turns the camera")
+	# back up against a building: the camera pulls in instead of going through it
+	var b: Rect2 = game.city.footprints[200]
+	var c := b.get_center()
+	var p = game.player
+	p.global_position = Vector3(c.x, 0.2, b.position.y + b.size.y + 1.0)
+	cam.yaw = PI   # camera behind the player, inside the building
+	cam.pitch = -0.1
+	await frames(30)
+	var dist: float = cam.cam.position.z
+	check(dist < 3.0, "the camera pulls in against a wall (%.1f m)" % dist)
+	# sweep the view round a full circle: distance changes stay smooth (no popping out)
+	var worst := 0.0
+	var last: float = cam.cam.position.z
+	p.global_position = game.city.ring_corner(Vector2i(3, 4), 1) + Vector3(0, 0.2, 0)
+	await frames(20)
+	last = cam.cam.position.z
+	for k in 120:
+		cam.yaw += TAU / 120.0
+		await process_frame
+		var d: float = cam.cam.position.z
+		if d > last:
+			worst = maxf(worst, d - last)
+		last = d
+	check(worst < 0.35, "the camera eases back out instead of jumping (max step %.2f m)" % worst)
 
 
 func _test_night() -> void:

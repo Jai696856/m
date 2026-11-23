@@ -2,6 +2,8 @@
 #   xvfb-run godot --path . -s tests/screenshots.gd -- <out_dir>
 extends SceneTree
 
+const Util := preload("res://scripts/util.gd")
+
 var game
 var out := "user://shots"
 
@@ -19,7 +21,7 @@ func _initialize() -> void:
 	game.hud.intro.visible = false
 	paused = false
 	game.time_flow = 0.0
-	for shot in ["beach", "downtown", "drive", "night", "wanted", "swamp", "bank", "phone", "heli", "intro"]:
+	for shot in ["beach", "downtown", "drive", "night", "wanted", "swamp", "bank", "phone", "heli", "aerial", "bigmap", "highway", "intro"]:
 		if only == "" or only == shot:
 			await call("_shot_" + shot)
 	quit()
@@ -154,6 +156,52 @@ func _shot_heli() -> void:
 	await _frames(25)
 	await _save("09_heli")
 	game.police.reset()
+
+
+func _shot_aerial() -> void:
+	_set_time(17.0)
+	_place(Vector3(-150, 0.2, 520), 0.0, 0.0)
+	await _frames(5)
+	var c := Camera3D.new()
+	game.add_child(c)
+	c.far = 4000.0
+	c.global_position = Vector3(-650, 520, 900)
+	c.look_at(Vector3(160, 0, -150))
+	c.current = true
+	await _frames(40)
+	await _save("10_island_aerial")
+	c.queue_free()
+	game.cam.cam.current = true
+
+
+func _shot_bigmap() -> void:
+	_set_time(15.0)
+	_place(game.city.spawn_point, 0.0, -0.1)
+	game.hud.show_map = true
+	await _frames(20)
+	await _save("11_full_map")
+	game.hud.show_map = false
+
+
+func _shot_highway() -> void:
+	_set_time(17.4)
+	var t = game.city.terrain
+	var r: Array = t.hwy_at(t.hwy_length() * 0.27)
+	var pos: Vector3 = r[0]
+	var dir: Vector3 = r[1]
+	var car = game.traffic.spawn_car("sport", Color(0.95, 0.2, 0.5), Transform3D(Util.look_basis(dir), pos + Vector3(-dir.z, 0, dir.x) * 3.5 + Vector3.UP * 0.3))
+	game.player.global_position = car.global_position + Vector3(2, 0.2, 0)
+	game.player.enter_car(car)
+	game.cam.yaw = Util.yaw_of(dir)
+	game.cam.pitch = -0.12
+	game.cam.mouse_idle = 5.0
+	Engine.max_physics_steps_per_frame = 1
+	Input.action_press("move_forward")
+	await _frames(110)
+	Input.action_release("move_forward")
+	Engine.max_physics_steps_per_frame = 8
+	await _save("12_coastal_highway")
+	game.player.exit_car()
 
 
 func _shot_intro() -> void:
