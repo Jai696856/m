@@ -1,0 +1,30 @@
+{
+  "day": 8,
+  "title": "Day 8: The Legend",
+  "style": "comic",
+  "render3d": true,
+  "voice_file": "audio/day-08-voice.mp3",
+  "voice_words": "audio/day-08-voice.words.json",
+  "words_file": "audio/day-08.words.json",
+  "optionsTitle": ["DAY 9:", "WHAT'S NEXT?"],
+  "ctaComment": "liked ✅ now A or B? 👇",
+  "statsBefore": [["SPD", 26], ["SHO", 28], ["PAS", 31], ["DRI", 30], ["DEF", 22], ["PHY", 25]],
+  "statsAfter": [["SPD", 30, "Dribbling"], ["SHO", 32, "Shooting"], ["PAS", 34, "Dribbling"], ["DRI", 34, "Dribbling"], ["DEF", 22, ""], ["PHY", 25, ""]],
+  "upBursts": [["+4 SHO", "Shooting", "#e74c3c"], ["+4 DRI", "Dribbling", "#7c4dff"]],
+  "ovrBefore": 27,
+  "ovrAfter": 30,
+  "chunks": [
+    {"scene": "d8open", "text": "Day eight. You voted A... striker. The special match. A charity game. And then... he walked out of the tunnel."},
+    {"scene": "reveal", "text": "Lamine Yamal."},
+    {"scene": "meet", "text": "I froze. He laughed and said: let's see what you got."},
+    {"scene": "skill", "skill": 1, "gapAfter": 3, "text": "Skill one. The outside-foot pass. No look. Just vision."},
+    {"scene": "skill", "skill": 2, "gapAfter": 3, "text": "Skill two. The body feint. Drop the shoulder... go the other way."},
+    {"scene": "skill", "skill": 3, "gapAfter": 3, "text": "Skill three. The curler. Inside of the foot... wrap it around the keeper."},
+    {"scene": "live", "play": "lamine", "teams": ["MARCUS XI", "ALL-STARS"], "score": [0, 0], "min": [61, 63], "gapAfter": 8, "text": "Then we played. Same team. He found me with an outside-foot pass... and I curled it in!"},
+    {"scene": "promise", "text": "After the game he said... if this video gets fifty likes, he'll try to get me to Barcelona. Fifty likes! Smash that like button!"},
+    {"scene": "upgradeG", "text": "Card check. Shooting: twenty-eight to thirty-two. Dribbling: thirty to thirty-four. Overall... thirty!"},
+    {"scene": "options", "letter": "A", "title": "BARÇA TRIAL", "sub": "Train every day for the trial", "icon": "trial", "text": "Option A: I train every day for the Barcelona trial."},
+    {"scene": "options", "letter": "B", "title": "TELL DEZ", "sub": "Tell him first, train with him", "icon": "dezopt", "text": "Option B: I tell Dez first, and train with him."},
+    {"scene": "cta3", "text": "Comment A or B. Day nine."}
+  ]
+}

@@ -1324,9 +1324,9 @@ function scoreboard(t, seg, sc, minute, live = true) {
   return `<g transform="translate(540,210)" filter="url(#dsh)" opacity="${p}">
   <rect x="-470" y="-50" width="940" height="100" rx="24" fill="#1a1d24" ${ink(6)}/>
   <rect x="-458" y="-38" width="20" height="76" rx="6" fill="#1565c0"/><rect x="438" y="-38" width="20" height="76" rx="6" fill="#c62828"/>
-  <text x="-420" y="2" font-family="${FONT}" font-size="38" font-weight="900" fill="#fff" dominant-baseline="central">HOME</text>
+  <text x="-420" y="2" font-family="${FONT}" font-size="${seg.teams ? 30 : 38}" font-weight="900" fill="#fff" dominant-baseline="central">${seg.teams ? seg.teams[0] : 'HOME'}</text>
   <rect x="-260" y="-36" width="190" height="72" rx="16" fill="#000" opacity=".35"/>${ctext(-165, 2, `${sc[0]} – ${sc[1]}`, 52, '#f4b41a')}
-  <text x="-45" y="2" font-family="${FONT}" font-size="38" font-weight="900" fill="#fff" dominant-baseline="central">EASTSIDE</text>
+  <text x="-45" y="2" font-family="${FONT}" font-size="${seg.teams ? 30 : 38}" font-weight="900" fill="#fff" dominant-baseline="central">${seg.teams ? seg.teams[1] : 'EASTSIDE'}</text>
   <text x="420" y="2" font-family="${FONT}" font-size="36" font-weight="900" fill="#c9ced9" text-anchor="end" dominant-baseline="central">${minute}</text></g>
   ${live ? `<g transform="translate(540,300)"><rect x="-80" y="-24" width="160" height="48" rx="24" fill="#e53935" ${ink(5)}/><circle cx="-48" cy="0" r="9" fill="#fff" opacity="${0.5 + 0.5 * Math.sin(t * 8)}"/><text x="10" y="2" font-family="${FONT}" font-size="30" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="central">LIVE</text></g>` : ''}`;
 }
@@ -1594,5 +1594,133 @@ cam3d = function (t, seg) {
     case 'won': return { cam: 'wide', t, blur: true, night: true };
     case 'legend': return { cam: 'wide', t, blur: true, night: true };
     default: return _cam3d_d6(t, seg);
+  }
+};
+
+// ===================================================================== DAY 8: THE LEGEND (fan-made cameo)
+Object.assign(LOOKS, {
+  lamine: { top: '#a50044', topD: '#004d98', pants: '#004d98', pantsD: '#003a73', skin: '#8d5a3c', skinD: '#6e4429', hair: '#1a0f0a', shoe: '#ffd60a', num: 19, curly: true },
+  allstar: { top: '#f4f4f4', topD: '#c9c9c9', pants: '#111', pantsD: '#000', skin: '#c68e6a', skinD: '#a8734f', hair: '#3b2416', shoe: '#e53935', num: 5 },
+});
+LOOKS.marcus10b = { ...LOOKS.marcus10, top: '#a50044', topD: '#004d98', pants: '#004d98', pantsD: '#003a73', num: 10 };
+PLAYS.lamine = {
+  ball: [[0, 200, 1650], [0.45, 860, 1660], [0.47, 880, 1655], [0.56, 1130, 1705], [0.62, 1150, 1700], [0.70, 1380, 1520], [0.78, 1485, 1430], [1, 1475, 1460]],
+  dribbler: [[0.02, 0.45, 'lamine']],
+  actors: [
+    { who: 'lamine', keys: [[0, 160, 1655], [0.45, 820, 1660], [1, 860, 1660]], pose: (p, t) => p > 0.43 && p < 0.52 ? pose('kick', t, (p - 0.43) / 0.09) : p > 0.8 ? pose('celebrate', t) : pose('dribble', t) },
+    { who: 'allstar', keys: [[0, 900, 1640], [0.4, 860, 1640], [1, 840, 1650]], pose: (p, t) => p < 0.42 ? pose('run', t) : pose('sad', t) },
+    { who: 'marcus10b', keys: [[0, 860, 1710], [0.55, 1090, 1710], [1, 1110, 1710]], pose: (p, t) => p > 0.56 && p < 0.72 ? pose('strike', t, (p - 0.56) / 0.16) : p > 0.8 ? pose('celebrate', t) : pose('run', t) },
+    { who: 'gkA', keys: [[0, 1420, 1610], [0.64, 1420, 1610], [0.78, 1430, 1680], [1, 1430, 1680]], face: -1, dive: [0.64, 1, -1] },
+  ],
+  goals: [[1500, 1]],
+  goalAt: [0.78, 0],
+  events: [[0.47, 'NO-LOOK PASS 👀', '#a50044', 1], [0.62, 'CURLER…', '#7c4dff', 1], [0.8, 'GOAL!! 🌀', '#2ecc71', 0]],
+};
+
+function sD8open(t, seg) {
+  const tW = kw(seg, 'walked');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity="${t > tW ? 0.75 : 0.35}"/>`;
+  s += burst(540, 330, 'DAY 8', 140, Y, seg.t0, t, -5);
+  const tA = kw(seg, 'voted');
+  if (t > tA) s += `<g transform="translate(540,540) scale(${eb((t - tA) / 0.4)})" filter="url(#dsh)"><rect x="-280" y="-58" width="560" height="116" rx="58" fill="#2196f3" ${ink(8)}/>${ctext(0, 4, 'A: STRIKER ✓', 54, '#fff')}</g>`;
+  s += burst(540, 740, 'CHARITY MATCH ❤️', 64, '#e91e63', kw(seg, 'charity'), t, 3);
+  if (t > tW - 0.3) {
+    const f = eo((t - tW + 0.3) / 1.4);
+    s += `<polygon points="440,820 640,820 900,1800 180,1800" fill="#fff6d0" opacity="${0.22 * f}"/><rect x="380" y="900" width="320" height="420" rx="160" fill="#000" opacity=".8"/>`;
+    s += `<g opacity="${f}" transform="translate(540,${lerp(1500, 1780, f)})"><g transform="scale(1.3)"><path d="M-30,-6 L-40,-150 L-10,-150 L-4,-6Z M30,-6 L40,-150 L10,-150 L4,-6Z M-62,-150 L-70,-300 Q0,-330 70,-300 L62,-150Z M-16,-340 h32 v40 h-32Z" fill="#0b0b12"/><rect x="-66" y="-470" width="132" height="130" rx="60" fill="#0b0b12"/></g></g>`;
+  }
+  return s;
+}
+function sReveal(t, seg) {
+  const p = eb((t - seg.t0) / 0.5);
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".5"/>` + sparkles(540, 1100, t, seg.t0, 10, 420, '#ffd54f');
+  s += `<rect width="${W}" height="${H}" fill="#fff" opacity="${0.6 * Math.max(0, 1 - (t - seg.t0) / 0.3)}"/>`;
+  s += athlete(540, 1780, 1.35, 'lamine', pose('idle', t), t, 1, blinking(t, .4));
+  if (p > 0) s += `<g transform="translate(540,470) scale(${p})" filter="url(#dsh)"><rect x="-400" y="-120" width="800" height="240" rx="40" fill="#1a1d24" ${ink(8)}/>
+    <text x="0" y="-55" font-family="${FONT}" font-size="34" font-weight="800" fill="#c9ced9" text-anchor="middle">THE LEGEND</text>${ctext(0, 30, 'LAMINE YAMAL', 84, '#f4b41a')}</g>`;
+  return s;
+}
+function sMeet(t, seg) {
+  const tF = kw(seg, 'froze'), tL = kw(seg, 'laughed');
+  let s = COMIC_DEFS + bgRect('cDusk');
+  s += athlete(300, 1770, 1.0, 'marcus10b', t > tF && t < tL + 0.5 ? { ...pose('idle', t), expr: 'tired' } : pose('idle', t), t, 1, t > tF && t < tL);
+  s += athlete(780, 1770, 1.05, 'lamine', pose(t > tL ? 'celebrate' : 'idle', t), t, -1);
+  s += burst(300, 900, 'FROZE 🥶', 70, '#2196f3', tF, t, -6);
+  s += bubble(700, 860, '"LET\'S SEE WHAT YOU GOT 😄"', kw(seg, 'see') - 0.2, t, 46);
+  return s;
+}
+function sSkill(t, seg) {
+  const T = seg.t1 - seg.t0, p = clamp((t - seg.t0) / T), n = seg.skill;
+  const names = ['', 'OUTSIDE-FOOT PASS', 'BODY FEINT', 'THE CURLER'];
+  let s = COMIC_DEFS;
+  s += `<g transform="translate(540,330)" filter="url(#dsh)"><rect x="-330" y="-60" width="660" height="120" rx="30" fill="#a50044" ${ink(7)}/>${ctext(0, 2, `SKILL ${n}: ${names[n]}`, 44, '#fff')}</g>`;
+  const who = p < 0.55 ? 'lamine' : 'marcus10b', q = p < 0.55 ? p / 0.55 : (p - 0.55) / 0.45;
+  s += captionBox(540, 460, p < 0.55 ? 'LAMINE SHOWS IT' : 'MY TURN', seg.t0 + (p < 0.55 ? 0 : 0.55 * T), t, p < 0.55 ? '#f4b41a' : '#2ecc71');
+  if (n === 1) {
+    const kx = 330, mx = 860, k = clamp((q - 0.25) / 0.2), bf = clamp((q - 0.42) / 0.35);
+    s += athlete(kx, 1760, 1.0, who, q > 0.25 && q < 0.5 ? pose('kick', t, (q - 0.25) / 0.25) : pose('idle', t), t, 1);
+    s += `<g transform="translate(${kx},1430)">${ctext(-80, 0, '👀', 70, '#fff')}<path d="M-30,10 L-160,-30" stroke="${Y}" stroke-width="8" stroke-dasharray="8 10"/></g>`;
+    s += athlete(mx, 1730, 0.9, 'mate', pose(bf >= 1 ? 'celebrate' : 'idle', t), t, -1);
+    const bx = q < 0.42 ? kx + 90 : lerp(kx + 90, mx - 60, bf), by = 1735 - Math.sin(bf * Math.PI) * 40;
+    s += comicBall(bx, by, 26, t * 700);
+    if (q > 0.42 && q < 0.8) s += `<path d="M${kx + 90},1735 Q${(kx + mx) / 2},1640 ${mx - 60},1735" stroke="#fff" stroke-width="8" stroke-dasharray="6 18" fill="none" opacity=".8"/>`;
+    s += burst(540, 900, 'NO LOOK!', 70, '#7c4dff', seg.t0 + (p < 0.55 ? 0.42 * 0.55 : 0.55 + 0.42 * 0.45) * T, t, -4);
+  } else if (n === 2) {
+    const dx = 680, f = eo(clamp(q / 0.9));
+    const fake = clamp((q - 0.3) / 0.15), go = clamp((q - 0.45) / 0.3);
+    const x = lerp(240, 520, clamp(q / 0.3)) + lerp(0, 380, eo(go)), y = 1760 - 50 * Math.sin(fake * Math.PI) * (go > 0 ? 0 : 1) + 60 * eo(go);
+    s += athlete(dx, 1720, 1.0, 'allstar', go > 0.2 ? { ...pose('idle', t), lean: -25 } : pose('idle', t), t, -1);
+    s += athlete(x, Math.min(1800, y), 1.0, who, fake > 0 && go < 0.2 ? { ...pose('dribble', t), lean: -30 } : pose('dribble', t), t, 1);
+    s += comicBall(x + 70, Math.min(1800, y) - 20, 26, t * 600);
+    if (fake > 0 && go < 0.3) s += burst(500, 900, 'DROP THE SHOULDER', 52, '#2196f3', seg.t0 + (p < 0.55 ? 0.3 * 0.55 : 0.55 + 0.3 * 0.45) * T, t, -4);
+    if (go > 0.3) s += burst(700, 900, 'OTHER WAY ➡️', 62, '#2ecc71', seg.t0 + (p < 0.55 ? 0.5 * 0.55 : 0.55 + 0.5 * 0.45) * T, t, 4);
+  } else {
+    const k = clamp((q - 0.15) / 0.5), bf = clamp((k - 0.42) / 0.4);
+    s += goalFrame(820, 1, bf >= 1 ? 24 : 0);
+    s += athlete(260, 1760, 1.0, who, pose('strike', t, k), t, 1);
+    s += athlete(930, 1700, 0.8, 'gkA', bf > 0.3 ? { ...pose('celebrate', t), expr: 'focus' } : pose('idle', t), t, -1);
+    const cx = lerp(360, 1020, bf), cy = lerp(1735, 1460, bf) - Math.sin(bf * Math.PI) * 120, curve = Math.sin(bf * Math.PI) * 140;
+    const pts = []; for (let i = 6; i >= 1; i--) { const f2 = Math.max(0, bf - i * 0.035); pts.push([lerp(360, 1020, f2), lerp(1735, 1460, f2) - Math.sin(f2 * Math.PI) * 120 + Math.sin(f2 * Math.PI) * 140]); }
+    if (bf > 0 && bf < 1) s += ballTrail(pts, 22);
+    s += comicBall(cx, cy + curve, 26, t * 1200);
+    if (bf > 0.1) s += `<path d="M360,1735 Q690,${1560 + 140} 1020,1460" stroke="#7c4dff" stroke-width="6" stroke-dasharray="4 16" fill="none" opacity=".7"/>`;
+    s += burst(540, 900, 'WRAP IT 🌀', 70, '#7c4dff', seg.t0 + (p < 0.55 ? (0.15 + 0.5 * 0.6) * 0.55 : 0.55 + (0.15 + 0.5 * 0.6) * 0.45) * T, t, -4);
+  }
+  return s;
+}
+function sPromise(t, seg) {
+  const tF = kwN(seg, 'fifty'), tB = kw(seg, 'Barcelona'), tS = kw(seg, 'Smash');
+  let s = COMIC_DEFS + bgRect('cBlue');
+  s += athlete(780, 1780, 1.0, 'lamine', pose('idle', t), t, -1, blinking(t, .7));
+  s += athlete(280, 1780, 0.95, 'marcus10b', pose(t > tB ? 'celebrate' : 'idle', t), t, 1);
+  { const pb = eb((t - tF + 0.3) / 0.4);
+    if (pb > 0) s += `<g transform="translate(560,560) scale(${pb})" filter="url(#dsh)"><rect x="-470" y="-130" width="940" height="260" rx="70" fill="#fff" ${ink(8)}/>
+      <path d="M180,128 L240,210 L270,128Z" fill="#fff" ${ink(8)}/><rect x="170" y="116" width="110" height="16" fill="#fff"/>
+      ${ctext(0, -45, '"50 LIKES…', 64, '#111')}${ctext(0, 45, 'I\'LL TRY TO GET YOU TO BARÇA"', 50, '#a50044')}</g>`; }
+  if (t > tF) {
+    const n = Math.min(50, Math.round(50 * eo(clamp((t - tS) / 2.2))));
+    s += `<g transform="translate(540,920)" filter="url(#dsh)"><rect x="-330" y="-110" width="660" height="220" rx="50" fill="#fff" ${ink(9)}/>
+      <path transform="translate(-200,0) scale(1.6)" d="M0,30 C-60,-10 -40,-60 0,-30 C40,-60 60,-10 0,30Z" fill="${RED}" ${ink(4)}/>${ctext(80, 4, `${t > tS ? n : 0} / 50`, 100, '#111')}</g>`;
+  }
+  s += burst(540, 1180, 'SMASH LIKE 👍', 84, RED, tS, t, -4);
+  return s;
+}
+function artTrial(t) {
+  return `<rect width="420" height="392" fill="#004d98"/>${[0, 1, 2, 3, 4, 5].map(i => `<rect x="${i * 80}" y="0" width="40" height="392" fill="#a50044" opacity=".55"/>`).join('')}
+  <rect y="250" width="420" height="142" fill="#239b56"/>${athlete(210, 380, 0.42, 'marcus10b', pose('run', t), t, 1)}${txt(210, 70, 'TRIAL 🏟️', 46, '#fff')}`;
+}
+function artDezOpt(t) {
+  return `<rect width="420" height="392" fill="#0b0d16"/><rect y="250" width="420" height="142" fill="#1b5e20"/>
+  ${athlete(140, 380, 0.4, 'marcus10b', pose('idle', t), t, 1)}${athlete(290, 380, 0.4, 'dez', pose('arms', t), t, -1)}${txt(210, 70, 'DEZ 🤝', 46, '#fff')}`;
+}
+Object.assign(SCENES, { d8open: sD8open, reveal: sReveal, meet: sMeet, skill: sSkill, promise: sPromise });
+const _cam3d_d7 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'd8open': case 'reveal': return { cam: 'wide', t, blur: true, night: true };
+    case 'meet': return { cam: 'juggle', x: -30, t, k: 0.6, night: true, blur: true };
+    case 'skill': return { cam: 'juggle', x: -40 + seg.skill * 10, t, k: clamp((t - seg.t0) / 6), night: true };
+    case 'promise': return { cam: 'wide', t, blur: true, night: true };
+    default: return _cam3d_d7(t, seg);
   }
 };

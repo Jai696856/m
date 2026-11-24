@@ -24,6 +24,7 @@ PLAY_SFX = {
     'equalizer': [(0.58, 'kick'), (0.74, 'roar')],
     'celebrate': [(0.0, 'roar')],
     'winner': [(0.52, 'kick'), (0.62, 'kick'), (0.74, 'roar'), (0.93, 'whistle3')],
+    'lamine': [(0.03, 'whistle'), (0.47, 'kick'), (0.62, 'kick'), (0.78, 'roar')],
 }
 
 
