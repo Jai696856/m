@@ -406,8 +406,11 @@ func _drive(delta: float) -> void:
 	steer = move_toward(steer, s_in * max_steer, delta * 3.0)
 	var quarter := mass * 0.25
 	var drive_total: float = float(spec.engine) * throttle * curve
+	var slip := 1.0
 	if mode == PLAYER and game.player.perk() == "driver":
 		drive_total *= 1.15
+		if game.player.ability_on:
+			slip = 1.6
 	var space := get_world_3d().direct_space_state
 	grounded = 0
 	for w in wheels:
@@ -439,7 +442,7 @@ func _drive(delta: float) -> void:
 		rdir = (rdir - n * rdir.dot(n)).normalized()
 		var vs := vp.dot(rdir)
 		var vf := vp.dot(fdir)
-		var mu: float = spec.mu
+		var mu: float = float(spec.mu) * slip
 		var rear_hb: bool = hb and not w.front
 		if rear_hb:
 			mu *= 0.45
@@ -459,6 +462,13 @@ func _drive(delta: float) -> void:
 		apply_force(rdir * f.x + fdir * f.y, app)
 	var spd := lv.length()
 	apply_central_force(-lv * spd * 0.45)
+	# driving into the sea: heavy drag, then the engine floods
+	if xf.origin.y < -0.9:
+		apply_central_force(-lv * mass * 1.5)
+		if has_driver:
+			damage(8.0 * delta, driver == game.player)
+			if driver == game.player:
+				game.hint = "The engine is flooding. Get back to dry land!"
 	if grounded > 0:
 		apply_central_force(-up * spd * spd * 1.2)
 	else:

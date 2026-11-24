@@ -4,6 +4,7 @@ extends Node3D
 ## parking lots), a beach and ocean on the west side, and the street furniture.
 
 const Util := preload("res://scripts/util.gd")
+const Terrain := preload("res://scripts/terrain.gd")
 
 const N := 8                 # blocks per side; road lines are 0..N
 const BLOCK := 64.0          # block size including its sidewalk
@@ -14,7 +15,7 @@ const CURB := 0.12           # sidewalk height
 const SIDEWALK := 4.0
 const LANE_OFF := 3.5        # traffic lane offset from the road centre (drive on the right)
 const PARK_OFF := 6.5        # curbside parking offset
-const SHORE_X := -420.0      # where the ocean begins
+const SEA_LEVEL := -0.4      # water level around the island
 const WET_X := 350.0         # the wetlands start east of here...
 const WET_Z := 430.0         # ...between -WET_Z and +WET_Z
 const CORNERS := [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1)]
@@ -50,13 +51,17 @@ var lamp_lights: Array[OmniLight3D] = []
 var lamp_head_mat: StandardMaterial3D
 var neon_mats: Array[StandardMaterial3D] = []
 var signs: Array = []             # [Label3D, Color]
-var bmat: ShaderMaterial
+var bshader: Shader
+var wm: ShaderMaterial
+var _bmats := {}
 var unit_box: BoxMesh
 var palm_xf: Array[Transform3D] = []
 var tree_xf: Array[Transform3D] = []
 var lamp_xf: Array[Transform3D] = []
 var _lights_on := -1
 var world_body: StaticBody3D
+var terrain
+var special_blocks := {}          # "bank"/"store"/"reserve" -> block centre
 var pools: Array = []             # [Vector3 centre, radius] of swamp water
 var gator_homes: Array = []       # Vector3
 var flamingo_spots: Array = []    # Vector3
@@ -170,8 +175,7 @@ func build(g) -> void:
 	game = g
 	rng.seed = 20261119
 	unit_box = BoxMesh.new()
-	bmat = ShaderMaterial.new()
-	bmat.shader = load("res://shaders/building.gdshader")
+	bshader = load("res://shaders/building.gdshader")
 	lamp_head_mat = Util.glow_mat(Color(1.0, 0.85, 0.6), 0.5)
 	world_body = StaticBody3D.new()
 	world_body.name = "WorldBody"
@@ -197,19 +201,10 @@ func build(g) -> void:
 
 
 func _build_ground() -> void:
-	var grass := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(1530, 2400)
-	grass.mesh = pm
-	grass.position = Vector3(-330.0 + 765.0, -0.03, 0)
-	grass.material_override = Util.mat(Color(0.34, 0.47, 0.24), 0.95)
-	add_child(grass)
-	_shape(world_body, Vector3(1065, 2, 1240), Vector3((-445.0 + 620.0) * 0.5, -1.0, 0))
-	# invisible walls at the edge of the world
-	_shape(world_body, Vector3(2, 60, 1240), Vector3(-446, 30, 0))
-	_shape(world_body, Vector3(2, 60, 1240), Vector3(621, 30, 0))
-	_shape(world_body, Vector3(1070, 60, 2), Vector3(87, 30, -621))
-	_shape(world_body, Vector3(1070, 60, 2), Vector3(87, 30, 621))
+	terrain = Terrain.new()
+	add_child(terrain)
+	terrain.build(self)
+	wm = terrain.water_mat
 
 
 func _build_roads() -> void:
@@ -255,6 +250,12 @@ func _kind(bx: int, bz: int) -> String:
 		return "police"
 	if k == Vector2i(2, 3):
 		return "respray"
+	if k == Vector2i(5, 4):
+		return "bank"
+	if k == Vector2i(6, 3):
+		return "store"
+	if k == Vector2i(4, 3):
+		return "reserve"
 	if k == Vector2i(4, 1) or k == Vector2i(1, 5):
 		return "park"
 	if k == Vector2i(5, 2) or k == Vector2i(2, 6):
@@ -295,6 +296,10 @@ func _build_block(bx: int, bz: int) -> void:
 		"hospital": _hospital(c, body)
 		"police": _police(c, body)
 		"respray": _respray(c, body)
+		"bank", "store", "reserve":
+			# enterable buildings are added by interiors.gd; leave a paved lot
+			_lot(c, Color(0.56, 0.55, 0.53))
+			special_blocks[kind] = Vector3(c.x, 0, c.y)
 
 
 func _lot(c: Vector2, color: Color, size := BLOCK - SIDEWALK * 2.0) -> void:
@@ -334,17 +339,25 @@ func _edge_props(c: Vector2, kind: String, body: StaticBody3D) -> void:
 func _building(c: Vector2, size: Vector3, color: Color, style: int, body: StaticBody3D, y0 := CURB) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = unit_box
-	mi.material_override = bmat
+	mi.material_override = _bmat(color, style)
 	mi.scale = size
 	mi.position = Vector3(c.x, y0 + size.y * 0.5, c.y)
 	add_child(mi)
-	mi.set_instance_shader_parameter("wall_color", color)
-	mi.set_instance_shader_parameter("style", float(style))
-	mi.set_instance_shader_parameter("seed", rng.randf())
 	_shape(body, size, mi.position)
 	if y0 <= CURB + 0.01:
 		footprints.append(Rect2(c.x - size.x * 0.5, c.y - size.z * 0.5, size.x, size.z))
 	return mi
+
+
+func _bmat(color: Color, style: int) -> ShaderMaterial:
+	var key := "%s_%d" % [color.to_html(), style]
+	if not _bmats.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = bshader
+		m.set_shader_parameter("wall_color", color)
+		m.set_shader_parameter("style", float(style))
+		_bmats[key] = m
+	return _bmats[key]
 
 
 func _prop(mesh: Mesh, pos: Vector3, m: Material, rot := Vector3.ZERO, vis := 0.0) -> MeshInstance3D:
@@ -573,6 +586,8 @@ func _build_lamps() -> void:
 			var dir := Vector3(-sx, 0, -sz).normalized()
 			lamp_xf.append(Transform3D(Basis(Vector3.UP, Util.yaw_of(dir)), p))
 			_cyl_shape(world_body, 0.15, 7.0, p + Vector3(0, 3.5, 0))
+			if game.low_spec:
+				continue  # each light is an extra pass on phones; the glowing lamp heads stay
 			var l := OmniLight3D.new()
 			l.position = p + dir * 2.6 + Vector3(0, 6.5, 0)
 			l.omni_range = 26.0
@@ -585,30 +600,12 @@ func _build_lamps() -> void:
 
 
 func _build_beach() -> void:
-	var sand := MeshInstance3D.new()
-	sand.mesh = Util.box(134, 0.04, 1400)
-	sand.position = Vector3(-403, 0.0, 0)
-	sand.material_override = Util.mat(Color(0.93, 0.84, 0.64), 1.0)
-	add_child(sand)
 	var prom := MeshInstance3D.new()
 	prom.mesh = Util.box(8, CURB, N * P + ROAD)
 	prom.position = Vector3(-332, CURB * 0.5, 0)
 	prom.material_override = Util.mat(Color(0.78, 0.72, 0.66), 0.9)
 	add_child(prom)
 	_shape(world_body, Vector3(8, CURB, N * P + ROAD), prom.position)
-	var ocean := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(2600, 2600)
-	pm.subdivide_width = 160
-	pm.subdivide_depth = 160
-	ocean.mesh = pm
-	ocean.position = Vector3(SHORE_X - 1300.0, 0.22, 0)
-	var wm := ShaderMaterial.new()
-	wm.shader = load("res://shaders/water.gdshader")
-	wm.set_shader_parameter("shore_x", SHORE_X)
-	ocean.material_override = wm
-	ocean.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(ocean)
 	var z := -HALF
 	while z <= HALF:
 		palm_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.25)), Vector3(-348.0 + rng.randf_range(-3, 3), 0.02, z)))
@@ -656,22 +653,23 @@ func _ramp(pos: Vector3, yaw: float) -> void:
 func _build_outskirts() -> void:
 	var body := StaticBody3D.new()
 	add_child(body)
-	for k in 260:
-		var p := Vector3(rng.randf_range(-330, 600), 0.0, rng.randf_range(-600, 600))
-		if absf(p.x) < HALF + 14.0 and absf(p.z) < HALF + 14.0:
+	var placed := 0
+	var tries := 0
+	while placed < 520 and tries < 6000:
+		tries += 1
+		var x := rng.randf_range(-480.0, 790.0)
+		var z := rng.randf_range(-830.0, 640.0)
+		if not terrain.on_land(x, z, 22.0) or terrain.hwy_dist_at(x, z) < 16.0 or terrain.flat_dist(x, z) < 12.0:
 			continue
-		if in_wetlands(p):
-			continue
-		tree_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.6)), p))
+		var p := Vector3(x, terrain.height_at(x, z) - 0.1, z)
+		var scl := rng.randf_range(0.9, 1.7)
+		if terrain.coast_dist_at(x, z) < 70.0 and p.y < 6.0:
+			palm_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * scl * 0.8), p))
+		else:
+			tree_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * scl), p))
 		_cyl_shape(body, 0.35, 4.0, p + Vector3(0, 2.0, 0))
+		placed += 1
 	_build_wetlands()
-	# a few low hills of rock
-	for k in 10:
-		var p := Vector3(rng.randf_range(380, 580), 0.0, rng.randf_range(-560, 560))
-		if in_wetlands(p):
-			p.z = signf(p.z + 0.01) * rng.randf_range(WET_Z + 30.0, 560.0)
-		var r := rng.randf_range(8, 18)
-		_prop(Util.sphere(r, 12), p + Vector3(0, -r * 0.55, 0), Util.mat(Color(0.48, 0.45, 0.38), 0.95), Vector3.ZERO, 900.0).scale = Vector3(1.3, 1.0, 1.0)
 	partner_spawn = ring_corner(Vector2i(5, 3), 2) + Vector3(0, 0.02, 0)
 	contact_points.push_front(Vector3(block_center(5, 2).x - 20.0, CURB, block_center(5, 2).z + 30.0))
 	contact_points.append(Vector3(block_center(4, 1).x, CURB, block_center(4, 1).z + 20.0))
@@ -680,13 +678,6 @@ func _build_outskirts() -> void:
 # --- the wetlands: swamp pools, cypress trees, reeds, a boardwalk and a tour shack ---
 
 func _build_wetlands() -> void:
-	var mud := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(620.0 - WET_X, WET_Z * 2.0)
-	mud.mesh = pm
-	mud.position = Vector3((WET_X + 620.0) * 0.5, -0.015, 0)
-	mud.material_override = Util.mat(Color(0.3, 0.36, 0.2), 1.0)
-	add_child(mud)
 	var water := StandardMaterial3D.new()
 	water.albedo_color = Color(0.1, 0.17, 0.1, 0.96)
 	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -701,6 +692,8 @@ func _build_wetlands() -> void:
 		var c := Vector3(rng.randf_range(WET_X + 25.0 + r, 600.0 - r), 0.0, rng.randf_range(-WET_Z + r + 10.0, WET_Z - r - 10.0))
 		if absf(c.z) < 12.0 + r:
 			continue  # keep the boardwalk dry
+		if terrain.hwy_dist_at(c.x, c.z) < r + 18.0:
+			continue  # and the highway causeway
 		var clash := false
 		for o in pools:
 			if c.distance_to(o[0]) < r + float(o[1]) + 6.0:
@@ -730,7 +723,7 @@ func _build_wetlands() -> void:
 	add_child(body)
 	for k in 150:
 		var p := Vector3(rng.randf_range(WET_X + 10.0, 600.0), 0.0, rng.randf_range(-WET_Z, WET_Z))
-		if absf(p.z) < 6.0:
+		if absf(p.z) < 6.0 or terrain.hwy_dist_at(p.x, p.z) < 14.0:
 			continue
 		cypress_xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.4)), p))
 		_cyl_shape(body, 0.45, 5.0, p + Vector3(0, 2.5, 0))
@@ -738,12 +731,12 @@ func _build_wetlands() -> void:
 	var wood := Util.mat(Color(0.5, 0.36, 0.22), 0.9)
 	var x := HALF + ROAD * 0.5
 	while x < 560.0:
-		_prop(Util.box(2.1, 0.12, 3.6), Vector3(x + 2.0, 0.3, 0), wood, Vector3.ZERO, 300.0)
-		for sz in [-1.0, 1.0]:
-			_prop(Util.box(0.12, 0.9, 0.12), Vector3(x + 2.0, 0.75, sz * 1.8), wood, Vector3.ZERO, 150.0)
+		if terrain.hwy_dist_at(x + 2.0, 0.0) > 10.0:  # gap where the highway crosses
+			_prop(Util.box(2.1, 0.12, 3.6), Vector3(x + 2.0, 0.3, 0), wood, Vector3.ZERO, 300.0)
+			for sz in [-1.0, 1.0]:
+				_prop(Util.box(0.12, 0.9, 0.12), Vector3(x + 2.0, 0.75, sz * 1.8), wood, Vector3.ZERO, 150.0)
+				_prop(Util.box(4.0, 0.1, 0.1), Vector3(x + 2.0, 1.15, sz * 1.8), wood, Vector3.ZERO, 200.0)
 		x += 4.0
-	for sz in [-1.0, 1.0]:
-		_prop(Util.box(560.0 - HALF - ROAD * 0.5, 0.1, 0.1), Vector3((560.0 + HALF + ROAD * 0.5) * 0.5 + 2.0, 1.15, sz * 1.8), wood, Vector3.ZERO, 300.0)
 	# the tour shack at the end of the boardwalk
 	var shack := Vector2(570.0, 0.0)
 	_building(shack, Vector3(10, 4.5, 8), Color(0.55, 0.42, 0.3), 2, body, 0.0)
@@ -756,7 +749,11 @@ func _build_wetlands() -> void:
 	for k in 3:
 		var z := rng.randf_range(-260.0, 260.0)
 		for j in 3:
-			flamingo_spots.append(Vector3(SHORE_X - 3.0 + rng.randf_range(-2, 2), 0.0, z + j * 2.5))
+			var fz: float = z + j * 2.5
+			var fx := -420.0
+			while fx > -520.0 and terrain.coast_dist_at(fx, fz) > 3.0:
+				fx -= 2.0
+			flamingo_spots.append(Vector3(fx + rng.randf_range(-1, 1), SEA_LEVEL, fz))
 
 
 func _cypress_mesh() -> ArrayMesh:
@@ -882,6 +879,11 @@ func set_night(n: float) -> void:
 	if absf(n - _last_night) < 0.01:
 		return
 	_last_night = n
+	# a plain uniform per material (global shader uniforms break WebGL builds)
+	for m in _bmats.values():
+		m.set_shader_parameter("night", n)
+	if wm:
+		wm.set_shader_parameter("night", n)
 	lamp_head_mat.emission_energy_multiplier = lerpf(0.3, 7.0, n)
 	for m in neon_mats:
 		m.emission_energy_multiplier = lerpf(1.2, 5.0, n)

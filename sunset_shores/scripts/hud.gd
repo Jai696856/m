@@ -33,6 +33,7 @@ var heading_font: Font
 var feed: RichTextLabel
 var feed_box: PanelContainer
 var posts: Array = []   # [handle, text, time_left]
+var history: Array = [] # last posts for the phone's Chirp app
 var lbl_hero: Label
 
 
@@ -56,6 +57,20 @@ func setup(g) -> void:
 	minimap = Minimap.new()
 	minimap.game = game
 	minimap.clip_contents = true
+	var mask := Shader.new()
+	mask.code = """shader_type canvas_item;
+// Round radar: everything the minimap draws is cut to a circle with a soft edge.
+uniform vec2 size = vec2(240.0);
+varying vec2 local;
+void vertex() { local = VERTEX; }
+void fragment() {
+	float r = min(size.x, size.y) * 0.5;
+	float d = length(local - size * 0.5);
+	COLOR.a *= 1.0 - smoothstep(r - 1.5, r, d);
+}"""
+	var mmat := ShaderMaterial.new()
+	mmat.shader = mask
+	minimap.material = mmat
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(minimap)
 	bigmap = Minimap.new()
@@ -124,6 +139,9 @@ func _build_feed() -> void:
 
 func add_post(handle: String, text: String) -> void:
 	posts.push_front([handle, text, 14.0])
+	history.push_front([handle, text])
+	if history.size() > 15:
+		history.resize(15)
 	if posts.size() > 3:
 		posts.resize(3)
 	_refresh_feed()
@@ -162,7 +180,16 @@ Q / mouse wheel       Switch weapon
 R                     Flip the car upright
 H                     Horn          T   Radio on/off
 Tab                   Switch between Marisol and Cole
+V                     Special ability       C   Phone
 M                     Full map      Esc   Pause"""
+
+
+const TOUCH_TEXT := """Left thumb       Move (push all the way to sprint), or drive
+Right thumb      Drag to look around
+FIRE             Shoot          JUMP / DRIFT   Jump or handbrake
+CAR              Get in, out or steal a car
+GUN  MAP  SWAP   Switch weapon, full map, Marisol / Cole
+ABIL  PHONE      Special ability, in-game phone"""
 
 
 func _build_pause() -> void:
@@ -195,7 +222,7 @@ func _build_pause() -> void:
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(stats)
 	var ctl := Label.new()
-	ctl.text = CONTROLS_TEXT
+	ctl.text = TOUCH_TEXT if game.touch_mode else CONTROLS_TEXT
 	ctl.add_theme_font_size_override("font_size", 18)
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Consolas", "Menlo", "monospace"])
@@ -247,7 +274,7 @@ func _build_intro() -> void:
 	spacer.custom_minimum_size = Vector2(0, 16)
 	vb.add_child(spacer)
 	var ctl := Label.new()
-	ctl.text = CONTROLS_TEXT + "\n\nWalk into the coloured beam on the minimap to start a job."
+	ctl.text = (TOUCH_TEXT if game.touch_mode else CONTROLS_TEXT) + "\n\nWalk into the coloured beam on the minimap to start a job."
 	ctl.add_theme_font_size_override("font_size", 20)
 	ctl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	ctl.add_theme_constant_override("outline_size", 6)
@@ -256,7 +283,7 @@ func _build_intro() -> void:
 	ctl.add_theme_font_override("font", mono)
 	vb.add_child(ctl)
 	var go := Label.new()
-	go.text = "Click or press any key to play"
+	go.text = "Tap to play" if game.touch_mode else "Click or press any key to play"
 	go.name = "Go"
 	go.add_theme_font_size_override("font_size", 30)
 	go.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
@@ -273,18 +300,12 @@ func set_paused(p: bool) -> void:
 		var s: Dictionary = game.stats
 		(pause_panel.find_child("Stats", true, false) as Label).text = "Missions passed: %d    Cars stolen: %d    Cars destroyed: %d    Takedowns: %d" % [s.missions, s.cars_stolen, s.cars_destroyed, s.kills]
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	elif not game.headless:
+	elif not game.headless and not game.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if intro.visible:
-		if (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton) and event.is_pressed():
-			intro.visible = false
-			get_tree().paused = false
-			if not game.headless:
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("pause"):
 		set_paused(not get_tree().paused)
@@ -292,7 +313,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if get_tree().paused:
 		return
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not game.headless:
+	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not game.headless and not game.touch_mode:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if event.is_action_pressed("map"):
 		show_map = not show_map
@@ -330,6 +351,18 @@ func flash_stars() -> void:
 	stars_flash = 2.0
 
 
+## The title screen is dismissed here, before the GUI sees the click or tap.
+func _input(event: InputEvent) -> void:
+	if intro == null or not intro.visible:
+		return
+	if (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton or event is InputEventScreenTouch) and event.is_pressed():
+		intro.visible = false
+		get_tree().paused = false
+		if not game.headless and not game.touch_mode:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		get_viewport().set_input_as_handled()
+
+
 func _process(delta: float) -> void:
 	if root == null or game == null or lbl_money == null:
 		return
@@ -354,7 +387,7 @@ func _process(delta: float) -> void:
 	if changed:
 		posts = posts.filter(func(q): return q[2] > 0.0)
 		_refresh_feed()
-	feed_box.position = Vector2(26, 104)
+	feed_box.position = Vector2(18, 18 + clampf(s.y * 0.24, 130.0, 280.0) + 44) if game.touch_mode else Vector2(26, 104)
 	lbl_money.position = Vector2(s.x - 420, 58)
 	lbl_money.size = Vector2(390, 50)
 	var h := int(game.hour)
@@ -366,9 +399,11 @@ func _process(delta: float) -> void:
 	lbl_weapon.text = w.name + ("" if w.ammo < 0 else "  %d" % w.ammo)
 	lbl_weapon.position = Vector2(s.x - 420, 150)
 	lbl_weapon.size = Vector2(390, 30)
-	var map_size := clampf(s.y * 0.27, 170.0, 280.0)
-	minimap.position = Vector2(28, s.y - map_size - 52)
+	var touch: bool = game.touch_mode
+	var map_size := clampf(s.y * (0.24 if touch else 0.27), 130.0, 280.0)
+	minimap.position = Vector2(26, 26) if touch else Vector2(36, s.y - map_size - 36)
 	minimap.size = Vector2(map_size, map_size)
+	(minimap.material as ShaderMaterial).set_shader_parameter("size", minimap.size)
 	bigmap.visible = show_map
 	if show_map:
 		var bs := minf(s.x - 120, s.y - 120)
@@ -402,9 +437,18 @@ func _process(delta: float) -> void:
 	lbl_hint.visible = game.hint != "" and game.state == "play"
 	lbl_hint.position = Vector2(30, 26)
 	lbl_hint.size = Vector2(700, 30)
+	if game.touch_mode:
+		lbl_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_hint.position = Vector2(s.x * 0.5 - 400, 110)
+		lbl_hint.size = Vector2(800, 30)
+		lbl_hint.text = lbl_hint.text.replace("Press F to", "Tap CAR to").replace("Press R to", "Tap FLIP to")
 	lbl_notice.visible = notice_t > 0.0
 	lbl_notice.position = Vector2(30, 62)
 	lbl_notice.size = Vector2(700, 34)
+	if game.touch_mode:
+		lbl_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl_notice.position = Vector2(s.x * 0.5 - 400, 146)
+		lbl_notice.size = Vector2(800, 34)
 	var car = p.in_car
 	lbl_vehicle.visible = car != null and vehicle_t > 0.0
 	lbl_vehicle.position = Vector2(s.x - 520, s.y - 150)
@@ -424,6 +468,12 @@ func _process(delta: float) -> void:
 
 class Overlay extends Control:
 	var hud
+
+	## A curved bar: background track, then the filled part from `a0` toward `a1`.
+	func _gauge(c: Vector2, r: float, a0: float, a1: float, frac: float, col: Color) -> void:
+		draw_arc(c, r, a0, a1, 32, Color(0, 0, 0, 0.6), 9.0, true)
+		if frac > 0.005:
+			draw_arc(c, r, a0, lerpf(a0, a1, frac), 32, col, 6.0, true)
 
 	func _star(c: Vector2, r: float, col: Color, filled: bool) -> void:
 		var pts := PackedVector2Array()
@@ -463,24 +513,28 @@ class Overlay extends Control:
 			for d in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 				draw_line(cc + d * g, cc + d * (g + 8.0), Color(0, 0, 0, 0.6), 4.0)
 				draw_line(cc + d * g, cc + d * (g + 8.0), col, 2.0)
-		# health and armour under the minimap
+		# the radar's rim, with health / armour / special as curved gauges around it
 		var mm: Control = hud.minimap
-		var x := mm.position.x
-		var y := mm.position.y + mm.size.y + 12.0
-		var w := mm.size.x
-		draw_rect(Rect2(x - 2, y - 2, w + 4, 14), Color(0, 0, 0, 0.6))
+		var c := mm.position + mm.size * 0.5
+		var r := mm.size.x * 0.5
+		draw_arc(c, r + 2.0, 0.0, TAU, 72, Color(0.04, 0.03, 0.08, 0.95), 6.0, true)
 		var hp: float = clampf(p.health / 100.0, 0.0, 1.0)
 		var hc := Color(0.3, 0.9, 0.35) if hp > 0.3 else Color(0.95, 0.25, 0.2)
-		draw_rect(Rect2(x, y, w * hp, 10), hc)
-		if p.armor > 0.0:
-			draw_rect(Rect2(x - 2, y + 14, w + 4, 10), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(x, y + 16, w * clampf(p.armor / 100.0, 0.0, 1.0), 6), Color(0.35, 0.6, 1.0))
+		var tint: Color = p.crew[p.hero].tint
+		# health: lower-left quarter, filling upward from the bottom
+		_gauge(c, r + 11.0, PI * 0.5, PI * 0.5 + PI * 0.48, hp, hc)
+		# armour: lower-right quarter
+		_gauge(c, r + 11.0, PI * 0.5, PI * 0.5 - PI * 0.48, clampf(p.armor / 100.0, 0.0, 1.0), Color(0.35, 0.6, 1.0))
+		# special: an inner band along the top
+		_gauge(c, r + 11.0, PI * 1.5 - PI * 0.4, PI * 1.5 + PI * 0.4, clampf(p.special / 100.0, 0.0, 1.0), tint if not p.ability_on else tint.lightened(0.4))
+		if p.ability_on:
+			draw_rect(Rect2(Vector2.ZERO, s), Color(tint.r, tint.g, tint.b, 0.1))
 		# car health
 		if p.in_car:
 			var ch: float = clampf(p.in_car.health / 100.0, 0.0, 1.0)
-			var r := Rect2(s.x - 320, s.y - 30, 290, 8)
-			draw_rect(r.grow(2), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(r.position, Vector2(r.size.x * ch, r.size.y)), Color(1.0, 0.65, 0.2) if ch > 0.3 else Color(1, 0.2, 0.15))
+			var bar := Rect2(s.x - 320, s.y - 30, 290, 8)
+			draw_rect(bar.grow(2), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * ch, bar.size.y)), Color(1.0, 0.65, 0.2) if ch > 0.3 else Color(1, 0.2, 0.15))
 
 
 class Minimap extends Control:
@@ -490,6 +544,25 @@ class Minimap extends Control:
 	var _yaw := 0.0
 	var _scale := 1.0
 	var _c := Vector2.ZERO
+
+	var _island := PackedVector2Array()
+	var _inland := PackedVector2Array()
+
+	## The coastline pushed in (negative) or out by `off` metres.
+	func _outline(poly: PackedVector2Array, off: float) -> PackedVector2Array:
+		var out := PackedVector2Array()
+		var n := poly.size()
+		var cen := Vector2.ZERO
+		for q in poly:
+			cen += q
+		cen /= n
+		for k in n:
+			var t := (poly[(k + 1) % n] - poly[(k - 1 + n) % n]).normalized()
+			var nrm := Vector2(-t.y, t.x)
+			if nrm.dot(poly[k] - cen) < 0.0:
+				nrm = -nrm
+			out.append(poly[k] + nrm * off)
+		return out
 
 	func _w2s(w: Vector3) -> Vector2:
 		return Vector2(w.x - _p.x, w.z - _p.z).rotated(_yaw) * _scale + _c
@@ -507,9 +580,9 @@ class Minimap extends Control:
 			return
 		_c = s * 0.5
 		if big:
-			_p = Vector3(87.0, 0, 0)
+			_p = Vector3(157.0, 0, -95.0)
 			_yaw = 0.0
-			_scale = s.x / 1080.0
+			_scale = s.x / 1560.0
 		else:
 			_p = game.player_pos()
 			_yaw = game.cam.yaw
@@ -517,12 +590,39 @@ class Minimap extends Control:
 			if game.player.in_car:
 				spd = absf(game.player.in_car.forward_speed())
 			_scale = lerpf(1.0, 0.55, clampf(spd / 40.0, 0.0, 1.0)) * s.x / 240.0
-		draw_rect(Rect2(Vector2.ZERO, s), Color(0.3, 0.42, 0.26, 0.92))
+		draw_rect(Rect2(Vector2.ZERO, s), Color(0.14, 0.42, 0.6, 0.95))
 		var view_r: float = s.length() * 0.5 / _scale + 60.0
-		_quad(-1600.0, 0.0, 1180.0, 1600.0, Color(0.15, 0.45, 0.62))
-		_quad(-375.0, 0.0, 45.0, 700.0, Color(0.85, 0.78, 0.58))
+		# the island: a sandy rim, then the land inside it
+		var t = city.terrain
+		if _island.is_empty():
+			_island = _outline(t.coast, 0.0)
+			_inland = _outline(t.coast, -30.0)
+		var pts := PackedVector2Array()
+		for q in _island:
+			pts.append(_w2s(Vector3(q.x, 0, q.y)))
+		draw_colored_polygon(pts, Color(0.85, 0.78, 0.58))
+		pts = PackedVector2Array()
+		for q in _inland:
+			pts.append(_w2s(Vector3(q.x, 0, q.y)))
+		draw_colored_polygon(pts, Color(0.33, 0.45, 0.28))
+		# Mount Sol and the hills
+		for hill in [[Vector3(590, 0, -690), 150.0, 0.38], [Vector3(-120, 0, -575), 95.0, 0.4], [Vector3(250, 0, 560), 85.0, 0.4]]:
+			draw_circle(_w2s(hill[0]), float(hill[1]) * _scale, Color(0.27, 0.37, 0.22, hill[2]))
+			draw_circle(_w2s(hill[0]), float(hill[1]) * 0.5 * _scale, Color(0.45, 0.42, 0.36, hill[2]))
+		_quad(-375.0, 0.0, 45.0, 345.0, Color(0.85, 0.78, 0.58))
 		_quad(0.0, 0.0, city.HALF + 8.0, city.HALF + 8.0, Color(0.2, 0.2, 0.22))
-		_quad((city.WET_X + 620.0) * 0.5, 0.0, (620.0 - city.WET_X) * 0.5, city.WET_Z, Color(0.27, 0.34, 0.2))
+		# coastal highway and side roads
+		var road_w := maxf(2.0, 15.0 * _scale)
+		var lines: Array = [t.hwy]
+		lines.append_array(t.connectors)
+		for pl in lines:
+			var sp := PackedVector2Array()
+			for q in pl:
+				sp.append(_w2s(q))
+			draw_polyline(sp, Color(0.2, 0.2, 0.22), road_w, true)
+		for pool in city.pools:
+			var mc: Vector3 = pool[0]
+			draw_circle(_w2s(mc), (float(pool[1]) + 40.0) * _scale, Color(0.24, 0.32, 0.18, 0.55))
 		for pool in city.pools:
 			var pc: Vector3 = pool[0]
 			if big or Vector2(pc.x - _p.x, pc.z - _p.z).length() < view_r + 30.0:
@@ -554,18 +654,22 @@ class Minimap extends Control:
 			var kind: String = b[2]
 			var sp := _w2s(pos)
 			var important: bool = kind in ["objective", "target", "contact"]
-			var inside := Rect2(Vector2(6, 6), s - Vector2(12, 12)).has_point(sp)
+			var edge := s.x * 0.5 - 10.0
+			var inside := (sp - _c).length() < edge if not big else Rect2(Vector2(6, 6), s - Vector2(12, 12)).has_point(sp)
 			if not inside:
 				if not important:
 					continue
-				sp = Vector2(clampf(sp.x, 8, s.x - 8), clampf(sp.y, 8, s.y - 8))
+				if big:
+					sp = Vector2(clampf(sp.x, 8, s.x - 8), clampf(sp.y, 8, s.y - 8))
+				else:
+					sp = _c + (sp - _c).normalized() * edge
 			var r := 4.0
 			match kind:
 				"objective", "contact":
 					r = 7.0
 				"target", "police":
 					r = 6.0
-				"hospital", "respray", "partner":
+				"hospital", "respray", "partner", "bank", "store":
 					r = 6.0
 			draw_circle(sp, r + 2.0, Color(0, 0, 0, 0.75))
 			draw_circle(sp, r, col)
@@ -589,4 +693,8 @@ class Minimap extends Control:
 			var north := Vector2(0, -1).rotated(_yaw) * (s.x * 0.5 - 12.0) + _c
 			draw_circle(north, 9, Color(0, 0, 0, 0.7))
 			draw_string(ThemeDB.fallback_font, north + Vector2(-5, 6), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
-		draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.9), false, 3.0)
+		if big:
+			draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.9), false, 3.0)
+		else:
+			# soft inner shadow so the radar reads like a lens
+			draw_arc(_c, s.x * 0.5 - 4.0, 0.0, TAU, 72, Color(0, 0, 0, 0.35), 8.0, true)

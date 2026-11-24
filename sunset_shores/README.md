@@ -8,6 +8,29 @@ You play as a two-person crew, **Marisol** and **Cole**, who arrive in Sunset Sh
 city with swamps on its edge, with $500 and a pistol. Steal cars, run jobs for three local contacts, fly off
 ramps for cash, and keep one step ahead of the police. The whole city comments on it all as it happens.
 
+## Playing on a phone
+
+There's a web build in [`docs/play/`](../docs/play/). Once GitHub Pages is switched on for this repository,
+it's playable in any phone browser at **https://jai696856.github.io/m/play/**. Turn the phone sideways.
+On a touchscreen you get on-screen controls:
+
+| Action | Touch |
+|---|---|
+| Move / drive | Left thumb anywhere on the left side (push all the way to sprint) |
+| Look around | Drag with your right thumb |
+| Shoot / jump / handbrake | FIRE, JUMP (DRIFT in a car) |
+| Get in, out or steal a car | CAR |
+| Switch weapon, full map, switch character, pause | GUN, MAP, SWAP, II |
+| Special ability, phone | ABIL, PHONE |
+| Rob, grab, drill (when offered) | USE (the CAR button changes) |
+
+Phones and the web get lighter settings automatically: less traffic and fewer pedestrians, cheaper
+shadows, and no per-lamp lights.
+
+To rebuild it, export the **Web** preset with **Godot 4.4.1 or newer** (`godot --headless --export-release
+"Web" ../docs/play/index.html`). Godot 4.3's web renderer stops drawing 3D in a scene this busy. Keep the
+empty `.gdignore` file in `docs/play/` so the tower-defense project at the repository root ignores the build.
+
 ## Opening it
 
 1. Install [Godot 4.3](https://godotengine.org/download) or newer (the standard build, not .NET).
@@ -32,6 +55,8 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | Horn | H | Right stick click |
 | Radio on/off | T | D-pad left |
 | Switch between Marisol and Cole | Tab | D-pad down |
+| Special ability | V | X |
+| Phone | C | Guide |
 | Full map | M | Back |
 | Pause | Esc or P | Start |
 
@@ -49,6 +74,27 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
   local news and everyday chatter.
 - **Stunt bonuses:** keep a car in the air long enough (the beach ramps help) and you get cash for the
   hang time and distance.
+- **Special abilities:** a meter under your health bar refills over time and with takedowns. Press V to use it.
+  Marisol's *Slipstream* slows time and gives her car much more grip. Cole's *Steady Aim* slows time, makes
+  every shot dead on, doubles the damage and takes some of the sting out of being hit.
+- **The phone (C):** Contacts (set a GPS waypoint to Rosa, Dex, Lena, the bank, the store or the respray, call
+  in the heist, or have a mechanic drop a sports car at the curb), Jobs, Chirp, Special, Map and Settings
+  (radio, lighter graphics).
+- **Buildings you can walk into:** Bay Bank, the Quick Stop corner store and the Shoreline Reserve each have a
+  real interior with staff, lights and furniture.
+  - **Rob the bank:** walk up to the counter and press F. The vault swings open. Grab the cash piles inside
+    (each bag adds heat), then lose the cops to keep the money. Get wasted or busted and the bag is gone.
+  - **Rob the store:** press F at the counter for a quick score and one star.
+- **The heist, *The Shoreline Job*** (call Lena once you've done three story jobs): steal an armored van,
+  drive it to the Shoreline Reserve, fight past four guards, drill the vault and hold out for 25 seconds as the
+  alarm brings three, then four, stars. Grab up to $50,000 in gold and run for the boat at Gator Tours.
+- **Bigger chases:** from three stars a police helicopter circles overhead, lighting you up with a searchlight
+  after dark and firing down at you (you can shoot it down). Roadblocks also appear at intersections ahead of you.
+- **The island:** Sunset Shores sits on an island with a curving coastline and sea on every side. Sandy
+  beaches slope into the water, and rolling wooded hills rise between the town and the shore, up to Mount Sol on
+  the north-east peninsula. A 2.5 km **coastal highway** loops around the city, crosses the swamp on a
+  causeway, and has side roads into downtown. Traffic drives it and joins the city streets at both ends. Drive or
+  wade too far into the sea and your engine floods, or you tire. The minimap and full map show the real shape.
 - **The city:** an 8×8 grid of blocks about 650 m across. Downtown glass towers sit in the middle,
   with midtown shops and neon signs around them, pastel houses with pools and palms in the residential
   streets, and a strip of beachfront hotels. There are also two parks with fountains, two parking lots,
@@ -80,7 +126,7 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 
   After the story, freelance jobs keep coming, with rising rewards.
 - **Pickups:** cash, health, body armour and an SMG.
-- **HUD:** a rotating minimap that zooms out as you speed up, a full map, money, clock, stars, health
+- **HUD:** a round radar minimap with curved health, armour and special gauges around its rim, a rotating minimap that zooms out as you speed up, a full map, money, clock, stars, health
   and armour, speedometer, and mission timers.
 - **Audio:** gunshots, crashes, explosions, horn, sirens, a live engine note that follows your speed,
   and *Palm FM*, an original synthwave loop that plays while you drive.
@@ -90,12 +136,17 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 | File | What it does |
 |---|---|
 | `scripts/game.gd` | Entry point. Builds the world and owns money, time of day, crime, explosions, wasted/busted, the respray, stunt bonuses and the Chirp feed |
-| `scripts/city.gd` | City generator: roads, districts, buildings, beach, ocean, props, street lights, spawn points |
+| `scripts/city.gd` | City generator: roads, districts, buildings, beach, props, street lights, spawn points |
+| `scripts/terrain.gd` | The island: coastline, hills, beach and sea, the coastal highway, collision heightmap |
 | `scripts/car.gd` | Vehicle physics (raycast suspension, tyre grip, drift, damage, fire, explosions) and models |
 | `scripts/traffic.gd` | Lane-following traffic on rails, parked cars, carjacking |
 | `scripts/ped.gd`, `scripts/peds.gd` | Pedestrians, officers and bodyguards, plus spawning and being hit by cars |
 | `scripts/player.gd` | On-foot movement, curb step-up, weapons, getting in and out of cars, switching characters |
 | `scripts/wildlife.gd` | Alligators and flamingos in the wetlands |
+| `scripts/interiors.gd` | Enterable bank, store and Reserve; bank and store robberies |
+| `scripts/heli.gd` | The police helicopter |
+| `scripts/phone.gd` | The in-game phone |
+| `scripts/touch.gd` | On-screen controls for touchscreens |
 | `scripts/police.gd` | Wanted level, police AI on the road grid, busting, losing the cops |
 | `scripts/missions.gd` | Mission contacts, story missions and freelance jobs |
 | `scripts/hud.gd` | HUD, minimap, full map, pause menu and title screen |
@@ -108,7 +159,7 @@ It uses the **Forward+** renderer for shadows, fog, glow and SSAO, so it needs a
 ## Tests
 
 ```bash
-godot --headless --path . -s tests/smoke_test.gd                     # 71 checks: driving, police, missions, crew, wildlife...
+godot --headless --path . -s tests/smoke_test.gd                     # 120 checks: driving, police, heist, island, camera...
 xvfb-run godot --path . -s tests/screenshots.gd -- /tmp/shots [shot] # real screenshots
 ```
 

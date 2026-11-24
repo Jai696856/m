@@ -15,6 +15,9 @@ const Pickups := preload("res://scripts/pickups.gd")
 const Fx := preload("res://scripts/fx.gd")
 const Car := preload("res://scripts/car.gd")
 const Wildlife := preload("res://scripts/wildlife.gd")
+const Touch := preload("res://scripts/touch.gd")
+const Interiors := preload("res://scripts/interiors.gd")
+const Phone := preload("res://scripts/phone.gd")
 
 ## "Chirp": the city's social feed reacting to what you do. {car} and {who} get filled in.
 const CHIRP := {
@@ -36,6 +39,11 @@ const CHIRP := {
 	"flamingo": ["the flamingos at the shore got spooked and flew off. who scared the birds??",
 		"flamingo flock lifting off at golden hour. ok the city is pretty sometimes"],
 	"respray": ["the respray place just repainted a car in like 30 seconds. cops drove right past it lol"],
+	"bank": ["BAY BANK IS GETTING ROBBED RIGHT NOW. i was just there for a loan", "alarm going off at bay bank, cops everywhere",
+		"someone walked out of bay bank with a whole bag of cash. who does that"],
+	"heli": ["just watched a police chopper go DOWN downtown. what is happening", "the chopper is circling my block again. go to sleep"],
+	"heist": ["THE SHORELINE RESERVE GOT HIT. gold. actual gold bars", "news chopper says the reserve vault is EMPTY",
+		"biggest heist this city has ever seen and i was at brunch"],
 	"mission": ["word is somebody new is doing jobs for the locals. watch yourselves",
 		"heard a crew just pulled off something big. no names obviously"],
 	"news": ["SHORES NEWS: heat advisory today, 34 degrees on the boardwalk. stay hydrated",
@@ -59,6 +67,9 @@ const RESPRAY_COLORS := [Color(0.7, 0.08, 0.08), Color(0.1, 0.22, 0.55), Color(0
 
 var city
 var wildlife
+var interiors
+var phone
+var waypoint = null       # Vector3 set from the phone, or null
 var player
 var cam
 var traffic
@@ -81,8 +92,11 @@ var state := "play"
 var state_ms := 0
 var hint := ""
 var headless := false
+var touch_mode := false   # phone/tablet: on-screen controls
+var low_spec := false     # web and mobile: lighter settings
+var touch
 var respray_cd := 0.0
-var stats := {"kills": 0, "cars_stolen": 0, "cars_destroyed": 0, "missions": 0, "stunts": 0}
+var stats := {"kills": 0, "cars_stolen": 0, "cars_destroyed": 0, "missions": 0, "stunts": 0, "robberies": 0, "heists": 0}
 var _post_cd := {}
 var ambient_post_t := 20.0
 var air_t := 0.0
@@ -92,6 +106,9 @@ var _air_start := Vector3.ZERO
 
 func _ready() -> void:
 	headless = DisplayServer.get_name() == "headless"
+	var args := OS.get_cmdline_user_args()
+	touch_mode = DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or args.has("--touch")
+	low_spec = OS.has_feature("web") or OS.has_feature("mobile") or args.has("--low")
 	rng.randomize()
 	_setup_input()
 	_setup_environment()
@@ -113,6 +130,9 @@ func _ready() -> void:
 	peds = Peds.new()
 	add_child(peds)
 	peds.setup(self)
+	if low_spec:
+		traffic.target = 14
+		peds.target = 22
 	player = Player.new()
 	add_child(player)
 	player.setup(self)
@@ -133,7 +153,23 @@ func _ready() -> void:
 	wildlife = Wildlife.new()
 	add_child(wildlife)
 	wildlife.setup(self)
+	interiors = Interiors.new()
+	add_child(interiors)
+	interiors.setup(self)
 	hud.setup(self)
+	phone = Phone.new()
+	hud.root.add_child(phone)
+	phone.setup(self)
+	if touch_mode:
+		touch = Touch.new()
+		hud.root.add_child(touch)
+		touch.setup(self)
+	if low_spec:
+		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		sun.directional_shadow_max_distance = 90.0
+		cam.cam.far = 1100.0
+		env.fog_density = 0.0018
 	traffic.initial_spawn()
 	peds.initial_spawn()
 	_update_time(0.0)
@@ -181,15 +217,17 @@ func _setup_input() -> void:
 		"handbrake": [_key(KEY_SPACE), _joy(JOY_BUTTON_A)],
 		"sprint": [_key(KEY_SHIFT), _joy(JOY_BUTTON_LEFT_STICK)],
 		"enter_exit": [_key(KEY_F), _key(KEY_ENTER), _joy(JOY_BUTTON_Y)],
-		"fire": [_mouse(MOUSE_BUTTON_LEFT), _joy(JOY_BUTTON_RIGHT_SHOULDER)],
-		"aim": [_mouse(MOUSE_BUTTON_RIGHT), _joy(JOY_BUTTON_LEFT_SHOULDER)],
-		"next_weapon": [_key(KEY_Q), _mouse(MOUSE_BUTTON_WHEEL_UP), _mouse(MOUSE_BUTTON_WHEEL_DOWN), _joy(JOY_BUTTON_DPAD_RIGHT)],
+		"fire": [_key(KEY_CTRL), _joy(JOY_BUTTON_RIGHT_SHOULDER)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_LEFT)]),
+		"aim": [_joy(JOY_BUTTON_LEFT_SHOULDER)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_RIGHT)]),
+		"next_weapon": [_key(KEY_Q), _joy(JOY_BUTTON_DPAD_RIGHT)] + ([] if touch_mode else [_mouse(MOUSE_BUTTON_WHEEL_UP), _mouse(MOUSE_BUTTON_WHEEL_DOWN)]),
 		"reset_car": [_key(KEY_R), _joy(JOY_BUTTON_DPAD_UP)],
 		"horn": [_key(KEY_H), _joy(JOY_BUTTON_RIGHT_STICK)],
 		"map": [_key(KEY_M), _joy(JOY_BUTTON_BACK)],
 		"radio": [_key(KEY_T), _joy(JOY_BUTTON_DPAD_LEFT)],
 		"pause": [_key(KEY_ESCAPE), _key(KEY_P), _joy(JOY_BUTTON_START)],
 		"switch_hero": [_key(KEY_TAB), _joy(JOY_BUTTON_DPAD_DOWN)],
+		"phone": [_key(KEY_C), _joy(JOY_BUTTON_GUIDE)],
+		"ability": [_key(KEY_V), _joy(JOY_BUTTON_X)],
 	}
 	for action in map:
 		if not InputMap.has_action(action):
@@ -283,8 +321,7 @@ func _update_time(delta: float) -> void:
 	env.ambient_light_energy = lerpf(1.0, 0.5, night)
 	env.ambient_light_color = Color(0.55, 0.6, 0.7).lerp(Color(0.2, 0.25, 0.45), night)
 	env.fog_light_color = hor.lerp(Color(0.62, 0.66, 0.72), 0.45).lerp(Color(0.05, 0.06, 0.12), night * 0.7)
-	env.tonemap_exposure = lerpf(1.0, 1.25, night)
-	RenderingServer.global_shader_parameter_set("night", night)
+	env.tonemap_exposure = lerpf(1.0, 1.25, night) * (0.82 if low_spec else 1.0)
 	city.set_night(night)
 	Car.set_night(night)
 
@@ -304,6 +341,9 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	hint = ""
 	respray_cd -= delta
+	if waypoint != null and player_pos().distance_to(waypoint) < 15.0:
+		waypoint = null
+		hud.notice("You've arrived")
 	if state != "play" or player.in_car == null:
 		air_t = 0.0
 		return
@@ -384,7 +424,40 @@ func player_pos() -> Vector3:
 func all_cars() -> Array:
 	var out: Array = traffic.cars.duplicate()
 	out.append_array(police.cars)
+	for rb in police.roadblocks:
+		if is_instance_valid(rb[0]):
+			out.append(rb[0])
 	return out
+
+
+## The nearest "Press F" action around pos (robberies, heist steps), or {}.
+func find_interaction(pos: Vector3) -> Dictionary:
+	var best := {}
+	var bd := INF
+	for src in [interiors, missions]:
+		var it: Dictionary = src.get_interaction(pos)
+		if not it.is_empty():
+			var d: float = pos.distance_to(it.pos)
+			if d < bd:
+				bd = d
+				best = it
+	return best
+
+
+## Lighter graphics for phones (also switchable from the phone's Settings app).
+func set_low_spec(on: bool) -> void:
+	low_spec = on
+	traffic.target = 14 if on else 26
+	peds.target = 22 if on else 42
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if on else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.directional_shadow_max_distance = 90.0 if on else 220.0
+	cam.cam.far = 1100.0 if on else 2200.0
+
+
+func set_waypoint(pos) -> void:
+	waypoint = pos
+	if pos != null:
+		hud.notice("GPS waypoint set")
 
 
 func get_blips() -> Array:
@@ -395,6 +468,9 @@ func get_blips() -> Array:
 	out.append_array(police.get_blips())
 	out.append_array(missions.get_blips())
 	out.append_array(wildlife.get_blips())
+	out.append_array(interiors.get_blips())
+	if waypoint != null:
+		out.append([waypoint, Color(0.85, 0.35, 1.0), "objective"])
 	if not player.dead:
 		out.append([player.partner_pos, Color(1.0, 0.55, 0.8), "partner"])
 	return out
@@ -452,6 +528,27 @@ func npc_shoot(shooter, target_pos: Vector3) -> void:
 	peds.alert(from, 20.0)
 
 
+func heli_shoot(heli, target_pos: Vector3) -> void:
+	var from: Vector3 = heli.global_position + Vector3(0, -1.2, 0)
+	var aim := target_pos + Vector3(0, 1.0, 0)
+	var hit := rng.randf() < 0.3
+	var end := aim if hit else aim + Vector3(rng.randf_range(-3, 3), 0, rng.randf_range(-3, 3))
+	var q := PhysicsRayQueryParameters3D.create(from, from + (end - from) * 1.1, 1 | 2 | 4)
+	q.exclude = [heli.hitbox.get_rid()]
+	var res := get_world_3d().direct_space_state.intersect_ray(q)
+	var stop: Vector3 = res.position if not res.is_empty() else end
+	fx.tracer(from, stop, Color(1.0, 0.7, 0.4))
+	sfx.play("smg", from, -2.0, 0.9)
+	if not res.is_empty():
+		var c = res.collider
+		if c == player or c == player.in_car:
+			player.take_hit(9.0, heli, stop)
+		elif c != null and c.has_method("take_hit"):
+			c.take_hit(9.0, heli, stop)
+		else:
+			fx.impact(stop)
+
+
 func explode(pos: Vector3, radius: float, by_player: bool, source = null) -> void:
 	fx.explosion(pos)
 	sfx.play("explosion", pos, 6.0)
@@ -502,6 +599,7 @@ func on_car_crash(car, dv: float) -> void:
 func player_died() -> void:
 	if state != "play":
 		return
+	player.stop_ability()
 	state = "wasted"
 	state_ms = Time.get_ticks_msec()
 	Engine.time_scale = 0.35
@@ -514,6 +612,7 @@ func player_died() -> void:
 func player_busted() -> void:
 	if state != "play":
 		return
+	player.stop_ability()
 	state = "busted"
 	state_ms = Time.get_ticks_msec()
 	Engine.time_scale = 0.5
@@ -531,11 +630,14 @@ func _respawn() -> void:
 	var fee := mini(money, 100 + money / 20)
 	money -= fee
 	police.reset()
+	interiors.on_player_down()
 	if busted:
 		player.weapons[1].ammo = 0
 		player.weapon = 0
 	var pos: Vector3 = city.station_pos if busted else city.hospital_pos
 	player.respawn_at(pos)
+	if touch:
+		touch.release_all()
 	cam.yaw = 0.0
 	cam.snap()
 	state = "play"

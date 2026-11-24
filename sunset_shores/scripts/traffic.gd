@@ -26,9 +26,12 @@ class Agent:
 	var honk_cd := 0.0
 	var by_player := 0.0
 	var vel := Vector3.ZERO
+	var hw := false      # on the coastal highway
+	var s := 0.0         # distance along the highway
+	var hdir := 1        # +1 = start -> end, -1 = back
 
 
-const TARGET := 26
+var target := 26
 const TYPES := ["sedan", "sedan", "sedan", "compact", "compact", "suv", "suv", "taxi", "pickup", "van", "sport"]
 const COLORS := [Color(0.92, 0.92, 0.9), Color(0.08, 0.08, 0.09), Color(0.6, 0.62, 0.65), Color(0.35, 0.36, 0.38),
 	Color(0.7, 0.08, 0.08), Color(0.1, 0.22, 0.55), Color(0.1, 0.32, 0.2), Color(0.75, 0.68, 0.52),
@@ -78,8 +81,10 @@ func initial_spawn() -> void:
 			t = TYPES[rng.randi() % TYPES.size()]
 		var c = spawn_car(t, color_for(t), s[0])
 		c.home_spot = true
-	for i in TARGET:
+	for i in target:
 		_spawn_traffic(20.0, 280.0)
+	for i in 6:
+		_spawn_highway_car(40.0, 600.0)
 
 
 # --- lanes ----------------------------------------------------------------------
@@ -93,7 +98,16 @@ func _lane_pt(a: Vector2i, b: Vector2i, at_start: bool) -> Vector3:
 	return (A + d * inset if at_start else B - d * inset) + r * city.LANE_OFF
 
 
+const HWY_NORTH := Vector2i(0, -1)   # virtual node: the highway beyond the city's north-west corner
+const HWY_SOUTH := Vector2i(0, 9)    # ...and beyond the south-west corner
+
+
 func _pick_next(a: Vector2i, b: Vector2i) -> Vector2i:
+	# carrying straight on up/down the beach road at a corner joins the coastal highway
+	if b == Vector2i(0, 0) and a == Vector2i(0, 1) and rng.randf() < 0.5:
+		return HWY_NORTH
+	if b == Vector2i(0, city.N) and a == Vector2i(0, city.N - 1) and rng.randf() < 0.5:
+		return HWY_SOUTH
 	var opts: Array[Vector2i] = []
 	var straight := b + (b - a)
 	for n in city.neighbors(b):
@@ -137,6 +151,14 @@ func _eval(ag: Agent) -> Vector3:
 		return ag.p0.lerp(ag.p2, t)
 	var u := 1.0 - t
 	return ag.p0 * u * u + ag.p1 * 2.0 * u * t + ag.p2 * t * t
+
+
+func _eval_end(ag: Agent) -> Vector3:
+	var t := ag.t
+	ag.t = 1.0
+	var p := _eval(ag)
+	ag.t = t
+	return p
 
 
 func _tangent(ag: Agent) -> Vector3:
@@ -203,9 +225,12 @@ func _physics_process(delta: float) -> void:
 	for car in gone:
 		_despawn(car)
 	spawn_cd -= delta
-	if agents.size() < TARGET and spawn_cd <= 0.0:
+	if agents.size() < target and spawn_cd <= 0.0:
 		spawn_cd = 0.25
-		_spawn_traffic(120.0, 260.0)
+		if rng.randf() < 0.3:
+			_spawn_highway_car(120.0, 260.0)
+		else:
+			_spawn_traffic(120.0, 260.0)
 	cleanup_cd -= delta
 	if cleanup_cd <= 0.0:
 		cleanup_cd = 2.0
@@ -275,6 +300,9 @@ func _blocked(pos: Vector3, fwd: Vector3, include_cars: bool) -> Vector2:
 
 
 func _drive(ag: Agent, delta: float) -> void:
+	if ag.hw:
+		_drive_highway(ag, delta)
+		return
 	var car = ag.car
 	var pos: Vector3 = car.global_position
 	var fwd := _tangent(ag)
@@ -310,6 +338,10 @@ func _drive(ag: Agent, delta: float) -> void:
 		guard += 1
 		var over := (ag.t - 1.0) * ag.length
 		if ag.turning:
+			if not city.in_grid(ag.c):
+				_enter_highway(ag)
+				_drive_highway(ag, 0.0)
+				return
 			ag.a = ag.b
 			ag.b = ag.c
 			ag.c = _pick_next(ag.a, ag.b)
@@ -320,6 +352,95 @@ func _drive(ag: Agent, delta: float) -> void:
 	var tg := _tangent(ag)
 	ag.vel = tg * ag.speed
 	car.rail_move(Transform3D(Util.look_basis(tg), _eval(ag)), ag.speed)
+
+
+# --- coastal highway traffic ------------------------------------------------------------
+
+func _enter_highway(ag: Agent) -> void:
+	var t = city.terrain
+	ag.hw = true
+	if ag.c == HWY_NORTH:
+		ag.s = 0.0
+		ag.hdir = 1
+	else:
+		ag.s = t.hwy_length()
+		ag.hdir = -1
+	ag.max_speed = rng.randf_range(18.0, 24.0)
+
+
+func _leave_highway(ag: Agent) -> void:
+	ag.hw = false
+	ag.max_speed = rng.randf_range(10.0, 15.0)
+	if ag.hdir > 0:
+		ag.a = HWY_SOUTH
+		ag.b = Vector2i(0, city.N)
+	else:
+		ag.a = HWY_NORTH
+		ag.b = Vector2i(0, 0)
+	ag.c = _pick_next(ag.a, ag.b)
+	while not city.in_grid(ag.c):
+		ag.c = _pick_next(ag.a, ag.b)
+	_set_turn(ag)
+	ag.t = 0.0
+
+
+func _hwy_pose(ag: Agent) -> Array:
+	var r: Array = city.terrain.hwy_at(ag.s)
+	var tangent: Vector3 = (r[1] as Vector3) * ag.hdir
+	var right := Vector3(-tangent.z, 0, tangent.x)
+	return [(r[0] as Vector3) + right * city.LANE_OFF, tangent]
+
+
+func _drive_highway(ag: Agent, delta: float) -> void:
+	var car = ag.car
+	var pose := _hwy_pose(ag)
+	var fwd: Vector3 = pose[1]
+	var desired := ag.max_speed
+	ag.ignore -= delta
+	var blk := _blocked(car.global_position, fwd, ag.ignore <= 0.0)
+	if blk.x >= 0.0:
+		desired = minf(desired, maxf(0.0, (blk.x - 8.0) * 1.4))
+	ag.speed = move_toward(ag.speed, desired, (12.0 if desired < ag.speed else 4.0) * delta)
+	if ag.speed < 0.3 and desired < 0.3:
+		ag.stuck += delta
+		if ag.stuck > 4.0:
+			ag.ignore = 2.5
+			ag.stuck = 0.0
+	ag.s += ag.speed * delta * ag.hdir
+	var L: float = city.terrain.hwy_length()
+	if (ag.hdir > 0 and ag.s >= L) or (ag.hdir < 0 and ag.s <= 0.0):
+		_leave_highway(ag)
+		var tg := _tangent(ag)
+		ag.vel = tg * ag.speed
+		car.rail_move(Transform3D(Util.look_basis(tg), _eval(ag)), ag.speed)
+		return
+	pose = _hwy_pose(ag)
+	ag.vel = (pose[1] as Vector3) * ag.speed
+	car.rail_move(Transform3D(Util.look_basis(pose[1]), pose[0]), ag.speed)
+
+
+func _spawn_highway_car(min_d: float, max_d: float) -> bool:
+	var pp: Vector3 = game.player_pos()
+	var L: float = city.terrain.hwy_length()
+	for attempt in 8:
+		var ag := Agent.new()
+		ag.hw = true
+		ag.s = rng.randf_range(40.0, L - 40.0)
+		ag.hdir = 1 if rng.randf() < 0.5 else -1
+		var pose := _hwy_pose(ag)
+		var pos: Vector3 = pose[0]
+		var d := pos.distance_to(pp)
+		if d < min_d or d > max_d or _too_close(pos, 18.0):
+			continue
+		var t: String = TYPES[rng.randi() % TYPES.size()]
+		var car = spawn_car(t, color_for(t), Transform3D(Util.look_basis(pose[1]), pos))
+		car.make_traffic()
+		ag.car = car
+		ag.max_speed = rng.randf_range(18.0, 24.0)
+		ag.speed = ag.max_speed * 0.8
+		agents[car] = ag
+		return true
+	return false
 
 
 func _is_turn_corner(ag: Agent) -> bool:
