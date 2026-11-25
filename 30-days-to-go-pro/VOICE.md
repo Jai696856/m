@@ -17,3 +17,11 @@ ElevenLabs free characters ran out, so from Day 9 the narration uses Fish Audio:
 
 ## Recurring cast
 - **Lana** (from Day 9): golden puppy with a red collar and gold tag, Marcus's companion for the rest of the story — named in honor of @jetdabest1's dog. Draw with `dog(x, y, scale, t, state, face)` in engine/comic.js (states: sit, run, wet, sad).
+
+## Current voice (Day 9 onward): VoiceStudio
+The user switched to VoiceStudio (github.com/debpalash/VoiceStudio). Its OmniVoice engine clones
+the Days 3–8 narrator from `audio/voicestudio/ref-narrator.wav` (7.8s from Day 8).
+- Setup: venv with torch, torchaudio, transformers>=5.10, accelerate, soundfile; VoiceStudio cloned to
+  /home/user/debpalash/voicestudio (set VOICESTUDIO to override). Model k2-fsa/OmniVoice from Hugging Face.
+- Run: `python engine/vs_tts.py day-NN.json audio/voicestudio/day-NN-vs.wav` (~7s per second of audio on CPU),
+  then loudnorm to audio/day-NN.mp3 and copy the starts from `<wav>.chunks.json` into each chunk's `at`.
