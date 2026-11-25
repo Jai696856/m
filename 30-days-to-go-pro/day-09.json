@@ -1,0 +1,31 @@
+{
+  "day": 9,
+  "title": "Day 9: Lana",
+  "style": "comic",
+  "render3d": true,
+  "silence_db": -34,
+  "silence_min": 0.12,
+  "optionsTitle": ["DAY 10:", "MONEY FOR THE TRIP"],
+  "ctaComment": "A or B? 🐶👇",
+  "comments": {"lana": {"handle": "@jetdabest1", "text": "Hey stories, can you shout me out, I was following since day one and my dog had just passed away, her name was Lana and she was the best. It's okay if you don't", "likes": "", "ago": "17h", "color": "#5c6bc0"}},
+  "statsBefore": [["SPD", 30], ["SHO", 32], ["PAS", 34], ["DRI", 34], ["DEF", 22], ["PHY", 25]],
+  "statsAfter": [["SPD", 30, ""], ["SHO", 35, "Physical"], ["PAS", 37, "Passing"], ["DRI", 34, ""], ["DEF", 24, "Physical"], ["PHY", 30, "Physical"]],
+  "upBursts": [["+3 PAS", "Passing", "#2196f3"], ["+5 PHY", "Physical", "#e74c3c"]],
+  "ovrBefore": 30,
+  "ovrAfter": 32,
+  "chunks": [
+    {"scene": "tribute", "text": "Before we start... jetdabest1 has been here since day one. Their dog Lana just passed away. She was the best. This episode is for Lana."},
+    {"scene": "telldez", "text": "Day nine. You voted B... tell Dez first. So I ran to the groundskeeper's shed and told him everything. The legend. The fifty likes. Barcelona."},
+    {"scene": "dezwarn", "text": "He didn't smile. He just said: Barcelona doesn't want tricks. They want a player."},
+    {"scene": "rain", "text": "That night it was raining at the street pitch. Then I heard something by the fence. A little puppy. Soaked. Alone."},
+    {"scene": "naming", "text": "I gave her half my sandwich. She wouldn't leave my side. So I named her Lana."},
+    {"scene": "buddy", "text": "Now she comes to every session. Dez says she has a better first touch than me."},
+    {"scene": "brutal", "text": "Training with Dez was brutal. Weak foot only. First touch under pressure. Then shots until my legs gave out. Lana chased every single ball back."},
+    {"scene": "midnight", "text": "At midnight Dez finally smiled. When you go to Barcelona... I'm coming with you."},
+    {"scene": "upgradeG", "text": "Card check. Passing: thirty-four to thirty-seven. Physical: twenty-five to thirty. Overall... thirty-two!"},
+    {"scene": "broke", "text": "But Barcelona is far... and I've got thirty dollars left."},
+    {"scene": "options", "letter": "A", "title": "TOURNAMENT", "sub": "Win the prize money", "icon": "tourney", "text": "Option A: I enter a street tournament to win the money for the trip."},
+    {"scene": "options", "letter": "B", "title": "PART-TIME JOB", "sub": "Work days, train at night", "icon": "job", "text": "Option B: I take a part-time job and train at night."},
+    {"scene": "cta3", "text": "Comment A or B. Day ten."}
+  ]
+}

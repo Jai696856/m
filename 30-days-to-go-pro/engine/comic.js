@@ -1724,3 +1724,156 @@ cam3d = function (t, seg) {
     default: return _cam3d_d7(t, seg);
   }
 };
+
+// ===================================================================== DAY 9: LANA (companion dog)
+function dog(x, y, s, t, state = 'sit', face = 1, opts = {}) {
+  const run = state === 'run', wet = state === 'wet', sad = state === 'sad' || wet;
+  const fur = opts.fur || '#d9a066', furD = opts.furD || '#b07a3e', chest = '#fff4e0';
+  const wag = Math.sin(t * (sad ? 3 : 16)) * (sad ? 6 : 22), bob = run ? Math.abs(Math.sin(t * 14)) * 8 : 0, shiver = wet ? Math.sin(t * 60) * 2 : 0;
+  const leg = k => run ? Math.sin(t * 14 + k) * 16 : 0;
+  let g = `<g transform="translate(${x + shiver},${y - bob}) scale(${s * face},${s})">
+  <ellipse cx="0" cy="${6 + bob}" rx="70" ry="11" fill="#0a1432" opacity=".35"/>
+  <g transform="rotate(${-30 + wag} -60 -70)"><path d="M-62,-72 Q-110,-110 -96,-140" stroke="${furD}" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M-62,-72 Q-110,-110 -96,-140" stroke="${INK}" stroke-width="22" fill="none" stroke-linecap="round" opacity=".0"/></g>`;
+  for (const [lx, k] of [[-40, 0], [-20, 2], [24, 1], [44, 3]]) g += `<path d="M${lx},-40 L${lx + leg(k)},-2" stroke="${INK}" stroke-width="22" stroke-linecap="round"/><path d="M${lx},-40 L${lx + leg(k)},-2" stroke="${lx < 0 ? furD : fur}" stroke-width="14" stroke-linecap="round"/>`;
+  g += `<ellipse cx="0" cy="-62" rx="66" ry="36" fill="${fur}" ${ink(6)}/><path d="M10,-40 Q40,-30 58,-56 Q40,-70 10,-62Z" fill="${chest}"/>`;
+  // head
+  const hy = sad ? -98 : -112, hx = 56;
+  g += `<g transform="translate(${hx},${hy})">
+    <path d="M-30,-20 Q-52,-6 -40,28 Q-26,24 -22,-6Z" fill="${furD}" ${ink(5)}/>
+    <circle cx="0" cy="0" r="38" fill="${fur}" ${ink(6)}/>
+    <ellipse cx="26" cy="12" rx="22" ry="16" fill="${chest}" ${ink(4)}/><ellipse cx="42" cy="6" rx="8" ry="6" fill="${INK}"/>
+    <path d="M18,-34 Q34,-60 40,-28Z" fill="${furD}" ${ink(5)}/>
+    ${opts.blink ? `<path d="M2,-6 h14" ${ink(4)}/>` : `<circle cx="10" cy="-6" r="7" fill="${INK}"/><circle cx="12" cy="-8" r="2.5" fill="#fff"/>`}
+    ${sad ? `<path d="M2,-20 L18,-14" ${ink(4)}/>` : `<path d="M28,26 Q34,40 42,26" fill="#ff7b9c" ${ink(3)}/>`}
+    ${wet ? `<path d="M-10,-44 q4,8 0,12 q-4,-4 0,-12Z M24,-46 q4,8 0,12 q-4,-4 0,-12Z" fill="#7fd3ff"/>` : ''}
+  </g>
+  <path d="M24,-88 Q48,-70 72,-84" stroke="#e53935" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="50" cy="-72" r="8" fill="#ffd54f" ${ink(3)}/>`;
+  if (opts.halo) g += `<ellipse cx="${hx}" cy="${hy - 54}" rx="34" ry="9" fill="none" stroke="#ffe082" stroke-width="7"/>`;
+  return g + '</g>';
+}
+function rainFX(t, op = 0.5) {
+  let s = `<g opacity="${op}" stroke="#bcd7ff" stroke-width="3" stroke-linecap="round">`;
+  for (let i = 0; i < 90; i++) { const x = (i * 137 + t * 900) % 1180 - 50, y = ((i * 251) % 1920 + t * 1400) % 1920; s += `<path d="M${x},${y} l-14,40"/>`; }
+  return s + '</g>';
+}
+
+function sTribute(t, seg) {
+  const lt = t - seg.t0, tL = kw(seg, 'Lana');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0b0d1a" opacity=".82"/>`;
+  s += commentCard(540, 230, 960, EP.comments.lana, seg.t0 + 0.1, t, ['Lana', 'she was the best']);
+  const p = eo((t - tL + 0.2) / 1.0);
+  if (p > 0) {
+    s += `<g opacity="${p}"><circle cx="540" cy="1180" r="300" fill="#ffe082" opacity=".12" filter="url(#b30)"/>
+      ${dog(500, 1330, 1.7, t, 'sit', 1, { halo: true, blink: blinking(t, 1) })}
+      ${ctext(540, 1500, '🕊️ IN MEMORY OF LANA', 64, '#fff')}<text x="540" y="1580" font-family="${FONT}" font-size="38" font-weight="700" fill="#c9ced9" text-anchor="middle">she was the best · for @jetdabest1</text></g>`;
+    s += sparkles(540, 1180, t, tL, 6, 300, '#ffe082');
+  }
+  return s;
+}
+function sTellDez(t, seg) {
+  let s = COMIC_DEFS + bgRect('cDusk');
+  s += burst(540, 330, 'DAY 9', 140, Y, seg.t0, t, -5);
+  const tB = kw(seg, 'voted');
+  if (t > tB) s += `<g transform="translate(540,540) scale(${eb((t - tB) / 0.4)})" filter="url(#dsh)"><rect x="-300" y="-58" width="600" height="116" rx="58" fill="#e74c3c" ${ink(8)}/>${ctext(0, 4, 'B: TELL DEZ ✓', 54, '#fff')}</g>`;
+  [['legend', 'THE LEGEND ⭐', '#7c4dff'], ['fifty', '50 LIKES ❤️', RED], ['Barcelona', 'BARCELONA 🏟️', '#a50044']].forEach(([k, l, c], i) => s += burst(i === 1 ? 760 : 320, 760 + i * 150, l, 54, c, kw(seg, k), t, i % 2 ? 5 : -5));
+  s += `<rect x="760" y="1300" width="300" height="420" fill="#5d4037" ${ink(7)}/><path d="M740,1310 L910,1200 L1080,1310Z" fill="#3e2723" ${ink(7)}/><rect x="860" y="1500" width="110" height="220" fill="#8d6e63" ${ink(5)}/>`;
+  s += athlete(700, 1780, 0.9, 'dez', pose('arms', t), t, -1, blinking(t, .5));
+  s += athlete(300, 1780, 0.95, 'marcus', pose(t > kw(seg, 'told') ? 'celebrate' : 'run', t), t, 1);
+  return s;
+}
+function sDezWarn(t, seg) {
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0b0d1a" opacity=".55"/>`;
+  s += athlete(540, 1790, 1.3, 'dez', pose('arms', t), t, -1, blinking(t, 1.1));
+  s += bubble(540, 620, '"BARCELONA DOESN\'T WANT TRICKS."', kw(seg, 'Barcelona') - 0.1, t, 46);
+  s += bubble(540, 880, '"THEY WANT A PLAYER."', kw(seg, 'want', 2) - 0.1, t, 56);
+  return s;
+}
+function sRain(t, seg) {
+  const tH = kw(seg, 'heard'), tP = kw(seg, 'puppy');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".35"/>`;
+  s += captionBox(540, 330, 'THAT NIGHT · RAIN 🌧️', seg.t0, t, '#1a1d24', '#c9ced9');
+  s += athlete(300, 1780, 0.95, 'marcus', { ...pose('idle', t), expr: t > tH ? 'det' : 'sad' }, t, 1);
+  if (t > tH) s += burst(760, 900, '…whimper?', 50, '#455a64', tH, t, 4);
+  if (t > tP - 0.3) s += `<g opacity="${eo((t - tP + 0.3) / 0.6)}">${dog(780, 1760, 1.45, t, 'wet', -1, { furD: '#8a5a2b', fur: '#b98546' })}</g>`;
+  s += burst(760, 1150, 'SOAKED. ALONE. 💧', 52, '#2196f3', kw(seg, 'Soaked'), t, -4);
+  return s + rainFX(t, 0.55);
+}
+function sNaming(t, seg) {
+  const tN = kwN(seg, 'lana');
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".2"/>`;
+  s += athlete(330, 1780, 0.95, 'marcus', pose(t > tN ? 'celebrate' : 'idle', t), t, 1, blinking(t));
+  s += dog(lerp(860, 640, eo(clamp((t - seg.t0) / 2))), 1770, 1.45, t, t > kw(seg, 'leave') ? 'sit' : 'sad', -1, { blink: blinking(t, 2) });
+  if (t < kw(seg, 'leave')) s += `<g transform="translate(470,1560) rotate(-12)"><rect x="-50" y="-22" width="100" height="44" rx="14" fill="#ffcc80" ${ink(5)}/><path d="M-44,-4 h88" stroke="#66bb6a" stroke-width="8"/></g>`;
+  s += burst(540, 620, 'SHE WON\'T LEAVE MY SIDE 🐾', 50, '#ff8a65', kw(seg, 'leave'), t, -3);
+  if (t > tN) s += `<g transform="translate(540,880) scale(${eb((t - tN) / 0.45)})" filter="url(#dsh)"><rect x="-270" y="-80" width="540" height="160" rx="50" fill="#fff" ${ink(8)}/>${ctext(0, 4, 'LANA 🐶', 96, '#ff7043')}</g>` + sparkles(540, 880, t, tN, 7, 300, '#ffe082');
+  return s;
+}
+function sBuddy(t, seg) {
+  let s = COMIC_DEFS;
+  s += captionBox(540, 330, 'NEW TRAINING PARTNER 🐾', seg.t0, t, '#ff8a65', '#fff');
+  const ph = (t * 0.7) % 1, bx = lerp(260, 860, Math.sin(ph * Math.PI));
+  s += athlete(240, 1780, 0.9, 'marcus', pose('idle', t), t, 1);
+  s += comicBall(bx, 1720 - Math.abs(Math.sin(ph * Math.PI * 3)) * 80, 26, t * 500);
+  s += dog(bx - 80, 1770, 1.25, t, 'run', bx > 560 ? 1 : -1);
+  s += athlete(900, 1700, 0.75, 'dez', pose('arms', t), t, -1);
+  s += bubble(560, 1050, '"BETTER FIRST TOUCH THAN YOU 😂"', kw(seg, 'better') - 0.2, t, 40);
+  return s;
+}
+function sBrutal(t, seg) {
+  const items = [['Weak', 'WEAK FOOT ONLY 🦶', '#2196f3'], ['First', 'FIRST TOUCH UNDER PRESSURE', '#7c4dff'], ['shots', 'SHOTS TILL LEGS GIVE OUT', RED]];
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#0a1030" opacity=".18"/>`;
+  s += captionBox(540, 330, 'BRUTAL 😤', seg.t0, t, '#1a1d24', '#f4b41a');
+  items.forEach(([k, l, c], i) => { const a = kw(seg, k); if (t > a) s += `<g transform="translate(540,${470 + i * 120}) scale(${eb((t - a) / 0.35)})" filter="url(#dsh)"><rect x="-370" y="-48" width="740" height="96" rx="48" fill="${c}" ${ink(6)}/>${ctext(0, 2, l, 44, '#fff')}</g>`; });
+  const cyc = (t * 1.1) % 1;
+  s += goalFrame(820, 1, cyc > 0.55 && cyc < 0.7 ? 20 : 0);
+  s += athlete(300, 1770, 0.95, 'marcus', pose('strike', t, clamp(cyc / 0.6)), t, 1);
+  const bf = clamp((cyc - 0.4) / 0.3), back = clamp((cyc - 0.7) / 0.3);
+  s += comicBall(cyc < 0.7 ? lerp(400, 1000, bf) : lerp(1000, 420, back), cyc < 0.7 ? lerp(1735, 1500, bf) : 1735, 24, t * 900);
+  if (cyc > 0.7) s += dog(lerp(960, 500, back), 1780, 1.15, t, 'run', -1);
+  else s += dog(580, 1790, 1.15, t, 'sit', 1);
+  s += burst(540, 1080, 'LANA FETCHES EVERY BALL 🐶', 46, '#ff8a65', kw(seg, 'chased'), t, -3);
+  return s;
+}
+function sMidnight(t, seg) {
+  let s = COMIC_DEFS + `<rect width="${W}" height="${H}" fill="#05070f" opacity=".5"/>`;
+  s += `<g transform="translate(540,330)" filter="url(#dsh)"><rect x="-170" y="-56" width="340" height="112" rx="24" fill="#1a1d24" ${ink(6)}/>${ctext(0, 2, '12:00 AM', 60, '#f4b41a')}</g>`;
+  s += athlete(700, 1780, 1.05, 'dez', { ...pose('arms', t), expr: t > kw(seg, 'smiled') ? 'happy' : 'det' }, t, -1);
+  s += athlete(300, 1780, 0.95, 'marcus', pose(t > kw(seg, 'smiled') + 1.5 ? 'celebrate' : 'idle', t), t, 1);
+  s += dog(500, 1800, 1.1, t, 'sit', 1);
+  s += bubble(620, 820, '"I\'M COMING WITH YOU."', kw(seg, 'smiled') + 0.8, t, 56);
+  return s;
+}
+function sBroke(t, seg) {
+  let s = COMIC_DEFS + bgRect('cBlue');
+  s += `<g transform="translate(540,600)" filter="url(#dsh)"><rect x="-360" y="-150" width="720" height="300" rx="40" fill="#fff" ${ink(9)}/>
+    <text x="0" y="-80" font-family="${FONT}" font-size="40" font-weight="900" fill="#555" text-anchor="middle">TRIP TO BARCELONA ✈️</text>
+    ${ctext(-170, 30, '$1,200', 80, RED)}${ctext(20, 30, 'vs', 44, '#111')}${t > kw(seg, 'got') ? ctext(190, 30, '$30', 80, '#2e7d32') : ctext(190, 30, '?', 80, '#999')}</g>`;
+  s += burst(700, 860, 'I HAVE $30 😬', 60, '#2e7d32', kw(seg, 'got'), t, 6);
+  s += athlete(400, 1780, 0.95, 'marcus', pose('sad', t), t, 1);
+  s += dog(680, 1790, 1.2, t, 'sad', -1);
+  return s;
+}
+function artTourney(t) {
+  return `<rect width="420" height="392" fill="#3a1c71"/><rect y="250" width="420" height="142" fill="#c0603a"/>
+  <path d="M150,70 h120 v40 q0,60 -60,70 q-60,-10 -60,-70Z" fill="#ffd54f" stroke="#111" stroke-width="5"/><rect x="190" y="180" width="40" height="30" fill="#ffd54f" stroke="#111" stroke-width="4"/>
+  ${txt(210, 110, '$', 50, '#111')}${athlete(110, 385, 0.36, 'marcus10', pose('dribble', t), t, 1)}${dog(330, 385, 0.3, t, 'run', -1)}`;
+}
+function artJob(t) {
+  return `<rect width="420" height="392" fill="#263238"/><rect x="40" y="90" width="340" height="170" rx="10" fill="#455a64" stroke="#111" stroke-width="5"/>
+  ${txt(210, 150, '🍔 BURGER SPOT', 30, '#ffd54f')}${athlete(150, 385, 0.38, 'marcus', pose('idle', t), t, 1)}${txt(320, 340, '🌙', 50, '#fff')}${dog(260, 385, 0.28, t, 'sit', 1)}`;
+}
+Object.assign(SCENES, { tribute: sTribute, telldez: sTellDez, dezwarn: sDezWarn, rain: sRain, naming: sNaming, buddy: sBuddy, brutal: sBrutal, midnight: sMidnight, broke: sBroke });
+const _cam3d_d8 = cam3d;
+cam3d = function (t, seg) {
+  switch (seg.scene) {
+    case 'tribute': return { cam: 'wide', t, blur: true, night: true };
+    case 'telldez': return { cam: 'juggle', x: 40, t, k: 0.6, blur: true };
+    case 'dezwarn': return { cam: 'juggle', x: 40, t, k: 0.8, blur: true, night: true };
+    case 'rain': case 'naming': return { cam: 'juggle', x: 60, t, k: clamp((t - seg.t0) / 8), night: true };
+    case 'buddy': return { cam: 'juggle', x: 70, t, k: 0.4 };
+    case 'brutal': return { cam: 'juggle', x: 80, t, k: 0.5, night: true };
+    case 'midnight': return { cam: 'wide', t, blur: true, night: true };
+    case 'broke': return { cam: 'wide', t, blur: true };
+    default: return _cam3d_d8(t, seg);
+  }
+};
