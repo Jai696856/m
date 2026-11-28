@@ -138,11 +138,22 @@ function build() {
     const b = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, 6), new THREE.MeshLambertMaterial({ map: bldTex, color: 0xcfd6ff }));
     add(b, x, hgt / 2, -45 - rnd() * 15, false);
   }
+
+  // five-a-side cage goals (Day 10+): goal mouths at x = -108 and -72, centred on z = -1
+  const postW = toon(0xffffff), netM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, wireframe: true });
+  for (const [gx, dir] of [[-108, -1], [-72, 1]]) {
+    for (const z of [-3.5, 1.5]) add(outline(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.1, 10), postW), 1.25), gx, 1.05, z);
+    const bar = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.0, 10), postW), 1.25); bar.rotation.x = Math.PI / 2; add(bar, gx, 2.1, -1);
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(5, 2.1, 10, 5), netM); back.rotation.y = Math.PI / 2; add(back, gx + dir * 1.4, 1.05, -1, false);
+    for (const z of [-3.5, 1.5]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.1, 3, 5), netM); add(side, gx + dir * 0.7, 1.05, z, false); }
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 5, 3, 10), netM); top.rotation.x = Math.PI / 2; add(top, gx + dir * 0.7, 2.1, -1, false);
+  }
 }
 
 function camPose(o) {
   const x = o.x || 0, t = o.t || 0;
   switch (o.cam) {
+    case 'free': return { pos: o.pos, look: o.look, fov: o.fov || 50, up: o.up };
     case 'juggle': return { pos: [x + Math.sin(t * 0.3) * 0.4, 1.7, 9.5 - (o.k || 0) * 1.2], look: [x, 1.9, -2], fov: 50 };
     case 'track': return { pos: [x - 1.5, 1.6, 10], look: [x + 3, 2.0, -3], fov: 55 };
     case 'goal': return { pos: [-1.5, 1.8, 10], look: [3.5, 2.0, -4], fov: 52 };
@@ -177,9 +188,19 @@ window.bg3d = {
     this.setNight(!!o.night);
     const p = camPose(o);
     camera.fov = p.fov; camera.updateProjectionMatrix();
+    camera.up.set(...(p.up || [0, 1, 0]));
     camera.position.set(...p.pos); camera.lookAt(...p.look);
+    camera.updateMatrixWorld();
     renderer.domElement.style.filter = o.blur ? 'blur(7px) brightness(.75) saturate(1.1)' : 'none';
     renderer.render(scene, camera);
+  },
+  // world point -> SVG pixel coords (1080x1920) + pixels-per-metre at that point
+  project(x, y, z) {
+    const v = new THREE.Vector3(x, y, z).project(camera), u = new THREE.Vector3(x, y + 1, z).project(camera);
+    const sx = (v.x + 1) / 2 * 1080, sy = (1 - v.y) / 2 * 1920, uy = (1 - u.y) / 2 * 1920;
+    const d = camera.position.distanceTo(new THREE.Vector3(x, y, z));
+    const ppm = 1920 / (2 * d * Math.tan(camera.fov * Math.PI / 360));
+    return { x: sx, y: sy, ppm: Math.max(Math.abs(sy - uy), ppm * 0.2), ppmTrue: ppm, d, behind: v.z > 1 };
   },
 };
 window.bg3d.init();

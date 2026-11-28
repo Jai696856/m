@@ -1,0 +1,364 @@
+{
+ "day": 10,
+ "title": "Day 10: The Night Shift",
+ "style": "comic",
+ "render3d": true,
+ "words_file": "audio/voicestudio/day-10-vs.wav.words.json",
+ "voices": {
+  "marcus": "narrator clone",
+  "dez": "designed: male, elderly, very low pitch",
+  "bigmike": "designed: male, middle-aged, low pitch",
+  "tasha": "designed: female, young adult"
+ },
+ "optionsTitle": [
+  "DAY 11:",
+  "WHAT NEXT?"
+ ],
+ "ctaComment": "A, B or the secret C? 🔒👇",
+ "teams": [
+  "TASHA'S",
+  "NIGHT OWLS"
+ ],
+ "statsBefore": [
+  [
+   "SPD",
+   30
+  ],
+  [
+   "SHO",
+   35
+  ],
+  [
+   "PAS",
+   37
+  ],
+  [
+   "DRI",
+   34
+  ],
+  [
+   "DEF",
+   24
+  ],
+  [
+   "PHY",
+   30
+  ]
+ ],
+ "statsAfter": [
+  [
+   "SPD",
+   30,
+   ""
+  ],
+  [
+   "SHO",
+   35,
+   ""
+  ],
+  [
+   "PAS",
+   37,
+   ""
+  ],
+  [
+   "DRI",
+   37,
+   "Dribbling"
+  ],
+  [
+   "DEF",
+   24,
+   ""
+  ],
+  [
+   "PHY",
+   34,
+   "Physical"
+  ]
+ ],
+ "upBursts": [
+  [
+   "+4 PHY",
+   "Physical",
+   "#e74c3c"
+  ],
+  [
+   "+3 DRI",
+   "Dribbling",
+   "#7c4dff"
+  ]
+ ],
+ "ovrBefore": 32,
+ "ovrAfter": 34,
+ "chunks": [
+  {
+   "scene": "d10open",
+   "lines": [
+    [
+     "marcus",
+     "Day ten. You voted B... the part-time job. Big Mike's Burgers. Twelve dollars an hour."
+    ]
+   ],
+   "text": "Day ten. You voted B... the part-time job. Big Mike's Burgers. Twelve dollars an hour."
+  },
+  {
+   "scene": "bigmike",
+   "lines": [
+    [
+     "bigmike",
+     "You're late, rookie. Grill. Fries. Mop. Move it!"
+    ],
+    [
+     "marcus",
+     "First shift. Ten hours. Grease everywhere."
+    ]
+   ],
+   "text": "You're late, rookie. Grill. Fries. Mop. Move it! First shift. Ten hours. Grease everywhere."
+  },
+  {
+   "scene": "shift",
+   "lines": [
+    [
+     "marcus",
+     "Between orders I juggled a balled-up napkin. Lana waited by the window all day."
+    ]
+   ],
+   "text": "Between orders I juggled a balled-up napkin. Lana waited by the window all day."
+  },
+  {
+   "scene": "tasha",
+   "lines": [
+    [
+     "marcus",
+     "Then a coworker caught me."
+    ],
+    [
+     "tasha",
+     "Yo, new guy. You juggle like you actually play. Midnight. The cage. Five-a-side."
+    ]
+   ],
+   "text": "Then a coworker caught me. Yo, new guy. You juggle like you actually play. Midnight. The cage. Five-a-side."
+  },
+  {
+   "scene": "nightdrone",
+   "gapAfter": 3,
+   "view": "drone",
+   "lines": [
+    [
+     "marcus",
+     "After my shift, Dez trained me under the streetlight. From above, every cone was a defender."
+    ]
+   ],
+   "text": "After my shift, Dez trained me under the streetlight. From above, every cone was a defender."
+  },
+  {
+   "scene": "nightlow",
+   "gapAfter": 2,
+   "view": "low",
+   "lines": [
+    [
+     "dez",
+     "Tired legs teach you the most. Again."
+    ],
+    [
+     "marcus",
+     "Down low, all I could see was the ball."
+    ]
+   ],
+   "text": "Tired legs teach you the most. Again. Down low, all I could see was the ball."
+  },
+  {
+   "scene": "cagecard",
+   "lines": [
+    [
+     "marcus",
+     "Midnight. The cage. Tasha's crew versus the Night Owls. First to three."
+    ]
+   ],
+   "text": "Midnight. The cage. Tasha's crew versus the Night Owls. First to three."
+  },
+  {
+   "scene": "cage",
+   "play": "cg1",
+   "view": "side",
+   "gapAfter": 4,
+   "score": [
+    0,
+    0
+   ],
+   "lines": [
+    [
+     "marcus",
+     "Kick off. They scored first. Fast."
+    ]
+   ],
+   "text": "Kick off. They scored first. Fast."
+  },
+  {
+   "scene": "cage",
+   "play": "cg2",
+   "view": "drone",
+   "gapAfter": 4,
+   "score": [
+    0,
+    1
+   ],
+   "lines": [
+    [
+     "marcus",
+     "Then I saw it from above... the gap behind their defender."
+    ]
+   ],
+   "text": "Then I saw it from above... the gap behind their defender."
+  },
+  {
+   "scene": "cage",
+   "play": "cg3",
+   "view": "low",
+   "gapAfter": 4,
+   "score": [
+    1,
+    1
+   ],
+   "lines": [
+    [
+     "marcus",
+     "Weak foot. Just like Dez taught me."
+    ]
+   ],
+   "text": "Weak foot. Just like Dez taught me."
+  },
+  {
+   "scene": "cage",
+   "play": "cg4",
+   "view": "goal",
+   "gapAfter": 4,
+   "score": [
+    2,
+    1
+   ],
+   "lines": [
+    [
+     "marcus",
+     "Next goal wins."
+    ]
+   ],
+   "text": "Next goal wins."
+  },
+  {
+   "scene": "cage",
+   "play": "cg4",
+   "view": "replay",
+   "gapAfter": 2,
+   "score": [
+    2,
+    1
+   ],
+   "lines": [
+    [
+     "marcus",
+     "Watch it again."
+    ]
+   ],
+   "text": "Watch it again."
+  },
+  {
+   "scene": "cagewon",
+   "lines": [
+    [
+     "tasha",
+     "You're on the team, new guy."
+    ],
+    [
+     "marcus",
+     "And the cage pays winners. Forty dollars each."
+    ]
+   ],
+   "text": "You're on the team, new guy. And the cage pays winners. Forty dollars each."
+  },
+  {
+   "scene": "payday",
+   "lines": [
+    [
+     "marcus",
+     "Paycheck plus prize: three hundred fifty-eight dollars. Still eight hundred forty-two short."
+    ]
+   ],
+   "text": "Paycheck plus prize: three hundred fifty-eight dollars. Still eight hundred forty-two short."
+  },
+  {
+   "scene": "upgradeG",
+   "lines": [
+    [
+     "marcus",
+     "Card check. Physical: thirty to thirty-four. Dribbling: thirty-four to thirty-seven. Overall... thirty-four!"
+    ]
+   ],
+   "text": "Card check. Physical: thirty to thirty-four. Dribbling: thirty-four to thirty-seven. Overall... thirty-four!"
+  },
+  {
+   "scene": "envelope",
+   "lines": [
+    [
+     "marcus",
+     "Then I opened my locker... and found an envelope. A Barcelona crest. No name."
+    ]
+   ],
+   "text": "Then I opened my locker... and found an envelope. A Barcelona crest. No name."
+  },
+  {
+   "scene": "options",
+   "letter": "A",
+   "title": "DOUBLE SHIFTS",
+   "sub": "Fast money, less training",
+   "icon": "shifts",
+   "lines": [
+    [
+     "marcus",
+     "Option A: double shifts at Big Mike's. Fast money."
+    ]
+   ],
+   "text": "Option A: double shifts at Big Mike's. Fast money."
+  },
+  {
+   "scene": "options",
+   "letter": "B",
+   "title": "CAGE TEAM",
+   "sub": "Tasha's crew · big prize",
+   "icon": "cageteam",
+   "lines": [
+    [
+     "marcus",
+     "Option B: join Tasha's cage team for the big prize tournament."
+    ]
+   ],
+   "text": "Option B: join Tasha's cage team for the big prize tournament."
+  },
+  {
+   "scene": "options",
+   "letter": "C",
+   "title": "OPEN IT",
+   "sub": "The secret envelope",
+   "icon": "envelope",
+   "secret": true,
+   "lines": [
+    [
+     "marcus",
+     "And the secret option C... open the envelope."
+    ]
+   ],
+   "text": "And the secret option C... open the envelope."
+  },
+  {
+   "scene": "cta3",
+   "lines": [
+    [
+     "marcus",
+     "Comment A, B... or the secret C. Day eleven."
+    ]
+   ],
+   "text": "Comment A, B... or the secret C. Day eleven."
+  }
+ ]
+}
